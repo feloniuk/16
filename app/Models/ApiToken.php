@@ -4,26 +4,30 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Admin extends Model
+class ApiToken extends Model
 {
     use HasFactory;
 
     public $timestamps = false;
-    protected $dateFormat = 'Y-m-d H:i:s';
 
     protected $fillable = [
-        'telegram_id',
         'name',
+        'token',
+        'permissions',
         'is_active'
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
-        'telegram_id' => 'integer',
+        'permissions' => 'array',
+        'is_active' => 'boolean'
     ];
 
     protected $dates = [
         'created_at'
+    ];
+
+    protected $hidden = [
+        'token'
     ];
 
     public function scopeActive($query)
@@ -31,13 +35,15 @@ class Admin extends Model
         return $query->where('is_active', true);
     }
 
-    // Автоматически устанавливаем created_at при создании
     protected static function boot()
     {
         parent::boot();
         
         static::creating(function ($model) {
             $model->created_at = now();
+            if (empty($model->token)) {
+                $model->token = hash('sha256', uniqid() . time());
+            }
         });
     }
 }

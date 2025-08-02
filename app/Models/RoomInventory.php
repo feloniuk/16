@@ -9,6 +9,7 @@ class RoomInventory extends Model
     use HasFactory;
 
     protected $table = 'room_inventory';
+    public $timestamps = false;
 
     protected $fillable = [
         'admin_telegram_id',
@@ -23,6 +24,14 @@ class RoomInventory extends Model
         'notes'
     ];
 
+    protected $casts = [
+        'admin_telegram_id' => 'integer',
+    ];
+
+    protected $dates = [
+        'created_at'
+    ];
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);
@@ -31,5 +40,19 @@ class RoomInventory extends Model
     public function template()
     {
         return $this->belongsTo(InventoryTemplate::class, 'template_id');
+    }
+
+    public function cartridgeReplacements()
+    {
+        return $this->hasMany(CartridgeReplacement::class, 'printer_inventory_id');
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($model) {
+            $model->created_at = now();
+        });
     }
 }

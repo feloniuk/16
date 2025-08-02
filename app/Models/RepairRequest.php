@@ -19,6 +19,7 @@ class RepairRequest extends Model
     ];
 
     protected $casts = [
+        'user_telegram_id' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
@@ -36,5 +37,25 @@ class RepairRequest extends Model
             'виконана' => '<span class="badge bg-success">Виконана</span>',
             default => '<span class="badge bg-secondary">Невідомо</span>'
         };
+    }
+
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    public function scopeNew($query)
+    {
+        return $query->where('status', 'нова');
+    }
+
+    public function scopeInProgress($query)
+    {
+        return $query->where('status', 'в_роботі');
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'виконана');
     }
 }
