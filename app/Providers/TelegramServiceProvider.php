@@ -21,7 +21,12 @@ class TelegramServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Основные сервисы
-        $this->app->singleton(TelegramService::class);
+        $this->app->singleton(MessageCacheService::class);
+        
+        $this->app->singleton(TelegramService::class, function ($app) {
+            return new TelegramService($app->make(MessageCacheService::class));
+        });
+        
         $this->app->singleton(StateManager::class);
         
         // Сервис клавиатур зависит от TelegramService

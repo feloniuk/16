@@ -11,11 +11,13 @@ class TelegramService
 {
     private string $botToken;
     private string $apiUrl;
+    private MessageCacheService $messageCache;
 
-    public function __construct()
+    public function __construct(MessageCacheService $messageCache)
     {
         $this->botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
         $this->apiUrl = "https://api.telegram.org/bot{$this->botToken}/";
+        $this->messageCache = $messageCache;
         
         Log::info('TelegramService initialized', [
             'bot_token_exists' => !empty($this->botToken),
@@ -35,7 +37,7 @@ class TelegramService
         }
 
         if ($replyMarkup) {
-            $data['reply_markup'] = $replyMarkup; // Убираем json_encode
+            $data['reply_markup'] = $replyMarkup;
         }
 
         return $this->makeRequest('sendMessage', $data);
@@ -43,6 +45,15 @@ class TelegramService
 
     public function editMessage(int $chatId, int $messageId, string $text, ?array $replyMarkup = null, ?string $parseMode = 'HTML'): array|false
     {
+        // Проверяем, отличается ли новое сообщение от предыдущего
+        if (!$this->messageCache->isDifferent($chatId, $messageId, $text, $replyMarkup)) {
+            Log::info('Message content is identical, skipping edit', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId
+            ]);
+            return ['ok' => true, 'result' => 'identical_content'];
+        }
+
         $data = [
             'chat_id' => $chatId,
             'message_id' => $messageId,
@@ -54,10 +65,35 @@ class TelegramService
         }
 
         if ($replyMarkup) {
-            $data['reply_markup'] = $replyMarkup; // Убираем json_encode
+            $data['reply_markup'] = $replyMarkup;
         }
 
-        return $this->makeRequest('editMessageText', $data);
+        $result = $this->makeRequest('editMessageText', $data);
+        
+        // Если редактирование прошло успешно, сохраняем в кеш
+        if ($result) {
+            $this->messageCache->store($chatId, $messageId, $text, $replyMarkup);
+        }
+        
+        return $result;
+    }
+
+    public function editMessageSafe(int $chatId, int $messageId, string $text, ?array $replyMarkup = null, ?string $parseMode = 'HTML'): array|false
+    {
+        // Безопасное редактирование - удаляем старое сообщение и отправляем новое при ошибке
+        $result = $this->editMessage($chatId, $messageId, $text, $replyMarkup, $parseMode);
+        
+        if (!$result) {
+            // Если редактирование не удалось, отправляем новое сообщение
+            Log::warning("Failed to edit message, sending new one", [
+                'chat_id' => $chatId,
+                'message_id' => $messageId
+            ]);
+            
+            return $this->sendMessage($chatId, $text, $replyMarkup, $parseMode);
+        }
+        
+        return $result;
     }
 
     public function answerCallbackQuery(string $callbackQueryId, ?string $text = null): array|false
@@ -144,6 +180,16 @@ class TelegramService
                 if (isset($result['ok']) && $result['ok']) {
                     return $result;
                 } else {
+                    // Специальная обработка ошибки "message is not modified"
+                    if (isset($result['error_code']) && $result['error_code'] === 400 && 
+                        str_contains($result['description'] ?? '', 'message is not modified')) {
+                        Log::info("Message not modified - treating as success", [
+                            'method' => $method,
+                            'chat_id' => $data['chat_id'] ?? 'N/A'
+                        ]);
+                        return ['ok' => true, 'result' => 'not_modified'];
+                    }
+                    
                     Log::error("Telegram API returned error", [
                         'method' => $method,
                         'error_code' => $result['error_code'] ?? 'unknown',
