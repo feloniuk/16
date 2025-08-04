@@ -515,3 +515,475 @@ Artisan::command('telegram:test-webhook', function () {
     $this->line("   tail -f storage/logs/laravel.log");
     
 })->purpose('Тестирование webhook напрямую');
+
+# Добавьте эти команды в routes/console.php
+
+Artisan::command('telegram:debug-send {chat_id} {message}', function ($chatId, $message) {
+    $this->info("🔍 Тестирование отправки сообщения...");
+    
+    $controller = new \App\Http\Controllers\Api\TelegramBotController();
+    
+    // Используем рефлексию для вызова приватного метода
+    $reflection = new ReflectionClass($controller);
+    $method = $reflection->getMethod('sendMessage');
+    $method->setAccessible(true);
+    
+    try {
+        $result = $method->invoke($controller, $chatId, $message);
+        
+        if ($result) {
+            $this->info("✅ Сообщение отправлено успешно");
+            $this->line("Результат: " . json_encode($result, JSON_PRETTY_PRINT));
+        } else {
+            $this->error("❌ Сообщение не отправлено");
+        }
+    } catch (\Exception $e) {
+        $this->error("❌ Ошибка: " . $e->getMessage());
+    }
+})->purpose('Отправить тестовое сообщение пользователю');
+
+Artisan::command('telegram:check-admins', function () {
+    $this->info('👥 Проверка администраторов...');
+    $this->newLine();
+    
+    $admins = \App\Models\Admin::where('is_active', true)->get();
+    
+    if ($admins->isEmpty()) {
+        $this->error('❌ Активных администраторов не найдено!');
+        $this->newLine();
+        $this->info('💡 Создайте администратора командой:');
+        $this->line('   php artisan support:create-admin YOUR_TELEGRAM_ID "Your Name"');
+        return;
+    }
+    
+    $this->info("✅ Найдено активных администраторов: {$admins->count()}");
+    $this->newLine();
+    
+    $controller = new \App\Http\Controllers\Api\TelegramBotController();
+    $reflection = new ReflectionClass($controller);
+    $sendMethod = $reflection->getMethod('sendMessage');
+    $sendMethod->setAccessible(true);
+    
+    foreach ($admins as $admin) {
+        $this->info("🔍 Проверяем админа: {$admin->name} (ID: {$admin->telegram_id})");
+        
+        try {
+            $testMessage = "🤖 Тест связи с ботом\n\nВремя: " . now()->format('d.m.Y H:i:s');
+            $result = $sendMethod->invoke($controller, $admin->telegram_id, $testMessage);
+            
+            if ($result) {
+                $this->info("   ✅ Сообщение доставлено");
+            } else {
+                $this->error("   ❌ Не удалось доставить сообщение");
+            }
+        } catch (\Exception $e) {
+            $this->error("   ❌ Ошибка: " . $e->getMessage());
+        }
+        
+        $this->newLine();
+    }
+})->purpose('Проверить всех администраторов и отправить им тестовые сообщения');
+
+Artisan::command('telegram:fix-webhook', function () {
+    $this->info('🔧 Исправление webhook...');
+    $this->newLine();
+    
+    $botToken = config('services.telegram.bot_token');
+    if (!$botToken) {
+        $this->error('❌ TELEGRAM_BOT_TOKEN не найден');
+        return;
+    }
+    
+    // 1. Удаляем старый webhook
+    $this->info('🗑️ Удаление старого webhook...');
+    try {
+        $response = \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$botToken}/deleteWebhook");
+        $result = $response->json();
+        
+        if ($result['ok']) {
+            $this->info('✅ Старый webhook удален');
+        } else {
+            $this->warn('⚠️ Ошибка удаления: ' . ($result['description'] ?? 'Unknown'));
+        }
+    } catch (\Exception $e) {
+        $this->warn('⚠️ Ошибка при удалении: ' . $e->getMessage());
+    }
+    
+    // 2. Ждем немного
+    $this->info('⏳ Ожидание 3 секунды...');
+    sleep(3);
+    
+    // 3. Устанавливаем новый webhook
+    $webhookUrl = config('app.url') . '/api/telegram/webhook';
+    $this->info("🔗 Установка нового webhook: {$webhookUrl}");
+    
+    try {
+        $response = \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$botToken}/setWebhook", [
+            'url' => $webhookUrl,
+            'allowed_updates' => ['message', 'callback_query']
+        ]);
+        $result = $response->json();
+        
+        if ($result['ok']) {
+            $this->info('✅ Новый webhook установлен');
+        } else {
+            $this->error('❌ Ошибка установки: ' . ($result['description'] ?? 'Unknown'));
+            return;
+        }
+    } catch (\Exception $e) {
+        $this->error('❌ Ошибка при установке: ' . $e->getMessage());
+        return;
+    }
+    
+    // 4. Проверяем webhook
+    $this->info('🔍 Проверка webhook...');
+    try {
+        $response = \Illuminate\Support\Facades\Http::get("https://api.telegram.org/bot{$botToken}/getWebhookInfo");
+        $result = $response->json();
+        
+        if ($result['ok']) {
+            $info = $result['result'];
+            $this->info('📋 Информация о webhook:');
+            $this->line("   URL: " . ($info['url'] ?? 'Не установлен'));
+            $this->line("   Ожидающих обновлений: " . ($info['pending_update_count'] ?? 0));
+            
+            if (!empty($info['last_error_message'])) {
+                $this->error("   Последняя ошибка: {$info['last_error_message']}");
+            } else {
+                $this->info('   ✅ Ошибок нет');
+            }
+        }
+    } catch (\Exception $e) {
+        $this->error('❌ Ошибка проверки: ' . $e->getMessage());
+    }
+    
+    $this->newLine();
+    $this->info('🎯 Webhook настроен! Попробуйте отправить команду боту.');
+})->purpose('Исправить и переустановить webhook');
+
+Artisan::command('telegram:clear-updates', function () {
+    $this->info('🧹 Очистка накопившихся обновлений...');
+    
+    $botToken = config('services.telegram.bot_token');
+    if (!$botToken) {
+        $this->error('❌ TELEGRAM_BOT_TOKEN не найден');
+        return;
+    }
+    
+    try {
+        // Получаем накопившиеся обновления и отмечаем их как обработанные
+        $response = \Illuminate\Support\Facades\Http::get("https://api.telegram.org/bot{$botToken}/getUpdates", [
+            'offset' => -1,
+            'limit' => 1
+        ]);
+        $result = $response->json();
+        
+        if ($result['ok'] && !empty($result['result'])) {
+            $lastUpdate = end($result['result']);
+            $lastUpdateId = $lastUpdate['update_id'];
+            
+            // Подтверждаем все обновления до этого ID
+            $confirmResponse = \Illuminate\Support\Facades\Http::get("https://api.telegram.org/bot{$botToken}/getUpdates", [
+                'offset' => $lastUpdateId + 1,
+                'limit' => 1
+            ]);
+            
+            if ($confirmResponse->json()['ok']) {
+                $this->info('✅ Обновления очищены');
+            }
+        } else {
+            $this->info('ℹ️ Обновлений для очистки не найдено');
+        }
+    } catch (\Exception $e) {
+        $this->error('❌ Ошибка очистки: ' . $e->getMessage());
+    }
+})->purpose('Очистить накопившиеся обновления Telegram');
+
+// Добавьте эти команды в конец файла routes/console.php
+
+Artisan::command('telegram:test-direct {chat_id?}', function ($chatId = null) {
+    $this->info('🔍 Прямое тестирование Telegram API...');
+    
+    $botToken = config('services.telegram.bot_token') ?? env('TELEGRAM_BOT_TOKEN');
+    
+    if (!$botToken) {
+        $this->error('❌ Токен не найден');
+        return;
+    }
+    
+    // Если chat_id не указан, попробуем найти админа
+    if (!$chatId) {
+        $admin = \App\Models\Admin::where('is_active', true)->first();
+        if ($admin) {
+            $chatId = $admin->telegram_id;
+            $this->info("💡 Используем chat_id администратора: {$chatId}");
+        } else {
+            $this->error('❌ Не указан chat_id и не найдено администраторов');
+            return;
+        }
+    }
+    
+    $this->info("📤 Отправляем сообщение на chat_id: {$chatId}");
+    
+    $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
+    $data = [
+        'chat_id' => $chatId,
+        'text' => '🤖 Тестовое сообщение от Laravel бота\n\nВремя: ' . now()->format('d.m.Y H:i:s'),
+        'parse_mode' => 'HTML'
+    ];
+    
+    try {
+        $response = \Illuminate\Support\Facades\Http::timeout(30)->post($url, $data);
+        
+        $this->info("📨 HTTP Status: {$response->status()}");
+        $this->info("📨 Response Headers: " . json_encode($response->headers()));
+        $this->info("📨 Response Body: " . $response->body());
+        
+        $result = $response->json();
+        
+        if ($result && isset($result['ok'])) {
+            if ($result['ok']) {
+                $this->info("✅ Сообщение отправлено успешно!");
+                $this->info("📋 Message ID: " . $result['result']['message_id']);
+            } else {
+                $this->error("❌ Telegram API ошибка:");
+                $this->error("   Код: " . ($result['error_code'] ?? 'неизвестно'));
+                $this->error("   Описание: " . ($result['description'] ?? 'неизвестно'));
+            }
+        } else {
+            $this->error("❌ Неожиданный ответ от API");
+        }
+        
+    } catch (\Exception $e) {
+        $this->error("❌ Исключение: " . $e->getMessage());
+        $this->error("   Файл: " . $e->getFile());
+        $this->error("   Строка: " . $e->getLine());
+    }
+})->purpose('Прямое тестирование отправки сообщений');
+
+Artisan::command('telegram:check-routes', function () {
+    $this->info('🛣️ Проверка маршрутов Telegram...');
+    
+    $routes = collect(\Illuminate\Support\Facades\Route::getRoutes())
+        ->filter(function ($route) {
+            return str_contains($route->uri(), 'telegram');
+        });
+    
+    if ($routes->count() === 0) {
+        $this->error('❌ Маршруты Telegram не найдены!');
+        return;
+    }
+    
+    $this->info("✅ Найдено маршрутов: {$routes->count()}");
+    $this->newLine();
+    
+    foreach ($routes as $route) {
+        $this->line("📍 " . implode('|', $route->methods()) . " " . $route->uri());
+        $this->line("   Контроллер: " . ($route->getActionName() ?? 'Closure'));
+        $this->line("   Имя: " . ($route->getName() ?? 'без имени'));
+        $this->newLine();
+    }
+    
+    // Проверим доступность webhook URL
+    $webhookUrl = config('app.url') . '/api/telegram/webhook';
+    $this->info("🌐 Проверка доступности webhook: {$webhookUrl}");
+    
+    try {
+        $response = \Illuminate\Support\Facades\Http::timeout(10)->post($webhookUrl, [
+            'test' => true
+        ]);
+        
+        $this->info("📨 HTTP Status: {$response->status()}");
+        $this->info("📨 Response: " . $response->body());
+        
+        if ($response->successful()) {
+            $this->info("✅ Webhook доступен");
+        } else {
+            $this->error("❌ Webhook недоступен");
+        }
+        
+    } catch (\Exception $e) {
+        $this->error("❌ Ошибка проверки webhook: " . $e->getMessage());
+    }
+})->purpose('Проверить маршруты и доступность webhook');
+
+Artisan::command('telegram:simulate-webhook', function () {
+    $this->info('🎭 Симуляция webhook запроса...');
+    
+    // Создаем тестовый запрос как от Telegram
+    $testUpdate = [
+        'update_id' => 999999999,
+        'message' => [
+            'message_id' => 1,
+            'from' => [
+                'id' => 123456789,
+                'is_bot' => false,
+                'first_name' => 'Test',
+                'username' => 'testuser'
+            ],
+            'chat' => [
+                'id' => 123456789,
+                'first_name' => 'Test',
+                'username' => 'testuser',
+                'type' => 'private'
+            ],
+            'date' => time(),
+            'text' => '/start'
+        ]
+    ];
+    
+    $this->info('📤 Данные запроса:');
+    $this->line(json_encode($testUpdate, JSON_PRETTY_PRINT));
+    $this->newLine();
+    
+    try {
+        // Создаем fake HTTP request
+        $request = new \Illuminate\Http\Request();
+        $request->replace($testUpdate);
+        
+        // Вызываем контроллер напрямую
+        $controller = new \App\Http\Controllers\Api\TelegramBotController();
+        $response = $controller->webhook($request);
+        
+        $this->info('📨 Ответ контроллера:');
+        $this->line($response->getContent());
+        
+        if ($response->getStatusCode() === 200) {
+            $this->info('✅ Webhook обработан успешно');
+        } else {
+            $this->error("❌ Ошибка webhook, код: {$response->getStatusCode()}");
+        }
+        
+    } catch (\Exception $e) {
+        $this->error('❌ Ошибка выполнения webhook: ' . $e->getMessage());
+        $this->error('   Файл: ' . $e->getFile());
+        $this->error('   Строка: ' . $e->getLine());
+        $this->error('   Трейс: ' . $e->getTraceAsString());
+    }
+})->purpose('Симулировать webhook запрос локально');
+
+Artisan::command('telegram:check-config', function () {
+    $this->info('⚙️ Проверка конфигурации...');
+    $this->newLine();
+    
+    // Проверяем основные переменные
+    $configs = [
+        'APP_URL' => config('app.url'),
+        'TELEGRAM_BOT_TOKEN' => config('services.telegram.bot_token') ?? env('TELEGRAM_BOT_TOKEN'),
+        'APP_ENV' => config('app.env'),
+        'APP_DEBUG' => config('app.debug') ? 'true' : 'false',
+        'DB_CONNECTION' => config('database.default'),
+    ];
+    
+    foreach ($configs as $key => $value) {
+        if (empty($value)) {
+            $this->error("❌ {$key}: не установлено");
+        } else {
+            if ($key === 'TELEGRAM_BOT_TOKEN') {
+                $maskedValue = substr($value, 0, 10) . '...' . substr($value, -6);
+                $this->info("✅ {$key}: {$maskedValue}");
+            } else {
+                $this->info("✅ {$key}: {$value}");
+            }
+        }
+    }
+    
+    $this->newLine();
+    
+    // Проверяем подключение к БД
+    $this->info('🗄️ Проверка подключения к БД...');
+    try {
+        $adminCount = \App\Models\Admin::count();
+        $branchCount = \App\Models\Branch::count();
+        
+        $this->info("✅ Подключение к БД работает");
+        $this->info("📊 Администраторов: {$adminCount}");
+        $this->info("📊 Филиалов: {$branchCount}");
+        
+        if ($adminCount === 0) {
+            $this->warn('⚠️ Нет администраторов! Создайте командой:');
+            $this->line('   php artisan support:create-admin YOUR_TELEGRAM_ID "Your Name"');
+        }
+        
+    } catch (\Exception $e) {
+        $this->error('❌ Ошибка БД: ' . $e->getMessage());
+    }
+    
+    $this->newLine();
+    
+    // Проверяем права на запись логов
+    $this->info('📝 Проверка прав на запись...');
+    $logPath = storage_path('logs');
+    if (is_writable($logPath)) {
+        $this->info("✅ Папка логов доступна для записи: {$logPath}");
+    } else {
+        $this->error("❌ Папка логов недоступна для записи: {$logPath}");
+    }
+    
+    $cachePath = storage_path('framework/cache');
+    if (is_writable($cachePath)) {
+        $this->info("✅ Папка кеша доступна для записи: {$cachePath}");
+    } else {
+        $this->error("❌ Папка кеша недоступна для записи: {$cachePath}");
+    }
+})->purpose('Проверить всю конфигурацию системы');
+
+Artisan::command('telegram:force-notify {message?}', function ($message = null) {
+    $this->info('📢 Принудительная отправка уведомлений администраторам...');
+    
+    $message = $message ?? '🔔 Тестовое уведомление системы\n\nВремя: ' . now()->format('d.m.Y H:i:s');
+    
+    $admins = \App\Models\Admin::where('is_active', true)->get();
+    
+    if ($admins->isEmpty()) {
+        $this->error('❌ Нет активных администраторов');
+        return;
+    }
+    
+    $botToken = config('services.telegram.bot_token') ?? env('TELEGRAM_BOT_TOKEN');
+    if (!$botToken) {
+        $this->error('❌ Токен бота не найден');
+        return;
+    }
+    
+    $successCount = 0;
+    $failCount = 0;
+    
+    foreach ($admins as $admin) {
+        $this->info("📤 Отправляем админу: {$admin->name} (ID: {$admin->telegram_id})");
+        
+        try {
+            $response = \Illuminate\Support\Facades\Http::post(
+                "https://api.telegram.org/bot{$botToken}/sendMessage",
+                [
+                    'chat_id' => $admin->telegram_id,
+                    'text' => $message,
+                    'parse_mode' => 'HTML'
+                ]
+            );
+            
+            $result = $response->json();
+            
+            if ($result && $result['ok']) {
+                $this->info("   ✅ Отправлено");
+                $successCount++;
+            } else {
+                $this->error("   ❌ Ошибка: " . ($result['description'] ?? 'неизвестная'));
+                $failCount++;
+            }
+            
+        } catch (\Exception $e) {
+            $this->error("   ❌ Исключение: " . $e->getMessage());
+            $failCount++;
+        }
+        
+        // Небольшая пауза между сообщениями
+        usleep(500000); // 0.5 секунды
+    }
+    
+    $this->newLine();
+    $this->info("📊 Результат:");
+    $this->info("   ✅ Успешно: {$successCount}");
+    $this->info("   ❌ Ошибок: {$failCount}");
+    
+})->purpose('Принудительно отправить уведомления всем администраторам');

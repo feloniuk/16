@@ -24,10 +24,9 @@ class TelegramBotController extends Controller
         $this->botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
         $this->apiUrl = "https://api.telegram.org/bot{$this->botToken}/";
         
-        // Логируем для отладки
         Log::info('TelegramBotController initialized', [
             'bot_token_exists' => !empty($this->botToken),
-            'api_url' => $this->apiUrl
+            'bot_token_length' => $this->botToken ? strlen($this->botToken) : 0
         ]);
     }
 
@@ -94,6 +93,8 @@ class TelegramBotController extends Controller
      */
     private function handleCommand($chatId, $userId, $username, $command)
     {
+        Log::info("Handling command: {$command} for user: {$userId}");
+        
         switch ($command) {
             case '/start':
                 $this->clearUserState($userId);
@@ -117,9 +118,55 @@ class TelegramBotController extends Controller
                 }
                 break;
 
+            case '/status':
+                $this->sendSystemStatus($chatId);
+                break;
+
             default:
-                $this->sendMessage($chatId, "Неизвестная команда. Используйте /help для справки.");
+                $this->sendMessage($chatId, "Неизвестная команда. Используйте /help для справки.", $this->getMainMenuKeyboard());
         }
+    }
+
+    /**
+     * Отправка системного статуса
+     */
+    private function sendSystemStatus($chatId)
+    {
+        try {
+            $stats = $this->getSystemStats();
+            
+            $message = "📊 <b>Статистика системы:</b>\n\n";
+            $message .= "🔧 Заявки на ремонт:\n";
+            $message .= "   • Всего: {$stats['repairs']['total']}\n";
+            $message .= "   • Новые: {$stats['repairs']['new']}\n";
+            $message .= "   • В работе: {$stats['repairs']['in_progress']}\n";
+            $message .= "   • Выполнено: {$stats['repairs']['completed']}\n\n";
+            $message .= "🖨️ Картриджи: {$stats['cartridges']['total']}\n";
+            $message .= "🏢 Филиалы: {$stats['branches']}\n";
+            $message .= "\n⏰ Обновлено: " . now()->format('d.m.Y H:i');
+
+            $this->sendMessage($chatId, $message, null, 'HTML');
+        } catch (\Exception $e) {
+            Log::error('Error getting system status: ' . $e->getMessage());
+            $this->sendMessage($chatId, "❌ Ошибка получения статистики системы");
+        }
+    }
+
+    private function getSystemStats()
+    {
+        return [
+            'repairs' => [
+                'total' => RepairRequest::count(),
+                'new' => RepairRequest::where('status', 'нова')->count(),
+                'in_progress' => RepairRequest::where('status', 'в_роботі')->count(),
+                'completed' => RepairRequest::where('status', 'виконана')->count()
+            ],
+            'cartridges' => [
+                'total' => CartridgeReplacement::count(),
+                'this_month' => CartridgeReplacement::whereMonth('created_at', now()->month)->count()
+            ],
+            'branches' => Branch::where('is_active', true)->count()
+        ];
     }
 
     /**
@@ -202,45 +249,6 @@ class TelegramBotController extends Controller
         }
     }
 
-    /**
-     * Обработка сообщений в зависимости от состояния пользователя
-     */
-    private function handleStateMessage($chatId, $userId, $username, $text, $userState)
-    {
-        $state = $userState['state'];
-        $tempData = $userState['temp_data'] ?? [];
-
-        switch ($state) {
-            case 'repair_awaiting_room':
-                $this->handleRepairRoomInput($chatId, $userId, $text, $tempData);
-                break;
-
-            case 'repair_awaiting_description':
-                $this->handleRepairDescriptionInput($chatId, $userId, $text, $tempData);
-                break;
-
-            case 'repair_awaiting_phone':
-                $this->handleRepairPhoneInput($chatId, $userId, $username, $text, $tempData);
-                break;
-
-            case 'cartridge_awaiting_room':
-                $this->handleCartridgeRoomInput($chatId, $userId, $text, $tempData);
-                break;
-
-            case 'cartridge_awaiting_printer':
-                $this->handleCartridgePrinterInput($chatId, $userId, $text, $tempData);
-                break;
-
-            case 'cartridge_awaiting_type':
-                $this->handleCartridgeTypeInput($chatId, $userId, $username, $text, $tempData);
-                break;
-
-            default:
-                $this->sendMessage($chatId, "Неизвестное состояние. Возвращаемся в главное меню.", $this->getMainMenuKeyboard());
-                $this->clearUserState($userId);
-        }
-    }
-
     // =============== REPAIR REQUEST METHODS ===============
 
     private function startRepairRequest($chatId, $userId, $messageId)
@@ -280,6 +288,42 @@ class TelegramBotController extends Controller
             $this->editMessage($chatId, $messageId, 
                 "🖨️ <b>Замена картриджа</b>\nФилиал: <b>{$branch->name}</b>\n\nВведите номер кабинета:", 
                 $this->getCancelKeyboard(), 'HTML');
+        }
+    }
+
+    private function handleStateMessage($chatId, $userId, $username, $text, $userState)
+    {
+        $state = $userState['state'];
+        $tempData = $userState['temp_data'] ?? [];
+
+        switch ($state) {
+            case 'repair_awaiting_room':
+                $this->handleRepairRoomInput($chatId, $userId, $text, $tempData);
+                break;
+
+            case 'repair_awaiting_description':
+                $this->handleRepairDescriptionInput($chatId, $userId, $text, $tempData);
+                break;
+
+            case 'repair_awaiting_phone':
+                $this->handleRepairPhoneInput($chatId, $userId, $username, $text, $tempData);
+                break;
+
+            case 'cartridge_awaiting_room':
+                $this->handleCartridgeRoomInput($chatId, $userId, $text, $tempData);
+                break;
+
+            case 'cartridge_awaiting_printer':
+                $this->handleCartridgePrinterInput($chatId, $userId, $text, $tempData);
+                break;
+
+            case 'cartridge_awaiting_type':
+                $this->handleCartridgeTypeInput($chatId, $userId, $username, $text, $tempData);
+                break;
+
+            default:
+                $this->sendMessage($chatId, "Неизвестное состояние. Возвращаемся в главное меню.", $this->getMainMenuKeyboard());
+                $this->clearUserState($userId);
         }
     }
 
@@ -384,7 +428,7 @@ class TelegramBotController extends Controller
         }
     }
 
-    // =============== CARTRIDGE REQUEST METHODS ===============
+    // =============== CARTRIDGE METHODS ===============
 
     private function startCartridgeRequest($chatId, $userId, $messageId)
     {
@@ -493,12 +537,12 @@ class TelegramBotController extends Controller
     private function sendAdminMenu($chatId, $messageId = null)
     {
         $keyboard = $this->getAdminMenuKeyboard();
-        $text = "⚙️ Админ-панель:";
+        $text = "⚙️ <b>Админ-панель:</b>\n\nВыберите действие:";
         
         if ($messageId) {
-            $this->editMessage($chatId, $messageId, $text, $keyboard);
+            $this->editMessage($chatId, $messageId, $text, $keyboard, 'HTML');
         } else {
-            $this->sendMessage($chatId, $text, $keyboard);
+            $this->sendMessage($chatId, $text, $keyboard, 'HTML');
         }
     }
 
@@ -617,6 +661,12 @@ class TelegramBotController extends Controller
     {
         try {
             $admins = Admin::where('is_active', true)->get();
+            
+            if ($admins->isEmpty()) {
+                Log::warning('No active admins found for repair notification');
+                return;
+            }
+            
             $username = $repair->username ? "@{$repair->username}" : "ID: {$repair->user_telegram_id}";
 
             $message = "🔧 <b>Новая заявка на ремонт № {$repair->id}!</b>\n\n";
@@ -631,13 +681,27 @@ class TelegramBotController extends Controller
             
             $message .= "\n⏰ " . $repair->created_at->format('d.m.Y H:i');
 
+            $notifiedCount = 0;
             foreach ($admins as $admin) {
                 try {
-                    $this->sendMessage($admin->telegram_id, $message, null, 'HTML');
+                    $result = $this->sendMessage($admin->telegram_id, $message, null, 'HTML');
+                    if ($result) {
+                        $notifiedCount++;
+                        Log::info("Admin notified successfully", ['admin_id' => $admin->id, 'telegram_id' => $admin->telegram_id]);
+                    } else {
+                        Log::warning("Failed to notify admin", ['admin_id' => $admin->id, 'telegram_id' => $admin->telegram_id]);
+                    }
                 } catch (\Exception $e) {
                     Log::error("Failed to notify admin {$admin->telegram_id}: " . $e->getMessage());
                 }
             }
+            
+            Log::info("Repair notification sent", [
+                'repair_id' => $repair->id,
+                'total_admins' => $admins->count(),
+                'notified_count' => $notifiedCount
+            ]);
+            
         } catch (\Exception $e) {
             Log::error('Error notifying admins about repair: ' . $e->getMessage());
         }
@@ -647,6 +711,12 @@ class TelegramBotController extends Controller
     {
         try {
             $admins = Admin::where('is_active', true)->get();
+            
+            if ($admins->isEmpty()) {
+                Log::warning('No active admins found for cartridge notification');
+                return;
+            }
+            
             $username = $cartridge->username ? "@{$cartridge->username}" : "ID: {$cartridge->user_telegram_id}";
 
             $message = "🖨️ <b>Запрос на замену картриджа № {$cartridge->id}!</b>\n\n";
@@ -657,13 +727,24 @@ class TelegramBotController extends Controller
             $message .= "👤 Пользователь: $username\n";
             $message .= "\n⏰ " . $cartridge->created_at->format('d.m.Y H:i');
 
+            $notifiedCount = 0;
             foreach ($admins as $admin) {
                 try {
-                    $this->sendMessage($admin->telegram_id, $message, null, 'HTML');
+                    $result = $this->sendMessage($admin->telegram_id, $message, null, 'HTML');
+                    if ($result) {
+                        $notifiedCount++;
+                    }
                 } catch (\Exception $e) {
                     Log::error("Failed to notify admin {$admin->telegram_id}: " . $e->getMessage());
                 }
             }
+            
+            Log::info("Cartridge notification sent", [
+                'cartridge_id' => $cartridge->id,
+                'total_admins' => $admins->count(),
+                'notified_count' => $notifiedCount
+            ]);
+            
         } catch (\Exception $e) {
             Log::error('Error notifying admins about cartridge: ' . $e->getMessage());
         }
@@ -790,6 +871,9 @@ class TelegramBotController extends Controller
                     ['text' => '🖨️ История картриджей', 'callback_data' => 'admin_cartridges']
                 ],
                 [
+                    ['text' => '📈 Статистика', 'callback_data' => 'admin_stats']
+                ],
+                [
                     ['text' => '🏠 Главное меню', 'callback_data' => 'main_menu']
                 ]
             ]
@@ -867,17 +951,18 @@ class TelegramBotController extends Controller
 
     private function sendHelpMessage($chatId)
     {
-        $text = "📋 Справка по боту:\n\n" .
+        $text = "📋 <b>Справка по боту:</b>\n\n" .
                "🔧 <b>Вызов IT мастера</b> - подать заявку на ремонт оборудования\n" .
                "🖨️ <b>Замена картриджа</b> - запрос на замену картриджа\n\n" .
-               "📞 Команды:\n" .
+               "📞 <b>Команды:</b>\n" .
                "/start - Главное меню\n" .
                "/help - Эта справка\n" .
                "/cancel - Отменить текущее действие\n" .
-               "/admin - Админ-панель (только для администраторов)\n\n" .
+               "/admin - Админ-панель (только для администраторов)\n" .
+               "/status - Статистика системы\n\n" .
                "❓ Если у вас возникли вопросы, обратитесь к администратору.";
         
-        $this->sendMessage($chatId, $text, null, 'HTML');
+        $this->sendMessage($chatId, $text, $this->getMainMenuKeyboard(), 'HTML');
     }
 
     private function sendMainMenu($chatId)
@@ -948,22 +1033,25 @@ class TelegramBotController extends Controller
             
             Log::info("Making Telegram API request", [
                 'method' => $method,
-                'url' => $url,
-                'data' => $data,
-                'bot_token_length' => strlen($this->botToken)
+                'chat_id' => $data['chat_id'] ?? 'N/A',
+                'data_keys' => array_keys($data)
             ]);
             
             // Используем POST для всех запросов к Telegram API
             $response = Http::timeout(30)
-                ->retry(3, 1000) // 3 попытки с задержкой в 1 секунду
+                ->retry(3, 1000)
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                ])
                 ->post($url, $data);
+            
+            $responseBody = $response->body();
+            $statusCode = $response->status();
             
             Log::info("Telegram API response", [
                 'method' => $method,
-                'status' => $response->status(),
-                'headers' => $response->headers(),
-                'body_length' => strlen($response->body()),
-                'body' => $response->body()
+                'status' => $statusCode,
+                'response_length' => strlen($responseBody)
             ]);
             
             if ($response->successful()) {
@@ -974,15 +1062,18 @@ class TelegramBotController extends Controller
                 } else {
                     Log::error("Telegram API returned error", [
                         'method' => $method,
-                        'error' => $result
+                        'error_code' => $result['error_code'] ?? 'unknown',
+                        'description' => $result['description'] ?? 'unknown',
+                        'chat_id' => $data['chat_id'] ?? 'N/A'
                     ]);
                     return false;
                 }
             } else {
                 Log::error("HTTP error in Telegram API request", [
                     'method' => $method,
-                    'status' => $response->status(),
-                    'body' => $response->body()
+                    'status' => $statusCode,
+                    'response' => $responseBody,
+                    'chat_id' => $data['chat_id'] ?? 'N/A'
                 ]);
                 return false;
             }
@@ -991,7 +1082,9 @@ class TelegramBotController extends Controller
             Log::error("Exception in Telegram API request", [
                 'method' => $method,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'chat_id' => $data['chat_id'] ?? 'N/A',
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ]);
             return false;
         }
@@ -1045,21 +1138,7 @@ class TelegramBotController extends Controller
      */
     public function getStats(Request $request)
     {
-        $stats = [
-            'repairs' => [
-                'total' => RepairRequest::count(),
-                'new' => RepairRequest::where('status', 'нова')->count(),
-                'in_progress' => RepairRequest::where('status', 'в_роботі')->count(),
-                'completed' => RepairRequest::where('status', 'виконана')->count()
-            ],
-            'cartridges' => [
-                'total' => CartridgeReplacement::count(),
-                'this_month' => CartridgeReplacement::whereMonth('created_at', now()->month)
-                    ->whereYear('created_at', now()->year)
-                    ->count()
-            ],
-            'branches' => Branch::where('is_active', true)->count()
-        ];
+        $stats = $this->getSystemStats();
 
         return response()->json([
             'success' => true,

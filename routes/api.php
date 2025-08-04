@@ -21,14 +21,28 @@ Route::prefix('telegram')->name('telegram.')->group(function () {
     // Основной webhook для бота (без токена - публичный)
     Route::post('/webhook', [TelegramBotController::class, 'webhook'])->name('webhook');
     
+    // Отладочные методы
+    Route::get('/test-api', [TelegramBotController::class, 'testApi'])->name('test.api');
+    Route::get('/webhook-info', [TelegramBotController::class, 'getWebhookInfo'])->name('webhook.info');
+    Route::post('/set-webhook', [TelegramBotController::class, 'setWebhook'])->name('webhook.set');
+    
     // API методы для бота
     Route::post('/user-info', [TelegramBotController::class, 'getUserInfo'])->name('user.info');
     Route::get('/stats', [TelegramBotController::class, 'getStats'])->name('stats');
     Route::get('/branches', [TelegramBotController::class, 'getBranches'])->name('branches');
     
-    // Административные методы (для настройки webhook)
-    Route::post('/set-webhook', [TelegramBotController::class, 'setWebhook'])->name('webhook.set');
-    Route::get('/webhook-info', [TelegramBotController::class, 'getWebhookInfo'])->name('webhook.info');
+    // Очистка webhook (для отладки)
+    Route::post('/clear-webhook', function() {
+        $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
+        $response = \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$botToken}/deleteWebhook", [
+            'drop_pending_updates' => true
+        ]);
+        
+        return response()->json([
+            'success' => $response->successful(),
+            'response' => $response->json()
+        ]);
+    })->name('webhook.clear');
     
     // Совместимость со старыми маршрутами
     Route::post('/repair-notification', function(\Illuminate\Http\Request $request) {
