@@ -21,8 +21,14 @@ class TelegramBotController extends Controller
 
     public function __construct()
     {
-        $this->botToken = config('services.telegram.bot_token');
+        $this->botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
         $this->apiUrl = "https://api.telegram.org/bot{$this->botToken}/";
+        
+        // Логируем для отладки
+        Log::info('TelegramBotController initialized', [
+            'bot_token_exists' => !empty($this->botToken),
+            'api_url' => $this->apiUrl
+        ]);
     }
 
     /**
@@ -34,6 +40,11 @@ class TelegramBotController extends Controller
             $update = $request->all();
             Log::info('Telegram webhook received', $update);
 
+            if (empty($update)) {
+                Log::warning('Empty webhook update received');
+                return response()->json(['status' => 'ok']);
+            }
+
             if (isset($update['message'])) {
                 $this->handleMessage($update['message']);
             } elseif (isset($update['callback_query'])) {
@@ -42,7 +53,10 @@ class TelegramBotController extends Controller
 
             return response()->json(['status' => 'ok']);
         } catch (\Exception $e) {
-            Log::error('Telegram webhook error: ' . $e->getMessage());
+            Log::error('Telegram webhook error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all()
+            ]);
             return response()->json(['error' => 'Internal error'], 500);
         }
     }
@@ -400,14 +414,14 @@ class TelegramBotController extends Controller
             "🖨️ <b>Замена картриджа</b>\n".
             "Филиал: <b>{$tempData['branch_name']}</b>\n".
             "Кабинет: <b>".trim($room)."</b>\n\n".
-            "Введите инвентарный или серийный номер принтера:", 
+            "Введите информацию о принтере (модель, инвентарный номер):", 
             $this->getCancelKeyboard(), 'HTML');
     }
 
     private function handleCartridgePrinterInput($chatId, $userId, $printer, $tempData)
     {
         if (empty(trim($printer))) {
-            $this->sendMessage($chatId, "❌ Введите номер для поиска принтера:");
+            $this->sendMessage($chatId, "❌ Введите информацию о принтере:");
             return;
         }
 
@@ -924,16 +938,61 @@ class TelegramBotController extends Controller
     private function makeRequest($method, $data)
     {
         try {
-            $response = Http::post($this->apiUrl . $method, $data);
-            
-            if ($response->successful()) {
-                return $response->json();
-            } else {
-                Log::error("Telegram API error: " . $response->body());
+            // Проверяем, что токен установлен
+            if (empty($this->botToken)) {
+                Log::error("Bot token is empty in makeRequest");
                 return false;
             }
+            
+            $url = $this->apiUrl . $method;
+            
+            Log::info("Making Telegram API request", [
+                'method' => $method,
+                'url' => $url,
+                'data' => $data,
+                'bot_token_length' => strlen($this->botToken)
+            ]);
+            
+            // Используем POST для всех запросов к Telegram API
+            $response = Http::timeout(30)
+                ->retry(3, 1000) // 3 попытки с задержкой в 1 секунду
+                ->post($url, $data);
+            
+            Log::info("Telegram API response", [
+                'method' => $method,
+                'status' => $response->status(),
+                'headers' => $response->headers(),
+                'body_length' => strlen($response->body()),
+                'body' => $response->body()
+            ]);
+            
+            if ($response->successful()) {
+                $result = $response->json();
+                
+                if (isset($result['ok']) && $result['ok']) {
+                    return $result;
+                } else {
+                    Log::error("Telegram API returned error", [
+                        'method' => $method,
+                        'error' => $result
+                    ]);
+                    return false;
+                }
+            } else {
+                Log::error("HTTP error in Telegram API request", [
+                    'method' => $method,
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                return false;
+            }
+            
         } catch (\Exception $e) {
-            Log::error("Telegram API request failed: " . $e->getMessage());
+            Log::error("Exception in Telegram API request", [
+                'method' => $method,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return false;
         }
     }
@@ -1053,7 +1112,8 @@ class TelegramBotController extends Controller
         } else {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка установки webhook'
+                'message' => 'Ошибка установки webhook',
+                'response' => $response
             ], 500);
         }
     }

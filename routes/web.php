@@ -8,7 +8,6 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ReportsController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
 
 /*
 |--------------------------------------------------------------------------
@@ -64,30 +63,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/stats/monthly', [DashboardController::class, 'monthlyStats'])->name('stats.monthly');
         Route::get('/repairs/chart-data', [RepairRequestController::class, 'chartData'])->name('repairs.chart');
         Route::get('/branches/stats', [BranchController::class, 'stats'])->name('branches.stats');
-    });
-});
-
-// Маршруты для интеграции с Telegram ботом
-Route::prefix('api/telegram')->group(function () {
-    Route::post('/user-info', function(\Illuminate\Http\Request $request) {
-        // Получение информации о пользователе по Telegram ID
-        $telegramId = $request->input('telegram_id');
-        $admin = \App\Models\Admin::where('telegram_id', $telegramId)->first();
-        
-        return response()->json([
-            'is_admin' => (bool) $admin,
-            'user_info' => $admin ? [
-                'id' => $admin->id,
-                'name' => $admin->name,
-                'is_active' => $admin->is_active
-            ] : null
-        ]);
-    });
-    
-    Route::post('/repair-notification', function(\Illuminate\Http\Request $request) {
-        // Webhook для уведомлений о новых заявках
-        \Illuminate\Support\Facades\Log::info('Repair notification received', $request->all());
-        return response()->json(['status' => 'ok']);
     });
 });
 

@@ -3,7 +3,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\TelegramIntegrationController;
+use App\Http\Controllers\Api\TelegramBotController;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,29 +18,23 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // Telegram Bot Integration Routes
 Route::prefix('telegram')->name('telegram.')->group(function () {
     
-    // Основная интеграция с ботом
-    Route::post('/webhook', [TelegramIntegrationController::class, 'webhook'])->name('webhook');
+    // Основной webhook для бота (без токена - публичный)
+    Route::post('/webhook', [TelegramBotController::class, 'webhook'])->name('webhook');
     
-    // Информация о пользователях
-    Route::post('/user-info', [TelegramIntegrationController::class, 'getUserInfo'])->name('user.info');
+    // API методы для бота
+    Route::post('/user-info', [TelegramBotController::class, 'getUserInfo'])->name('user.info');
+    Route::get('/stats', [TelegramBotController::class, 'getStats'])->name('stats');
+    Route::get('/branches', [TelegramBotController::class, 'getBranches'])->name('branches');
     
-    // Управление состояниями пользователей
-    Route::get('/user-state', [TelegramIntegrationController::class, 'getUserState'])->name('user.state.get');
-    Route::post('/user-state', [TelegramIntegrationController::class, 'setUserState'])->name('user.state.set');
-    Route::delete('/user-state', [TelegramIntegrationController::class, 'clearUserState'])->name('user.state.clear');
+    // Административные методы (для настройки webhook)
+    Route::post('/set-webhook', [TelegramBotController::class, 'setWebhook'])->name('webhook.set');
+    Route::get('/webhook-info', [TelegramBotController::class, 'getWebhookInfo'])->name('webhook.info');
     
-    // Заявки на ремонт
-    Route::post('/repairs', [TelegramIntegrationController::class, 'createRepair'])->name('repairs.create');
-    Route::get('/repairs/recent', [TelegramIntegrationController::class, 'getRecentRepairs'])->name('repairs.recent');
-    Route::patch('/repairs/status', [TelegramIntegrationController::class, 'updateRepairStatus'])->name('repairs.status');
-    
-    // Замены картриджей
-    Route::post('/cartridges', [TelegramIntegrationController::class, 'createCartridge'])->name('cartridges.create');
-    
-    // Статистика и справочная информация
-    Route::get('/stats', [TelegramIntegrationController::class, 'getStats'])->name('stats');
-    Route::get('/branches', [TelegramIntegrationController::class, 'getBranches'])->name('branches');
-    Route::get('/config', [TelegramIntegrationController::class, 'getConfig'])->name('config');
+    // Совместимость со старыми маршрутами
+    Route::post('/repair-notification', function(\Illuminate\Http\Request $request) {
+        \Illuminate\Support\Facades\Log::info('Repair notification received', $request->all());
+        return response()->json(['status' => 'ok']);
+    });
 });
 
 // Внутренние API маршруты для веб-панели
@@ -130,36 +124,4 @@ Route::prefix('public')->name('public.')->group(function () {
             'data' => $branches
         ]);
     })->name('branches');
-});
-
-// Совместимость со старыми маршрутами
-Route::prefix('api/telegram')->group(function () {
-    Route::post('/user-info', function(\Illuminate\Http\Request $request) {
-        // Получение информации о пользователе по Telegram ID (старый формат)
-        $telegramId = $request->input('telegram_id');
-        
-        if (!$telegramId) {
-            return response()->json([
-                'is_admin' => false,
-                'user_info' => null
-            ]);
-        }
-        
-        $admin = \App\Models\Admin::where('telegram_id', $telegramId)->first();
-        
-        return response()->json([
-            'is_admin' => (bool) $admin,
-            'user_info' => $admin ? [
-                'id' => $admin->id,
-                'name' => $admin->name,
-                'is_active' => $admin->is_active
-            ] : null
-        ]);
-    });
-    
-    Route::post('/repair-notification', function(\Illuminate\Http\Request $request) {
-        // Webhook для уведомлений о новых заявках (старый формат)
-        \Illuminate\Support\Facades\Log::info('Repair notification received', $request->all());
-        return response()->json(['status' => 'ok']);
-    });
 });
