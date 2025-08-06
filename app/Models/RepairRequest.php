@@ -32,8 +32,8 @@ class RepairRequest extends Model
     public function getStatusBadgeAttribute()
     {
         return match($this->status) {
-            'нова' => '<span class="badge bg-primary">Нова</span>',
-            'в_роботі' => '<span class="badge bg-warning">В роботі</span>',
+            'нова' => '<span class="badge bg-warning">Нова</span>',
+            'в_роботі' => '<span class="badge bg-info">В роботі</span>',
             'виконана' => '<span class="badge bg-success">Виконана</span>',
             default => '<span class="badge bg-secondary">Невідомо</span>'
         };

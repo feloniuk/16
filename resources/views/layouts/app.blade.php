@@ -1,11 +1,12 @@
+{{-- resources/views/layouts/app.blade.php - обновить меню --}}
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="uk">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Laravel') }}</title>
+    <title>{{ config('app.name', 'IT Support Panel') }}</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -17,9 +18,6 @@
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
         .sidebar {
@@ -92,7 +90,7 @@
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
                             <i class="bi bi-speedometer2 me-2"></i>
-                            Дашборд
+                            Головна
                         </a>
                     </li>
                     
@@ -106,22 +104,36 @@
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('cartridges.*') ? 'active' : '' }}" href="{{ route('cartridges.index') }}">
                             <i class="bi bi-printer me-2"></i>
-                            Замена картриджей
+                            Заміна картриджів
                         </a>
                     </li>
                     
                     @if(Auth::user()->role === 'admin')
                     <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('repair-tracking.*') ? 'active' : '' }}" href="{{ route('repair-tracking.index') }}">
+                            <i class="bi bi-gear-wide-connected me-2"></i>
+                            Облік ремонтів
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}" href="{{ route('branches.index') }}">
                             <i class="bi bi-building me-2"></i>
-                            Филиалы
+                            Філії
                         </a>
                     </li>
                     
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}">
                             <i class="bi bi-pc-display me-2"></i>
-                            Инвентарь
+                            Інвентар
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('inventory.export.*') ? 'active' : '' }}" href="{{ route('inventory.export.form') }}">
+                            <i class="bi bi-file-earmark-excel me-2"></i>
+                            Експорт в Excel
                         </a>
                     </li>
                     @endif
@@ -131,7 +143,7 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('profile.edit') }}">
                             <i class="bi bi-person me-2"></i>
-                            Профиль
+                            Профіль
                         </a>
                     </li>
                     
@@ -140,7 +152,7 @@
                             @csrf
                             <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start">
                                 <i class="bi bi-box-arrow-right me-2"></i>
-                                Выход
+                                Вихід
                             </button>
                         </form>
                     </li>
@@ -157,9 +169,15 @@
             
             <!-- Page Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3 mb-0">@yield('title', 'Дашборд')</h1>
+                <h1 class="h3 mb-0">@yield('title', 'Головна')</h1>
                 <div class="d-flex align-items-center">
-                    <span class="badge bg-primary me-3">{{ ucfirst(Auth::user()->role) }}</span>
+                    <span class="badge bg-primary me-3">
+                        @switch(Auth::user()->role)
+                            @case('admin') Адміністратор @break
+                            @case('director') Директор @break
+                            @default Користувач
+                        @endswitch
+                    </span>
                     <span class="text-muted">{{ Auth::user()->name }}</span>
                 </div>
             </div>

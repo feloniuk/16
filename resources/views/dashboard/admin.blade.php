@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Дашборд администратора')
+@section('title', 'Панель адміністратора')
 
 @section('content')
 <div class="row g-4">
@@ -9,7 +9,7 @@
         <div class="stats-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h6 class="text-muted mb-2">Всего заявок</h6>
+                    <h6 class="text-muted mb-2">Всього заявок</h6>
                     <h3 class="mb-0">{{ $repairStats['total'] }}</h3>
                 </div>
                 <div class="bg-primary bg-opacity-10 p-3 rounded">
@@ -23,7 +23,7 @@
         <div class="stats-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h6 class="text-muted mb-2">Новые заявки</h6>
+                    <h6 class="text-muted mb-2">Нові заявки</h6>
                     <h3 class="mb-0 text-warning">{{ $repairStats['new'] }}</h3>
                 </div>
                 <div class="bg-warning bg-opacity-10 p-3 rounded">
@@ -37,7 +37,7 @@
         <div class="stats-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h6 class="text-muted mb-2">В работе</h6>
+                    <h6 class="text-muted mb-2">В роботі</h6>
                     <h3 class="mb-0 text-info">{{ $repairStats['in_progress'] }}</h3>
                 </div>
                 <div class="bg-info bg-opacity-10 p-3 rounded">
@@ -51,7 +51,7 @@
         <div class="stats-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h6 class="text-muted mb-2">Выполнено</h6>
+                    <h6 class="text-muted mb-2">Виконано</h6>
                     <h3 class="mb-0 text-success">{{ $repairStats['completed'] }}</h3>
                 </div>
                 <div class="bg-success bg-opacity-10 p-3 rounded">
@@ -67,9 +67,9 @@
     <div class="col-lg-8">
         <div class="stats-card p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">Последние заявки на ремонт</h5>
+                <h5 class="card-title mb-0">Останні заявки на ремонт</h5>
                 <a href="{{ route('repairs.index') }}" class="btn btn-sm btn-outline-primary">
-                    Все заявки <i class="bi bi-arrow-right"></i>
+                    Всі заявки <i class="bi bi-arrow-right"></i>
                 </a>
             </div>
             
@@ -79,11 +79,11 @@
                         <thead class="table-light">
                             <tr>
                                 <th>#</th>
-                                <th>Филиал</th>
-                                <th>Кабинет</th>
+                                <th>Філія</th>
+                                <th>Кабінет</th>
                                 <th>Статус</th>
                                 <th>Дата</th>
-                                <th>Действия</th>
+                                <th>Дії</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -107,7 +107,7 @@
             @else
                 <div class="text-center py-4">
                     <i class="bi bi-inbox fs-1 text-muted"></i>
-                    <p class="text-muted mt-2">Заявок пока нет</p>
+                    <p class="text-muted mt-2">Заявок поки що немає</p>
                 </div>
             @endif
         </div>
@@ -116,7 +116,7 @@
     <!-- Branch Statistics -->
     <div class="col-lg-4">
         <div class="stats-card p-4 h-100">
-            <h5 class="card-title mb-3">Статистика по филиалам</h5>
+            <h5 class="card-title mb-3">Статистика по філіям</h5>
             
             @foreach($branchStats->take(5) as $branch)
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -125,7 +125,7 @@
                     <small class="text-muted">{{ $branch->repair_requests_count }} заявок</small>
                 </div>
                 <div class="text-end">
-                    <span class="badge bg-light text-dark">{{ $branch->cartridge_replacements_count }} картриджей</span>
+                    <span class="badge bg-light text-dark">{{ $branch->cartridge_replacements_count }} картриджів</span>
                 </div>
             </div>
             @endforeach
@@ -137,14 +137,14 @@
     <!-- Additional Stats -->
     <div class="col-md-6">
         <div class="stats-card p-4">
-            <h5 class="card-title mb-3">Замены картриджей</h5>
+            <h5 class="card-title mb-3">Заміна картриджів</h5>
             <div class="d-flex align-items-center">
                 <div class="bg-warning bg-opacity-10 p-3 rounded me-3">
                     <i class="bi bi-printer text-warning fs-4"></i>
                 </div>
                 <div>
                     <h3 class="mb-0">{{ $cartridgeCount }}</h3>
-                    <small class="text-muted">За последний месяц</small>
+                    <small class="text-muted">За останній місяць</small>
                 </div>
             </div>
         </div>
@@ -152,14 +152,14 @@
     
     <div class="col-md-6">
         <div class="stats-card p-4">
-            <h5 class="card-title mb-3">Инвентарь</h5>
+            <h5 class="card-title mb-3">Інвентар</h5>
             <div class="d-flex align-items-center">
                 <div class="bg-info bg-opacity-10 p-3 rounded me-3">
                     <i class="bi bi-pc-display text-info fs-4"></i>
                 </div>
                 <div>
                     <h3 class="mb-0">{{ $inventoryCount }}</h3>
-                    <small class="text-muted">Единиц оборудования</small>
+                    <small class="text-muted">Одиниць обладнання</small>
                 </div>
             </div>
         </div>

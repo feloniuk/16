@@ -11,17 +11,17 @@
                 <div class="col-md-3">
                     <label for="status" class="form-label">Статус</label>
                     <select name="status" id="status" class="form-select">
-                        <option value="">Все статусы</option>
-                        <option value="нова" {{ request('status') === 'нова' ? 'selected' : '' }}>Новые</option>
-                        <option value="в_роботі" {{ request('status') === 'в_роботі' ? 'selected' : '' }}>В работе</option>
-                        <option value="виконана" {{ request('status') === 'виконана' ? 'selected' : '' }}>Выполнено</option>
+                        <option value="">Всі статуси</option>
+                        <option value="нова" {{ request('status') === 'нова' ? 'selected' : '' }}>Нові</option>
+                        <option value="в_роботі" {{ request('status') === 'в_роботі' ? 'selected' : '' }}>В роботі</option>
+                        <option value="виконана" {{ request('status') === 'виконана' ? 'selected' : '' }}>Виконано</option>
                     </select>
                 </div>
                 
                 <div class="col-md-3">
-                    <label for="branch_id" class="form-label">Филиал</label>
+                    <label for="branch_id" class="form-label">Філія</label>
                     <select name="branch_id" id="branch_id" class="form-select">
-                        <option value="">Все филиалы</option>
+                        <option value="">Всі філії</option>
                         @foreach($branches as $branch)
                             <option value="{{ $branch->id }}" {{ request('branch_id') == $branch->id ? 'selected' : '' }}>
                                 {{ $branch->name }}
@@ -31,14 +31,14 @@
                 </div>
                 
                 <div class="col-md-4">
-                    <label for="search" class="form-label">Поиск</label>
+                    <label for="search" class="form-label">Пошук</label>
                     <input type="text" name="search" id="search" class="form-control" 
-                           placeholder="Поиск по описанию, кабинету..." value="{{ request('search') }}">
+                           placeholder="Пошук по опису, кабінету..." value="{{ request('search') }}">
                 </div>
                 
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Найти
+                        <i class="bi bi-search"></i> Знайти
                     </button>
                 </div>
             </form>
@@ -51,7 +51,7 @@
         <h5 class="mb-0">Список заявок ({{ $repairs->total() }})</h5>
         <div>
             <a href="{{ route('repairs.index') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-clockwise"></i> Обновить
+                <i class="bi bi-arrow-clockwise"></i> Оновити
             </a>
         </div>
     </div>
@@ -63,13 +63,13 @@
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
-                            <th>Филиал</th>
-                            <th>Кабинет</th>
-                            <th>Описание</th>
-                            <th>Пользователь</th>
+                            <th>Філія</th>
+                            <th>Кабінет</th>
+                            <th>Опис</th>
+                            <th>Користувач</th>
                             <th>Статус</th>
                             <th>Дата</th>
-                            <th>Действия</th>
+                            <th>Дії</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -105,14 +105,14 @@
                             <td>
                                 <div class="btn-group" role="group">
                                     <a href="{{ route('repairs.show', $repair) }}" 
-                                       class="btn btn-sm btn-outline-primary" title="Просмотр">
+                                       class="btn btn-sm btn-outline-primary" title="Перегляд">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     
                                     @if($repair->status !== 'виконана')
                                     <div class="btn-group" role="group">
                                         <button type="button" class="btn btn-sm btn-outline-success dropdown-toggle" 
-                                                data-bs-toggle="dropdown" title="Изменить статус">
+                                                data-bs-toggle="dropdown" title="Змінити статус">
                                             <i class="bi bi-gear"></i>
                                         </button>
                                         <ul class="dropdown-menu">
@@ -123,7 +123,7 @@
                                                     @method('PATCH')
                                                     <input type="hidden" name="status" value="в_роботі">
                                                     <button type="submit" class="dropdown-item">
-                                                        <i class="bi bi-gear text-warning"></i> В работу
+                                                        <i class="bi bi-gear text-warning"></i> В роботу
                                                     </button>
                                                 </form>
                                             </li>
@@ -134,7 +134,7 @@
                                                     @method('PATCH')
                                                     <input type="hidden" name="status" value="виконана">
                                                     <button type="submit" class="dropdown-item">
-                                                        <i class="bi bi-check-circle text-success"></i> Выполнено
+                                                        <i class="bi bi-check-circle text-success"></i> Виконано
                                                     </button>
                                                 </form>
                                             </li>
@@ -156,8 +156,8 @@
         @else
             <div class="text-center py-5">
                 <i class="bi bi-inbox fs-1 text-muted"></i>
-                <h5 class="text-muted mt-3">Заявки не найдены</h5>
-                <p class="text-muted">Попробуйте изменить параметры поиска</p>
+                <h5 class="text-muted mt-3">Заявки не знайдені</h5>
+                <p class="text-muted">Спробуйте змінити параметри пошуку</p>
             </div>
         @endif
     </div>

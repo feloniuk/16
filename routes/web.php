@@ -33,6 +33,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Облік ремонтів
+    Route::resource('repair-tracking', RepairTrackingController::class);
+    Route::resource('repair-masters', RepairMasterController::class);
+    
+    // Експорт інвентарю
+    Route::get('/inventory/export-form', [InventoryExportController::class, 'exportForm'])->name('inventory.export.form');
+    Route::get('/inventory/export-printers', [InventoryExportController::class, 'exportPrinters'])->name('inventory.export.printers');
+    Route::get('/inventory/export-branch', [InventoryExportController::class, 'exportByBranch'])->name('inventory.export.branch');
+    Route::get('/inventory/export-room', [InventoryExportController::class, 'exportByRoom'])->name('inventory.export.room');
+    
     // Заявки на ремонт
     Route::resource('repairs', RepairRequestController::class)->only(['index', 'show', 'update']);
     

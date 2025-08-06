@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Управление инвентарем')
+@section('title', 'Управління інвентарем')
 
 @section('content')
 <div class="row mb-4">
@@ -9,9 +9,9 @@
             <!-- Filters -->
             <form method="GET" action="{{ route('inventory.index') }}" class="row g-3 align-items-end">
                 <div class="col-md-2">
-                    <label for="branch_id" class="form-label">Филиал</label>
+                    <label for="branch_id" class="form-label">Філія</label>
                     <select name="branch_id" id="branch_id" class="form-select">
-                        <option value="">Все филиалы</option>
+                        <option value="">Всі філії</option>
                         @foreach($branches as $branch)
                             <option value="{{ $branch->id }}" {{ request('branch_id') == $branch->id ? 'selected' : '' }}>
                                 {{ $branch->name }}
@@ -21,9 +21,9 @@
                 </div>
                 
                 <div class="col-md-3">
-                    <label for="equipment_type" class="form-label">Тип оборудования</label>
+                    <label for="equipment_type" class="form-label">Тип обладнання</label>
                     <select name="equipment_type" id="equipment_type" class="form-select">
-                        <option value="">Все типы</option>
+                        <option value="">Всі типи</option>
                         @foreach($equipmentStats as $stat)
                             <option value="{{ $stat->equipment_type }}" {{ request('equipment_type') === $stat->equipment_type ? 'selected' : '' }}>
                                 {{ $stat->equipment_type }} ({{ $stat->count }})
@@ -33,14 +33,14 @@
                 </div>
                 
                 <div class="col-md-5">
-                    <label for="search" class="form-label">Поиск</label>
+                    <label for="search" class="form-label">Пошук</label>
                     <input type="text" name="search" id="search" class="form-control" 
-                           placeholder="Поиск по инв. номеру, серийному номеру, бренду..." value="{{ request('search') }}">
+                           placeholder="Пошук по інв. номеру, серійному номеру, бренду..." value="{{ request('search') }}">
                 </div>
                 
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Найти
+                        <i class="bi bi-search"></i> Знайти
                     </button>
                 </div>
             </form>
@@ -51,14 +51,14 @@
 <div class="row mb-4">
     <div class="col">
         <div class="d-flex justify-content-between align-items-center">
-            <h2>Инвентарь ({{ $inventory->total() }})</h2>
+            <h2>Інвентар ({{ $inventory->total() }})</h2>
             <div>
-                <a href="{{ route('inventory.export') }}{{ request()->getQueryString() ? '?' . request()->getQueryString() : '' }}" 
+                <a href="{{ route('inventory.export.form') }}" 
                    class="btn btn-outline-success me-2">
-                    <i class="bi bi-download"></i> Экспорт
+                    <i class="bi bi-file-earmark-excel"></i> Експорт в Excel
                 </a>
                 <a href="{{ route('inventory.create') }}" class="btn btn-primary">
-                    <i class="bi bi-plus"></i> Добавить оборудование
+                    <i class="bi bi-plus"></i> Додати обладнання
                 </a>
             </div>
         </div>
@@ -72,14 +72,14 @@
                 <table class="table table-hover mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Инв. №</th>
-                            <th>Филиал</th>
-                            <th>Кабинет</th>
-                            <th>Оборудование</th>
+                            <th>Інв. №</th>
+                            <th>Філія</th>
+                            <th>Кабінет</th>
+                            <th>Обладнання</th>
                             <th>Бренд/Модель</th>
-                            <th>Серийный №</th>
-                            <th>Дата добавления</th>
-                            <th>Действия</th>
+                            <th>Серійний №</th>
+                            <th>Дата додавання</th>
+                            <th>Дії</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -104,14 +104,14 @@
                                 @if($item->brand || $item->model)
                                     <div>{{ $item->brand }} {{ $item->model }}</div>
                                 @else
-                                    <span class="text-muted">Не указано</span>
+                                    <span class="text-muted">Не вказано</span>
                                 @endif
                             </td>
                             <td>
                                 @if($item->serial_number)
                                     <code>{{ $item->serial_number }}</code>
                                 @else
-                                    <span class="text-muted">Нет</span>
+                                    <span class="text-muted">Немає</span>
                                 @endif
                             </td>
                             <td>
@@ -121,18 +121,18 @@
                             <td>
                                 <div class="btn-group" role="group">
                                     <a href="{{ route('inventory.show', $item) }}" 
-                                       class="btn btn-sm btn-outline-primary" title="Просмотр">
+                                       class="btn btn-sm btn-outline-primary" title="Перегляд">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     <a href="{{ route('inventory.edit', $item) }}" 
-                                       class="btn btn-sm btn-outline-warning" title="Редактировать">
+                                       class="btn btn-sm btn-outline-warning" title="Редагувати">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <form method="POST" action="{{ route('inventory.destroy', $item) }}" 
-                                          class="d-inline" onsubmit="return confirm('Удалить это оборудование?')">
+                                          class="d-inline" onsubmit="return confirm('Видалити це обладнання?')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Видалити">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
@@ -151,10 +151,10 @@
         @else
             <div class="text-center py-5">
                 <i class="bi bi-pc-display fs-1 text-muted"></i>
-                <h5 class="text-muted mt-3">Оборудование не найдено</h5>
-                <p class="text-muted">Попробуйте изменить параметры поиска или добавьте новое оборудование</p>
+                <h5 class="text-muted mt-3">Обладнання не знайдено</h5>
+                <p class="text-muted">Спробуйте змінити параметри пошуку або додайте нове обладнання</p>
                 <a href="{{ route('inventory.create') }}" class="btn btn-primary">
-                    <i class="bi bi-plus"></i> Добавить оборудование
+                    <i class="bi bi-plus"></i> Додати обладнання
                 </a>
             </div>
         @endif
@@ -165,7 +165,7 @@
 <div class="row g-4 mt-4">
     <div class="col-md-12">
         <div class="stats-card p-4">
-            <h5 class="mb-3">Статистика по типам оборудования</h5>
+            <h5 class="mb-3">Статистика по типах обладнання</h5>
             <div class="row g-3">
                 @foreach($equipmentStats->take(6) as $stat)
                 <div class="col-md-2">
