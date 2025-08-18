@@ -8,6 +8,7 @@ use App\Services\Telegram\StateManager;
 use App\Services\Telegram\KeyboardService;
 use App\Services\Telegram\CallbackHandler;
 use App\Services\Telegram\MessageHandler;
+use App\Services\Telegram\MessageCacheService;
 use App\Services\Telegram\Handlers\RepairHandler;
 use App\Services\Telegram\Handlers\CartridgeHandler;
 use App\Services\Telegram\Handlers\InventoryHandler;

@@ -41,110 +41,222 @@ class CallbackHandler
 
     public function handle(array $callbackQuery): void
     {
-        $chatId = $callbackQuery['message']['chat']['id'];
-        $userId = $callbackQuery['from']['id'];
-        $username = $callbackQuery['from']['username'] ?? null;
-        $data = $callbackQuery['data'];
-        $messageId = $callbackQuery['message']['message_id'];
-
-        Log::info("Processing callback from user {$userId}: {$data}");
-
-        // Подтверждение получения callback
-        $this->telegram->answerCallbackQuery($callbackQuery['id']);
-
-        // Парсим данные callback'а
-        $parts = explode(':', $data);
-        $action = $parts[0];
-
-        // Маршрутизация по типу действия
         try {
-            match (true) {
-                $action === 'main_menu' => $this->handleMainMenu($chatId, $userId, $messageId),
+            $chatId = $callbackQuery['message']['chat']['id'] ?? null;
+            $userId = $callbackQuery['from']['id'] ?? null;
+            $username = $callbackQuery['from']['username'] ?? null;
+            $data = $callbackQuery['data'] ?? '';
+            $messageId = $callbackQuery['message']['message_id'] ?? null;
+            $callbackId = $callbackQuery['id'] ?? '';
+
+            // Валидация обязательных полей
+            if (!$chatId || !$userId || !$messageId || !$callbackId) {
+                Log::error('Invalid callback query structure', [
+                    'chat_id' => $chatId,
+                    'user_id' => $userId,
+                    'message_id' => $messageId,
+                    'callback_id' => $callbackId
+                ]);
+                return;
+            }
+
+            Log::info("Processing callback from user {$userId}: {$data}");
+
+            // Подтверждение получения callback (очень важно!)
+            $this->telegram->answerCallbackQuery($callbackId);
+
+            // Парсим данные callback'а
+            $parts = explode(':', $data);
+            $action = $parts[0] ?? '';
+
+            if (empty($action)) {
+                Log::warning("Empty callback action from user {$userId}");
+                $this->handleUnknownCallback($chatId, $userId, $messageId, $data);
+                return;
+            }
+
+            // Маршрутизация по типу действия
+            try {
+                if ($action === 'main_menu') {
+                    $this->handleMainMenu($chatId, $userId, $messageId);
+                } elseif (str_starts_with($data, 'repair_')) {
+                    $this->repairHandler->handleCallback($callbackQuery);
+                } elseif (str_starts_with($data, 'cartridge_')) {
+                    $this->cartridgeHandler->handleCallback($callbackQuery);
+                } elseif (str_starts_with($data, 'inventory_')) {
+                    $this->inventoryHandler->handleCallback($callbackQuery);
+                } elseif (str_starts_with($data, 'admin_')) {
+                    $this->adminHandler->handleCallback($callbackQuery);
+                } elseif (str_starts_with($data, 'branch_select:')) {
+                    $this->handleBranchSelection($callbackQuery);
+                } elseif ($action === 'skip_phone') {
+                    $this->repairHandler->handleSkipPhone($callbackQuery);
+                } elseif ($action === 'cancel') {
+                    $this->handleCancel($chatId, $userId, $messageId);
+                } else {
+                    $this->handleUnknownCallback($chatId, $userId, $messageId, $data);
+                }
+            } catch (\Exception $e) {
+                Log::error("Error in callback routing: {$data}", [
+                    'error' => $e->getMessage(),
+                    'user_id' => $userId,
+                    'chat_id' => $chatId,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
                 
-                // Ремонтные заявки
-                str_starts_with($data, 'repair_') => $this->repairHandler->handleCallback($callbackQuery),
-                
-                // Картриджи
-                str_starts_with($data, 'cartridge_') => $this->cartridgeHandler->handleCallback($callbackQuery),
-                
-                // Инвентаризация
-                str_starts_with($data, 'inventory_') => $this->inventoryHandler->handleCallback($callbackQuery),
-                
-                // Админ панель
-                str_starts_with($data, 'admin_') => $this->adminHandler->handleCallback($callbackQuery),
-                
-                // Выбор филиала (общий)
-                str_starts_with($data, 'branch_select:') => $this->handleBranchSelection($callbackQuery),
-                
-                // Пропуск телефона
-                $action === 'skip_phone' => $this->repairHandler->handleSkipPhone($callbackQuery),
-                
-                default => $this->handleUnknownCallback($chatId, $userId, $messageId, $data)
-            };
-        } catch (\Exception $e) {
-            Log::error("Error handling callback: {$data}", [
-                'error' => $e->getMessage(),
-                'user_id' => $userId,
-                'chat_id' => $chatId
-            ]);
+                $this->handleError($chatId, $userId, $messageId);
+            }
             
-            $this->telegram->editMessage(
-                $chatId, 
-                $messageId, 
-                "❌ Произошла ошибка. Попробуйте еще раз.", 
-                $this->keyboard->getMainMenuKeyboard($userId)
-            );
+        } catch (\Exception $e) {
+            Log::error("Critical error in callback handler", [
+                'error' => $e->getMessage(),
+                'callback_data' => $callbackQuery,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
         }
     }
 
     private function handleMainMenu(int $chatId, int $userId, int $messageId): void
     {
-        $this->stateManager->clearUserState($userId);
-        $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            "Выберите действие:", 
-            $this->keyboard->getMainMenuKeyboard($userId)
-        );
+        try {
+            $this->stateManager->clearUserState($userId);
+            $this->telegram->editMessageSafe(
+                $chatId, 
+                $messageId, 
+                "🏠 Главное меню\n\nВыберите действие:", 
+                $this->keyboard->getMainMenuKeyboard($userId)
+            );
+        } catch (\Exception $e) {
+            Log::error("Error in handleMainMenu", [
+                'error' => $e->getMessage(),
+                'chat_id' => $chatId,
+                'user_id' => $userId
+            ]);
+        }
     }
 
     private function handleBranchSelection(array $callbackQuery): void
     {
-        $chatId = $callbackQuery['message']['chat']['id'];
-        $userId = $callbackQuery['from']['id'];
-        $messageId = $callbackQuery['message']['message_id'];
-        $data = $callbackQuery['data'];
-        
-        $parts = explode(':', $data);
-        if (!isset($parts[1])) {
-            Log::error("Invalid branch selection data: {$data}");
-            return;
-        }
-        
-        $branchId = (int) $parts[1];
-        $userState = $this->stateManager->getUserState($userId);
-        
-        if (!$userState || !isset($userState['state'])) {
-            Log::error("No user state found for branch selection", ['user_id' => $userId]);
-            return;
-        }
+        try {
+            $chatId = $callbackQuery['message']['chat']['id'];
+            $userId = $callbackQuery['from']['id'];
+            $messageId = $callbackQuery['message']['message_id'];
+            $data = $callbackQuery['data'];
+            
+            $parts = explode(':', $data);
+            if (!isset($parts[1]) || !is_numeric($parts[1])) {
+                Log::error("Invalid branch selection data: {$data}");
+                $this->handleError($chatId, $userId, $messageId);
+                return;
+            }
+            
+            $branchId = (int) $parts[1];
+            $userState = $this->stateManager->getUserState($userId);
+            
+            if (!$userState || !isset($userState['state'])) {
+                Log::error("No user state found for branch selection", ['user_id' => $userId]);
+                $this->handleMainMenu($chatId, $userId, $messageId);
+                return;
+            }
 
-        // Делегируем обработку в соответствующий handler
-        match ($userState['state']) {
-            'repair_awaiting_branch' => $this->repairHandler->handleBranchSelection($callbackQuery, $branchId),
-            'cartridge_awaiting_branch' => $this->cartridgeHandler->handleBranchSelection($callbackQuery, $branchId),
-            default => Log::warning("Unknown state for branch selection: {$userState['state']}")
-        };
+            // Делегируем обработку в соответствующий handler
+            switch ($userState['state']) {
+                case 'repair_awaiting_branch':
+                    $this->repairHandler->handleBranchSelection($callbackQuery, $branchId);
+                    break;
+                case 'cartridge_awaiting_branch':
+                    $this->cartridgeHandler->handleBranchSelection($callbackQuery, $branchId);
+                    break;
+                case 'inventory_branch_selection':
+                    $this->inventoryHandler->handleBranchSelection($callbackQuery, $branchId);
+                    break;
+                default:
+                    Log::warning("Unknown state for branch selection: {$userState['state']}");
+                    $this->handleMainMenu($chatId, $userId, $messageId);
+                    break;
+            }
+        } catch (\Exception $e) {
+            Log::error("Error in handleBranchSelection", [
+                'error' => $e->getMessage(),
+                'callback_data' => $callbackQuery
+            ]);
+        }
+    }
+
+    private function handleCancel(int $chatId, int $userId, int $messageId): void
+    {
+        try {
+            $this->stateManager->clearUserState($userId);
+            $this->telegram->editMessageSafe(
+                $chatId, 
+                $messageId, 
+                "❌ Действие отменено.\n\nВыберите новое действие:", 
+                $this->keyboard->getMainMenuKeyboard($userId)
+            );
+        } catch (\Exception $e) {
+            Log::error("Error in handleCancel", [
+                'error' => $e->getMessage(),
+                'chat_id' => $chatId,
+                'user_id' => $userId
+            ]);
+        }
+    }
+
+    private function handleError(int $chatId, int $userId, int $messageId): void
+    {
+        try {
+            $this->stateManager->clearUserState($userId);
+            $this->telegram->editMessageSafe(
+                $chatId, 
+                $messageId, 
+                "❌ Произошла ошибка. Попробуйте еще раз.\n\nВозвращаемся в главное меню:", 
+                $this->keyboard->getMainMenuKeyboard($userId)
+            );
+        } catch (\Exception $e) {
+            Log::error("Error in handleError", [
+                'error' => $e->getMessage(),
+                'chat_id' => $chatId,
+                'user_id' => $userId
+            ]);
+            
+            // Последняя попытка - отправить новое сообщение
+            try {
+                $this->telegram->sendMessage(
+                    $chatId, 
+                    "❌ Произошла ошибка. Нажмите /start для перезапуска."
+                );
+            } catch (\Exception $e2) {
+                Log::critical("Failed to send error message", [
+                    'error' => $e2->getMessage(),
+                    'chat_id' => $chatId
+                ]);
+            }
+        }
     }
 
     private function handleUnknownCallback(int $chatId, int $userId, int $messageId, string $data): void
     {
         Log::warning("Unknown callback action: {$data} from user {$userId}");
-        $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            "Неизвестное действие. Возвращаемся в главное меню.", 
-            $this->keyboard->getMainMenuKeyboard($userId)
-        );
+        
+        try {
+            $this->telegram->editMessageSafe(
+                $chatId, 
+                $messageId, 
+                "❓ Неизвестное действие: {$data}\n\nВозвращаемся в главное меню:", 
+                $this->keyboard->getMainMenuKeyboard($userId)
+            );
+        } catch (\Exception $e) {
+            Log::error("Error in handleUnknownCallback", [
+                'error' => $e->getMessage(),
+                'chat_id' => $chatId,
+                'user_id' => $userId,
+                'data' => $data
+            ]);
+            
+            $this->handleError($chatId, $userId, $messageId);
+        }
     }
 }

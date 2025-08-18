@@ -505,7 +505,8 @@ class InventoryHandler
             $this->telegram->editMessage(
                 $chatId, 
                 $messageId, 
-                "✅ <b>Оборудование удалено</b>\n\n🗑️ Удалено: <b>$itemInfo</b>"
+                "✅ <b>Оборудование удалено</b>\n\n🗑️ Удалено: <b>$itemInfo</b>", 
+                $this->keyboard->hoHomeKeyboard($itemId)
             );
 
         } catch (\Exception $e) {

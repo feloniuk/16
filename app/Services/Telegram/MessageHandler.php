@@ -68,14 +68,26 @@ class MessageHandler
     {
         Log::info("Handling command: {$command} for user: {$userId}");
         
-        match ($command) {
-            '/start' => $this->handleStartCommand($chatId, $userId, $username),
-            '/help' => $this->handleHelpCommand($chatId, $userId),
-            '/cancel' => $this->handleCancelCommand($chatId, $userId),
-            '/admin' => $this->handleAdminCommand($chatId, $userId),
-            '/status' => $this->handleStatusCommand($chatId),
-            default => $this->handleUnknownCommand($chatId, $userId, $command)
-        };
+        switch ($command) {
+            case '/start':
+                $this->handleStartCommand($chatId, $userId, $username);
+                break;
+            case '/help':
+                $this->handleHelpCommand($chatId, $userId);
+                break;
+            case '/cancel':
+                $this->handleCancelCommand($chatId, $userId);
+                break;
+            case '/admin':
+                $this->handleAdminCommand($chatId, $userId);
+                break;
+            case '/status':
+                $this->handleStatusCommand($chatId);
+                break;
+            default:
+                $this->handleUnknownCommand($chatId, $userId, $command);
+                break;
+        }
     }
 
     private function handleStartCommand(int $chatId, int $userId, ?string $username): void
@@ -140,27 +152,56 @@ class MessageHandler
 
         Log::info("Handling state message", ['state' => $state, 'user_id' => $userId]);
 
-        match ($state) {
+        switch ($state) {
             // Repair states
-            'repair_awaiting_room' => $this->repairHandler->handleRoomInput($chatId, $userId, $text),
-            'repair_awaiting_description' => $this->repairHandler->handleDescriptionInput($chatId, $userId, $text),
-            'repair_awaiting_phone' => $this->repairHandler->handlePhoneInput($chatId, $userId, $username, $text),
+            case 'repair_awaiting_room':
+                $this->repairHandler->handleRoomInput($chatId, $userId, $text);
+                break;
+            case 'repair_awaiting_description':
+                $this->repairHandler->handleDescriptionInput($chatId, $userId, $text);
+                break;
+            case 'repair_awaiting_phone':
+                $this->repairHandler->handlePhoneInput($chatId, $userId, $username, $text);
+                break;
 
             // Cartridge states
-            'cartridge_awaiting_room' => $this->cartridgeHandler->handleRoomInput($chatId, $userId, $text),
-            'cartridge_awaiting_printer' => $this->cartridgeHandler->handlePrinterInput($chatId, $userId, $text),
-            'cartridge_awaiting_type' => $this->cartridgeHandler->handleTypeInput($chatId, $userId, $username, $text),
+            case 'cartridge_awaiting_room':
+                $this->cartridgeHandler->handleRoomInput($chatId, $userId, $text);
+                break;
+            case 'cartridge_awaiting_printer':
+                $this->cartridgeHandler->handlePrinterInput($chatId, $userId, $text);
+                break;
+            case 'cartridge_awaiting_type':
+                $this->cartridgeHandler->handleTypeInput($chatId, $userId, $username, $text);
+                break;
 
             // Inventory states
-            'inventory_room_input' => $this->inventoryHandler->handleRoomInput($chatId, $userId, $text),
-            'inventory_equipment_type' => $this->inventoryHandler->handleEquipmentType($chatId, $userId, $text),
-            'inventory_brand', 'inventory_quick_brand' => $this->inventoryHandler->handleBrand($chatId, $userId, $text),
-            'inventory_model', 'inventory_quick_model' => $this->inventoryHandler->handleModel($chatId, $userId, $text),
-            'inventory_serial', 'inventory_quick_serial' => $this->inventoryHandler->handleSerial($chatId, $userId, $text),
-            'inventory_number' => $this->inventoryHandler->handleInventoryNumber($chatId, $userId, $username, $text),
+            case 'inventory_room_input':
+                $this->inventoryHandler->handleRoomInput($chatId, $userId, $text);
+                break;
+            case 'inventory_equipment_type':
+                $this->inventoryHandler->handleEquipmentType($chatId, $userId, $text);
+                break;
+            case 'inventory_brand':
+            case 'inventory_quick_brand':
+                $this->inventoryHandler->handleBrand($chatId, $userId, $text);
+                break;
+            case 'inventory_model':
+            case 'inventory_quick_model':
+                $this->inventoryHandler->handleModel($chatId, $userId, $text);
+                break;
+            case 'inventory_serial':
+            case 'inventory_quick_serial':
+                $this->inventoryHandler->handleSerial($chatId, $userId, $text);
+                break;
+            case 'inventory_number':
+                $this->inventoryHandler->handleInventoryNumber($chatId, $userId, $username, $text);
+                break;
 
-            default => $this->handleUnknownState($chatId, $userId, $state)
-        };
+            default:
+                $this->handleUnknownState($chatId, $userId, $state);
+                break;
+        }
     }
 
     private function handleUnknownState(int $chatId, int $userId, string $state): void
