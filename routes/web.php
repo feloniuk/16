@@ -6,6 +6,9 @@ use App\Http\Controllers\RepairRequestController;
 use App\Http\Controllers\CartridgeReplacementController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\InventoryExportController;
+use App\Http\Controllers\RepairTrackingController;
+use App\Http\Controllers\RepairMasterController;
 use App\Http\Controllers\ReportsController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,22 +35,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // Облік ремонтів
-    Route::resource('repair-tracking', RepairTrackingController::class);
-    Route::resource('repair-masters', RepairMasterController::class);
-    
-    // Експорт інвентарю
-    Route::get('/inventory/export-form', [InventoryExportController::class, 'exportForm'])->name('inventory.export.form');
-    Route::get('/inventory/export-printers', [InventoryExportController::class, 'exportPrinters'])->name('inventory.export.printers');
-    Route::get('/inventory/export-branch', [InventoryExportController::class, 'exportByBranch'])->name('inventory.export.branch');
-    Route::get('/inventory/export-room', [InventoryExportController::class, 'exportByRoom'])->name('inventory.export.room');
     
     // Заявки на ремонт
     Route::resource('repairs', RepairRequestController::class)->only(['index', 'show', 'update']);
     
     // Замены картриджей
     Route::resource('cartridges', CartridgeReplacementController::class)->only(['index', 'show']);
+    
+    // Облік ремонтів
+    Route::resource('repair-tracking', RepairTrackingController::class);
+    Route::resource('repair-masters', RepairMasterController::class);
     
     // Отчеты
     Route::prefix('reports')->name('reports.')->group(function () {
@@ -66,6 +63,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Инвентарь
         Route::resource('inventory', InventoryController::class);
         Route::get('/inventory-export', [InventoryController::class, 'export'])->name('inventory.export');
+        
+        // Експорт інвентарю
+        Route::get('/inventory/export-form', [InventoryExportController::class, 'exportForm'])->name('inventory.export.form');
+        Route::get('/inventory/export-printers', [InventoryExportController::class, 'exportPrinters'])->name('inventory.export.printers');
+        Route::get('/inventory/export-branch', [InventoryExportController::class, 'exportByBranch'])->name('inventory.export.branch');
+        Route::get('/inventory/export-room', [InventoryExportController::class, 'exportByRoom'])->name('inventory.export.room');
     });
 
     // API маршруты для AJAX запросов

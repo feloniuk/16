@@ -9,7 +9,8 @@ class RoomInventory extends Model
     use HasFactory;
 
     protected $table = 'room_inventory';
-    public $timestamps = false;
+    // Включаем timestamps для корректной работы с created_at
+    public $timestamps = true;
 
     protected $fillable = [
         'admin_telegram_id',
@@ -26,10 +27,8 @@ class RoomInventory extends Model
 
     protected $casts = [
         'admin_telegram_id' => 'integer',
-    ];
-
-    protected $dates = [
-        'created_at'
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     public function branch()
@@ -45,14 +44,5 @@ class RoomInventory extends Model
     public function cartridgeReplacements()
     {
         return $this->hasMany(CartridgeReplacement::class, 'printer_inventory_id');
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-        
-        static::creating(function ($model) {
-            $model->created_at = now();
-        });
     }
 }

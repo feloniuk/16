@@ -131,7 +131,7 @@
 @push('scripts')
 <script>
 function editBranch(id, name, isActive) {
-    document.getElementById('editBranchForm').action = `/web-panel/branches/${id}`;
+    document.getElementById('editBranchForm').action = `/branches/${id}`;
     document.getElementById('edit_name').value = name;
     document.getElementById('edit_is_active').checked = isActive;
     

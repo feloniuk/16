@@ -8,7 +8,8 @@ class CartridgeReplacement extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    // Включаем timestamps для корректной работы с created_at
+    public $timestamps = true;
 
     protected $fillable = [
         'user_telegram_id',
@@ -25,11 +26,8 @@ class CartridgeReplacement extends Model
     protected $casts = [
         'user_telegram_id' => 'integer',
         'replacement_date' => 'date',
-    ];
-
-    protected $dates = [
-        'created_at',
-        'replacement_date'
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     public function branch()
@@ -51,14 +49,5 @@ class CartridgeReplacement extends Model
     public function scopeByDateRange($query, $startDate, $endDate)
     {
         return $query->whereBetween('replacement_date', [$startDate, $endDate]);
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-        
-        static::creating(function ($model) {
-            $model->created_at = now();
-        });
     }
 }

@@ -23,8 +23,8 @@ return new class extends Migration
         // Таблица для учета отправок на ремонт
         Schema::create('repair_trackings', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('equipment_id'); // связь с room_inventory
-            $table->unsignedBigInteger('repair_master_id')->nullable();
+            $table->foreignId('equipment_id')->constrained('room_inventory')->onDelete('cascade');
+            $table->foreignId('repair_master_id')->nullable()->constrained('repair_masters')->onDelete('set null');
             $table->date('sent_date');
             $table->date('returned_date')->nullable();
             $table->string('invoice_number')->nullable();
@@ -34,9 +34,6 @@ return new class extends Migration
             $table->enum('status', ['sent', 'in_repair', 'completed', 'cancelled'])->default('sent');
             $table->text('notes')->nullable();
             $table->timestamps();
-
-            $table->foreign('equipment_id')->references('id')->on('room_inventory')->onDelete('cascade');
-            $table->foreign('repair_master_id')->references('id')->on('repair_masters')->onDelete('set null');
         });
     }
 
