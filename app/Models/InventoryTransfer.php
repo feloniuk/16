@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,6 +25,7 @@ class InventoryTransfer extends Model
         'transfer_date' => 'date',
     ];
 
+    // Связи
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -46,6 +46,54 @@ class InventoryTransfer extends Model
         return $this->hasMany(InventoryTransferItem::class, 'transfer_id');
     }
 
+    // Автогенерация номера перемещения
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($model) {
+            if (empty($model->transfer_number)) {
+                $model->transfer_number = 'TR-' . date('Y') . '-' . str_pad(static::count() + 1, 6, '0', STR_PAD_LEFT);
+            }
+            
+            // По умолчанию статус "запланировано"
+            if (empty($model->status)) {
+                $model->status = 'planned';
+            }
+        });
+    }
+
+    // Методы для работы со статусами
+    public function start()
+    {
+        $this->update(['status' => 'in_transit']);
+        
+        // Обновляем статусы элементов
+        $this->items()->update(['status' => 'in_transit']);
+    }
+
+    public function complete()
+    {
+        $this->update(['status' => 'completed']);
+        
+        // Перемещаем инвентарь
+        foreach ($this->items as $item) {
+            $inventory = $item->inventory;
+            $inventory->update([
+                'branch_id' => $this->to_branch_id,
+                'room_number' => $this->to_room ?? $inventory->room_number,
+            ]);
+            
+            $item->update(['status' => 'completed']);
+        }
+    }
+
+    public function cancel()
+    {
+        $this->update(['status' => 'cancelled']);
+        $this->items()->update(['status' => 'cancelled']);
+    }
+
     public function getStatusBadgeAttribute()
     {
         return match($this->status) {
@@ -57,14 +105,19 @@ class InventoryTransfer extends Model
         };
     }
 
-    protected static function boot()
+    // Скопы
+    public function scopePending($query)
     {
-        parent::boot();
-        
-        static::creating(function ($model) {
-            if (empty($model->transfer_number)) {
-                $model->transfer_number = 'TR-' . date('Y') . '-' . str_pad(static::count() + 1, 6, '0', STR_PAD_LEFT);
-            }
-        });
+        return $query->where('status', 'planned');
+    }
+
+    public function scopeInTransit($query)
+    {
+        return $query->where('status', 'in_transit');
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
     }
 }
