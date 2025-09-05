@@ -160,64 +160,69 @@
     // Monthly Repairs Chart
     const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
     const monthlyChart = new Chart(monthlyCtx, {
-        type: 'line',
-        data: {
-            labels: {!! json_encode($monthlyRepairs->map(function($item) {
-                return \Carbon\Carbon::create($item->year, $item->month)->format('M Y');
-            })) !!},
-            datasets: [{
-                label: 'Заявки на ремонт',
-                data: {!! json_encode($monthlyRepairs->pluck('count')) !!},
-                borderColor: 'rgb(59, 130, 246)',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                fill: true,
-                tension: 0.4
-            }]
+    type: 'line',
+    data: {
+        labels: {!! json_encode($monthlyRepairs->map(function($item) {
+            return \Carbon\Carbon::create($item->year, $item->month)->format('M Y');
+        })) !!},
+        datasets: [{
+            label: 'Заявки на ремонт',
+            data: {!! json_encode($monthlyRepairs->pluck('count')) !!},
+            borderColor: 'rgb(59, 130, 246)',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true, // Добавили эту строку
+        aspectRatio: 2, // Добавили фиксированное соотношение сторон
+        plugins: {
+            legend: {
+                display: false
+            }
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1 // Целые числа на оси Y
                 }
             }
         }
-    });
+    }
+});
 
-    // Status Distribution Chart
-    const statusCtx = document.getElementById('statusChart').getContext('2d');
-    const statusChart = new Chart(statusCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Новые', 'В работе', 'Выполнено'],
-            datasets: [{
-                data: [
-                    {{ $statusStats['нова'] ?? 0 }},
-                    {{ $statusStats['в_роботі'] ?? 0 }},
-                    {{ $statusStats['виконана'] ?? 0 }}
-                ],
-                backgroundColor: [
-                    'rgb(245, 158, 11)',
-                    'rgb(59, 130, 246)',
-                    'rgb(34, 197, 94)'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
+// Status Distribution Chart
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+const statusChart = new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Новые', 'В работе', 'Выполнено'],
+        datasets: [{
+            data: [
+                {{ $statusStats['нова'] ?? 0 }},
+                {{ $statusStats['в_роботі'] ?? 0 }},
+                {{ $statusStats['виконана'] ?? 0 }}
+            ],
+            backgroundColor: [
+                'rgb(245, 158, 11)',
+                'rgb(59, 130, 246)',
+                'rgb(34, 197, 94)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1, // Квадратная форма для doughnut chart
+        plugins: {
+            legend: {
+                position: 'bottom'
             }
         }
-    });
+    }
+});
 </script>
 @endpush

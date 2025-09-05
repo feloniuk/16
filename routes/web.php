@@ -42,9 +42,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Замены картриджей
     Route::resource('cartridges', CartridgeReplacementController::class)->only(['index', 'show']);
     
-    // Облік ремонтів
+    // Облік ремонтів (доступно всем авторизованным пользователям)
     Route::resource('repair-tracking', RepairTrackingController::class);
-    Route::resource('repair-masters', RepairMasterController::class);
     
     // Отчеты
     Route::prefix('reports')->name('reports.')->group(function () {
@@ -59,6 +58,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:admin')->group(function () {
         // Филиалы
         Route::resource('branches', BranchController::class);
+        
+        // Мастеры по ремонту
+        Route::resource('repair-masters', RepairMasterController::class)->only(['index', 'store', 'update', 'destroy']);
         
         // Инвентарь
         Route::resource('inventory', InventoryController::class);
