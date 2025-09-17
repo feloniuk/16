@@ -100,7 +100,7 @@ class CartridgeHandler
             "🖨️ <b>Замена картриджа</b>\n" .
             "Филиал: <b>{$tempData['branch_name']}</b>\n" .
             "Кабинет: <b>" . trim($room) . "</b>\n\n" .
-            "Введите информацию о принтере (модель, инвентарный номер):", 
+            "Введите информацию о принтере (любая полезная информация):", 
             $this->keyboard->getCancelKeyboard()
         );
     }
@@ -124,7 +124,7 @@ class CartridgeHandler
             "Филиал: <b>{$tempData['branch_name']}</b>\n" .
             "Кабинет: <b>{$tempData['room_number']}</b>\n" .
             "Принтер: <b>" . trim($printer) . "</b>\n\n" .
-            "Введите тип картриджа (например, HP CF217A):", 
+            "Введите тип картриджа (чернильный, отработаных чернил):", 
             $this->keyboard->getCancelKeyboard()
         );
     }

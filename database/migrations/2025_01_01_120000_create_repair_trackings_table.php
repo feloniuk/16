@@ -9,16 +9,6 @@ return new class extends Migration
 {
     public function up()
     {
-        // Таблица мастеров по ремонту
-        Schema::create('repair_masters', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('phone')->nullable();
-            $table->string('email')->nullable();
-            $table->text('notes')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
 
         // Таблица для учета отправок на ремонт
         Schema::create('repair_trackings', function (Blueprint $table) {
