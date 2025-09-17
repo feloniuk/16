@@ -3,6 +3,9 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\RepairMasterController;
+use App\Http\Controllers\RepairTrackingController;
+use App\Http\Controllers\KpiController;
 use App\Http\Controllers\CartridgeReplacementController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\InventoryController;
@@ -44,14 +47,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/repairs', [RepairRequestController::class, 'index'])->name('repairs.index');
     Route::get('/repairs/{repair}', [RepairRequestController::class, 'show'])->name('repairs.show');
     
-<<<<<<< HEAD
     // Облік ремонтів (доступно всем авторизованным пользователям)
     Route::resource('repair-tracking', RepairTrackingController::class);
-=======
-    // Замены картриджей (просмотр для всех)
-    Route::get('/cartridges', [CartridgeReplacementController::class, 'index'])->name('cartridges.index');
-    Route::get('/cartridges/{cartridge}', [CartridgeReplacementController::class, 'show'])->name('cartridges.show');
->>>>>>> dbdaefc2e9b11ae16380a53084712b18dc37a91a
     
     // === МАРШРУТЫ ДЛЯ АДМИНИСТРАТОРОВ ===
     Route::middleware('role:admin')->group(function () {
