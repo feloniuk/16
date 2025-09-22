@@ -86,7 +86,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware('role:admin,warehouse_keeper')->group(function () {
-    
+
     // Склад - товары
     Route::get('/warehouse', [WarehouseController::class, 'index'])->name('warehouse.index');
     Route::get('/warehouse/create', [WarehouseController::class, 'create'])->name('warehouse.create');
@@ -94,31 +94,31 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
     Route::get('/warehouse/{item}', [WarehouseController::class, 'show'])->name('warehouse.show');
     Route::get('/warehouse/{item}/edit', [WarehouseController::class, 'edit'])->name('warehouse.edit');
     Route::patch('/warehouse/{item}', [WarehouseController::class, 'update'])->name('warehouse.update');
-    
+
     // Операции с товарами
     Route::post('/warehouse/{item}/receipt', [WarehouseController::class, 'receipt'])->name('warehouse.receipt');
     Route::post('/warehouse/{item}/issue', [WarehouseController::class, 'issue'])->name('warehouse.issue');
-    
+
     // Движения товаров
     Route::get('/warehouse-movements', [WarehouseController::class, 'movements'])->name('warehouse.movements');
-    
+
     // Инвентаризация склада
-    Route::resource('warehouse-inventory', WarehouseInventoryController::class)->names([
-        'index' => 'warehouse-inventory.index',
-        'create' => 'warehouse-inventory.create',
-        'store' => 'warehouse-inventory.store',
-        'show' => 'warehouse-inventory.show',
-        'edit' => 'warehouse-inventory.edit',
-        'update' => 'warehouse-inventory.update',
-    ]);
-    
-    // Дополнительные маршруты для инвентаризации
-    Route::patch('/warehouse-inventory/{inventory}/complete', [WarehouseInventoryController::class, 'complete'])->name('warehouse-inventory.complete');
-    Route::patch('/warehouse-inventory/{inventory}/items/{item}', [WarehouseInventoryController::class, 'updateItem'])->name('warehouse-inventory.update-item');
-    
-    // Быстрая инвентаризация
-    Route::get('/warehouse-inventory/quick/start', [WarehouseInventoryController::class, 'quickInventory'])->name('warehouse-inventory.quick');
-    Route::post('/warehouse-inventory/quick/process', [WarehouseInventoryController::class, 'processQuickInventory'])->name('warehouse-inventory.process-quick');
+    Route::prefix('warehouse-inventory')->name('warehouse-inventory.')->group(function () {
+        Route::get('/', [WarehouseInventoryController::class, 'index'])->name('index');
+        Route::get('/create', [WarehouseInventoryController::class, 'create'])->name('create');
+        Route::post('/', [WarehouseInventoryController::class, 'store'])->name('store');
+        Route::get('/{inventory}', [WarehouseInventoryController::class, 'show'])->name('show');
+        Route::get('/{inventory}/edit', [WarehouseInventoryController::class, 'edit'])->name('edit');
+        Route::put('/{inventory}', [WarehouseInventoryController::class, 'update'])->name('update');
+        
+        // Дополнительные действия с инвентаризацией
+        Route::patch('/{inventory}/complete', [WarehouseInventoryController::class, 'complete'])->name('complete');
+        Route::patch('/{inventory}/items/{item}', [WarehouseInventoryController::class, 'updateItem'])->name('update-item');
+        
+        // Быстрая инвентаризация
+        Route::get('/quick/start', [WarehouseInventoryController::class, 'quickInventory'])->name('quick');
+        Route::post('/quick/process', [WarehouseInventoryController::class, 'processQuickInventory'])->name('process-quick');
+    });
     
     // Заявки на закупку
     Route::resource('purchase-requests', PurchaseRequestController::class)->names([
@@ -129,11 +129,11 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
         'edit' => 'purchase-requests.edit',
         'update' => 'purchase-requests.update',
     ]);
-    
+
     // Дополнительные действия с заявками
     Route::post('/purchase-requests/{purchaseRequest}/submit', [PurchaseRequestController::class, 'submit'])->name('purchase-requests.submit');
     Route::get('/purchase-requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('purchase-requests.print');
-    
+
     // API для автозаполнения
     Route::get('/api/warehouse-items/search', function(Request $request) {
         $query = $request->get('q', '');
@@ -144,18 +144,18 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
             })
             ->limit(10)
             ->get(['id', 'name', 'code', 'unit', 'price']);
-        
+
         return response()->json($items);
     })->name('api.warehouse-items.search');
 });
 
 // === МАРШРУТЫ ДЛЯ ВСЕХ (включая складовщика) ===
 Route::middleware('role:admin,warehouse_keeper,warehouse_manager,director')->group(function () {
-    
+
     // Филиалы (просмотр для всех)
     Route::get('/branches', [BranchController::class, 'index'])->name('branches.index');
     Route::get('/branches/{branch}', [BranchController::class, 'show'])->name('branches.show');
-    
+
     // Инвентарь (просмотр для всех)
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::get('/inventory/{inventory}', [InventoryController::class, 'show'])->name('inventory.show');

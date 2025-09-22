@@ -247,6 +247,7 @@
                         @switch(Auth::user()->role)
                             @case('admin') Адміністратор @break
                             @case('director') Директор @break
+                            @case('warehouse_keeper') Складовщик @break
                             @default Користувач
                         @endswitch
                     </span>

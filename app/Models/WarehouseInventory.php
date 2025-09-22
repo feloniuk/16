@@ -14,6 +14,8 @@ class WarehouseInventory extends Model
 
     protected $casts = [
         'inventory_date' => 'date',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -23,6 +25,11 @@ class WarehouseInventory extends Model
         static::creating(function ($model) {
             if (empty($model->inventory_number)) {
                 $model->inventory_number = 'INV-' . date('Y') . '-' . str_pad(static::count() + 1, 6, '0', STR_PAD_LEFT);
+            }
+            
+            // Устанавливаем дату по умолчанию если не указана
+            if (empty($model->inventory_date)) {
+                $model->inventory_date = now()->toDateString();
             }
         });
     }

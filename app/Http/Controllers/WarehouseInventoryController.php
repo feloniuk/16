@@ -88,8 +88,13 @@ class WarehouseInventoryController extends Controller
         return view('warehouse-inventory.edit', compact('inventory'));
     }
 
-    public function updateItem(Request $request, WarehouseInventory $inventory, WarehouseInventoryItem $item)
+    public function updateItem(Request $request, $inventoryId, $itemId)
     {
+        $inventory = WarehouseInventory::findOrFail($inventoryId);
+        $item = WarehouseInventoryItem::where('inventory_id', $inventoryId)
+                                    ->where('id', $itemId)
+                                    ->firstOrFail();
+
         if ($inventory->status === 'completed') {
             return response()->json(['error' => 'Неможливо редагувати завершену інвентаризацію'], 422);
         }
@@ -107,7 +112,11 @@ class WarehouseInventoryController extends Controller
             'note' => $request->note,
         ]);
 
-        return response()->json(['success' => true, 'difference' => $difference]);
+        return response()->json([
+            'success' => true, 
+            'difference' => $difference,
+            'message' => 'Позицію оновлено'
+        ]);
     }
 
     public function complete(WarehouseInventory $inventory)

@@ -62,6 +62,9 @@
                                 @case('director')
                                     <span class="badge bg-success">Директор</span>
                                     @break
+                                @case('warehouse_keeper')
+                                    <span class="badge bg-success">Складовщик</span>
+                                    @break
                                 @default
                                     <span class="badge bg-secondary">Користувач</span>
                             @endswitch
