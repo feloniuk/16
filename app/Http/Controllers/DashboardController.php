@@ -16,11 +16,84 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         
-        if ($user->role === 'director') {
-            return $this->directorDashboard();
-        }
-        
-        return $this->adminDashboard();
+        return match($user->role) {
+            'admin' => $this->adminDashboard(),
+            // 'warehouse_manager' => $this->warehouseManagerDashboard(),
+            'warehouse_keeper' => $this->warehouseKeeperDashboard(),
+            'director' => $this->directorDashboard(),
+            default => $this->adminDashboard()
+        };
+    }
+
+    private function warehouseKeeperDashboard()
+    {
+        // Статистика товаров на складе
+        $warehouseStats = [
+            'total_items' => \App\Models\WarehouseItem::active()->count(),
+            'low_stock_items' => \App\Models\WarehouseItem::lowStock()->active()->count(),
+            'out_of_stock' => \App\Models\WarehouseItem::where('quantity', 0)->active()->count(),
+            'total_value' => \App\Models\WarehouseItem::active()->sum(DB::raw('quantity * COALESCE(price, 0)')),
+        ];
+
+        // Последние движения товаров
+        $recentMovements = \App\Models\WarehouseMovement::with(['warehouseItem', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Товары с низкими остатками
+        $lowStockItems = \App\Models\WarehouseItem::lowStock()
+            ->active()
+            ->orderBy('quantity')
+            ->limit(10)
+            ->get();
+
+        // Статистика заявок на закупку
+        $purchaseRequestsStats = [
+            'total' => \App\Models\PurchaseRequest::count(),
+            'draft' => \App\Models\PurchaseRequest::where('status', 'draft')->count(),
+            'submitted' => \App\Models\PurchaseRequest::where('status', 'submitted')->count(),
+            'approved' => \App\Models\PurchaseRequest::where('status', 'approved')->count(),
+            'my_requests' => \App\Models\PurchaseRequest::where('user_id', Auth::id())->count(),
+        ];
+
+        // Последние инвентаризации
+        $recentInventories = \App\Models\WarehouseInventory::with('user')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Активность по дням (последние 7 дней)
+        $dailyActivity = \App\Models\WarehouseMovement::select(
+                DB::raw('DATE(operation_date) as date'),
+                DB::raw('COUNT(*) as movements_count')
+            )
+            ->where('operation_date', '>=', Carbon::now()->subDays(7))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // Топ-5 наиболее активных товаров за месяц
+        $topActiveItems = \App\Models\WarehouseMovement::select(
+                'warehouse_item_id',
+                DB::raw('SUM(ABS(quantity)) as total_movements')
+            )
+            ->with('warehouseItem')
+            ->where('created_at', '>=', Carbon::now()->subMonth())
+            ->groupBy('warehouse_item_id')
+            ->orderBy('total_movements', 'desc')
+            ->limit(5)
+            ->get();
+
+        return view('dashboard.warehouse-keeper', compact(
+            'warehouseStats',
+            'recentMovements',
+            'lowStockItems',
+            'purchaseRequestsStats',
+            'recentInventories',
+            'dailyActivity',
+            'topActiveItems'
+        ));
     }
 
     private function adminDashboard()
