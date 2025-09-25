@@ -1,4 +1,3 @@
-{{-- resources/views/warehouse-inventory/create.blade.php --}}
 @extends('layouts.app')
 
 @section('title', 'Створити інвентаризацію')
@@ -388,4 +387,4 @@ kbd {
     padding: 0.125rem 0.25rem;
 }
 </style>
-@endpus
+@endpush
