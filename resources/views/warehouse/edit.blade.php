@@ -1,13 +1,14 @@
+{{-- resources/views/warehouse/edit.blade.php --}}
 @extends('layouts.app')
 
-@section('title', 'Редагувати товар: ' . $item->name)
+@section('title', 'Редагувати товар: ' . $item->equipment_type)
 
 @section('content')
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="stats-card p-4">
             <div class="mb-4">
-                <h4>Редагувати товар: {{ $item->name }}</h4>
+                <h4>Редагувати товар: {{ $item->equipment_type }}</h4>
                 <p class="text-muted">Оновіть інформацію про товар</p>
             </div>
             
@@ -17,21 +18,21 @@
                 
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label for="name" class="form-label">Назва товару <span class="text-danger">*</span></label>
-                        <input type="text" name="name" id="name" 
-                               class="form-control @error('name') is-invalid @enderror" 
-                               value="{{ old('name', $item->name) }}" required>
-                        @error('name')
+                        <label for="equipment_type" class="form-label">Назва товару <span class="text-danger">*</span></label>
+                        <input type="text" name="equipment_type" id="equipment_type" 
+                               class="form-control @error('equipment_type') is-invalid @enderror" 
+                               value="{{ old('equipment_type', $item->equipment_type) }}" required>
+                        @error('equipment_type')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     
                     <div class="col-md-6">
-                        <label for="code" class="form-label">Код товару <span class="text-danger">*</span></label>
-                        <input type="text" name="code" id="code" 
-                               class="form-control @error('code') is-invalid @enderror" 
-                               value="{{ old('code', $item->code) }}" required>
-                        @error('code')
+                        <label for="inventory_number" class="form-label">Код товару <span class="text-danger">*</span></label>
+                        <input type="text" name="inventory_number" id="inventory_number" 
+                               class="form-control @error('inventory_number') is-invalid @enderror" 
+                               value="{{ old('inventory_number', $item->inventory_number) }}" required>
+                        @error('inventory_number')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -91,23 +92,13 @@
                     </div>
                     
                     <div class="col-12">
-                        <label for="description" class="form-label">Опис товару</label>
-                        <textarea name="description" id="description" rows="3" 
-                                  class="form-control @error('description') is-invalid @enderror" 
-                                  placeholder="Детальний опис товару">{{ old('description', $item->description) }}</textarea>
-                        @error('description')
+                        <label for="notes" class="form-label">Опис товару</label>
+                        <textarea name="notes" id="notes" rows="3" 
+                                  class="form-control @error('notes') is-invalid @enderror" 
+                                  placeholder="Детальний опис товару">{{ old('notes', $item->notes) }}</textarea>
+                        @error('notes')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                    </div>
-                    
-                    <div class="col-12">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="is_active" value="1" 
-                                   id="is_active" {{ old('is_active', $item->is_active) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="is_active">
-                                Товар активний (доступний для операцій)
-                            </label>
-                        </div>
                     </div>
                 </div>
                 

@@ -1,4 +1,5 @@
-<?php 
+<?php
+// app/Models/WarehouseInventoryItem.php
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,18 +10,29 @@ class WarehouseInventoryItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'inventory_id', 'warehouse_item_id', 'system_quantity', 
-        'actual_quantity', 'difference', 'note'
+        'inventory_id', // ЗМІНЕНО: було warehouse_item_id
+        'warehouse_inventory_id', 
+        'system_quantity', 
+        'actual_quantity', 
+        'difference', 
+        'note'
     ];
 
-    public function inventory()
+    public function warehouseInventory()
     {
-        return $this->belongsTo(WarehouseInventory::class, 'inventory_id');
+        return $this->belongsTo(WarehouseInventory::class, 'warehouse_inventory_id');
     }
 
+    // ЗМІНЕНО: тепер зв'язок з RoomInventory
+    public function inventoryItem()
+    {
+        return $this->belongsTo(RoomInventory::class, 'inventory_id');
+    }
+
+    // Для зворотної сумісності
     public function warehouseItem()
     {
-        return $this->belongsTo(WarehouseItem::class);
+        return $this->inventoryItem();
     }
 
     public function getDifferenceStatusAttribute()

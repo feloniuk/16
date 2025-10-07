@@ -1,15 +1,18 @@
-<?php 
+<?php
+// app/Http/Controllers/PurchaseRequestController.php
 namespace App\Http\Controllers;
 
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
-use App\Models\WarehouseItem;
+use App\Models\RoomInventory; // ЗМІНЕНО: замість WarehouseItem
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseRequestController extends Controller
 {
+    const WAREHOUSE_BRANCH_ID = 6;
+
     public function index(Request $request)
     {
         $query = PurchaseRequest::with('user')->withCount('items');
@@ -33,14 +36,18 @@ class PurchaseRequestController extends Controller
 
     public function show(PurchaseRequest $purchaseRequest)
     {
-        $purchaseRequest->load(['items.warehouseItem', 'user']);
+        $purchaseRequest->load(['items.inventoryItem', 'user']);
         return view('purchase-requests.show', compact('purchaseRequest'));
     }
 
     public function create()
     {
-        $warehouseItems = WarehouseItem::active()->orderBy('name')->get();
-        $lowStockItems = WarehouseItem::lowStock()->active()->get();
+        // ЗМІНЕНО: товари складу з room_inventory
+        $warehouseItems = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
+            ->orderBy('equipment_type')
+            ->get();
+            
+        $lowStockItems = RoomInventory::lowStock()->get();
         
         return view('purchase-requests.create', compact('warehouseItems', 'lowStockItems'));
     }
@@ -83,7 +90,9 @@ class PurchaseRequestController extends Controller
         }
 
         $purchaseRequest->load('items');
-        $warehouseItems = WarehouseItem::active()->orderBy('name')->get();
+        $warehouseItems = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
+            ->orderBy('equipment_type')
+            ->get();
         
         return view('purchase-requests.edit', compact('purchaseRequest', 'warehouseItems'));
     }
@@ -112,7 +121,6 @@ class PurchaseRequestController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            // Удаляем старые позиции и добавляем новые
             $purchaseRequest->items()->delete();
             
             foreach ($request->items as $itemData) {
@@ -138,7 +146,7 @@ class PurchaseRequestController extends Controller
 
     public function print(PurchaseRequest $purchaseRequest)
     {
-        $purchaseRequest->load(['items.warehouseItem', 'user']);
+        $purchaseRequest->load(['items.inventoryItem', 'user']);
         return view('purchase-requests.print', compact('purchaseRequest'));
     }
 }

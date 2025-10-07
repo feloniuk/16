@@ -88,19 +88,18 @@
                             <th>Одиниця</th>
                             <th>Мін. кількість</th>
                             <th>Ціна</th>
-                            <th>Статус</th>
                             <th>Дії</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($items as $item)
                         <tr class="{{ $item->isLowStock() ? 'table-warning' : '' }}">
-                            <td><code>{{ $item->code }}</code></td>
+                            <td><code>{{ $item->inventory_number }}</code></td>
                             <td>
                                 <div>
-                                    <strong>{{ $item->name }}</strong>
-                                    @if($item->description)
-                                        <br><small class="text-muted">{{ Str::limit($item->description, 50) }}</small>
+                                    <strong>{{ $item->equipment_type }}</strong>
+                                    @if($item->notes)
+                                        <br><small class="text-muted">{{ Str::limit($item->notes, 50) }}</small>
                                     @endif
                                 </div>
                             </td>
@@ -123,13 +122,6 @@
                                 @endif
                             </td>
                             <td>
-                                @if($item->is_active)
-                                    <span class="badge bg-success">Активний</span>
-                                @else
-                                    <span class="badge bg-secondary">Неактивний</span>
-                                @endif
-                            </td>
-                            <td>
                                 <div class="btn-group" role="group">
                                     <a href="{{ route('warehouse.show', $item) }}" 
                                        class="btn btn-sm btn-outline-primary" title="Переглянути">
@@ -141,13 +133,13 @@
                                     </a>
                                     @if($item->quantity > 0)
                                     <button type="button" class="btn btn-sm btn-outline-info" 
-                                            onclick="showIssueModal({{ $item->id }}, '{{ $item->name }}', {{ $item->quantity }})"
+                                            onclick="showIssueModal({{ $item->id }}, '{{ $item->equipment_type }}', {{ $item->quantity }})"
                                             title="Видати">
                                         <i class="bi bi-box-arrow-right"></i>
                                     </button>
                                     @endif
                                     <button type="button" class="btn btn-sm btn-outline-success"
-                                            onclick="showReceiptModal({{ $item->id }}, '{{ $item->name }}')"
+                                            onclick="showReceiptModal({{ $item->id }}, '{{ $item->equipment_type }}')"
                                             title="Надходження">
                                         <i class="bi bi-box-arrow-in-left"></i>
                                     </button>
@@ -260,12 +252,9 @@
 function showReceiptModal(itemId, itemName) {
     document.getElementById('receiptItemName').value = itemName;
     document.getElementById('receiptForm').action = `/warehouse/${itemId}/receipt`;
-    
-    // Очищаем форму
     document.getElementById('receiptQuantity').value = '';
     document.getElementById('receiptDocument').value = '';
     document.getElementById('receiptNote').value = '';
-    
     new bootstrap.Modal(document.getElementById('receiptModal')).show();
 }
 
@@ -274,12 +263,9 @@ function showIssueModal(itemId, itemName, available) {
     document.getElementById('issueAvailable').value = available + ' шт';
     document.getElementById('issueQuantity').max = available;
     document.getElementById('issueForm').action = `/warehouse/${itemId}/issue`;
-    
-    // Очищаем форму
     document.getElementById('issueQuantity').value = '';
     document.getElementById('issuedTo').value = '';
     document.getElementById('issueNote').value = '';
-    
     new bootstrap.Modal(document.getElementById('issueModal')).show();
 }
 </script>

@@ -1,3 +1,4 @@
+{{-- resources/views/warehouse-inventory/show.blade.php --}}
 @extends('layouts.app')
 
 @section('title', 'Інвентаризація ' . $inventory->inventory_number)
@@ -28,7 +29,7 @@
                 <div class="col-md-6">
                     <h6 class="text-muted mb-2">Кількість позицій</h6>
                     <p class="mb-0">
-                        <span class="badge bg-info fs-6">{{ $inventory->items->count() }} товарів</span>
+                        <span class="badge bg-info fs-6">{{ $inventory->items->count() }} позицій</span>
                     </p>
                 </div>
                 
@@ -47,7 +48,8 @@
                 <table class="table table-striped">
                     <thead>
                         <tr>
-                            <th>Товар</th>
+                            <th>Позиція</th>
+                            <th>Філія</th>
                             <th>В системі</th>
                             <th>Фактично</th>
                             <th>Різниця</th>
@@ -59,12 +61,30 @@
                         <tr class="{{ $item->difference != 0 ? 'table-warning' : '' }}">
                             <td>
                                 <div>
-                                    <strong>{{ $item->warehouseItem->name }}</strong>
-                                    <br><small class="text-muted">{{ $item->warehouseItem->code }}</small>
+                                    <strong>{{ $item->inventoryItem->equipment_type }}</strong>
+                                    <br><small class="text-muted">{{ $item->inventoryItem->inventory_number }}</small>
+                                    @if($item->inventoryItem->brand || $item->inventoryItem->model)
+                                        <br><small class="text-muted">{{ $item->inventoryItem->brand }} {{ $item->inventoryItem->model }}</small>
+                                    @endif
                                 </div>
                             </td>
-                            <td>{{ $item->system_quantity }} {{ $item->warehouseItem->unit }}</td>
-                            <td>{{ $item->actual_quantity }} {{ $item->warehouseItem->unit }}</td>
+                            <td>
+                                <span class="badge {{ $item->inventoryItem->isWarehouseItem() ? 'bg-warning' : 'bg-primary' }}">
+                                    {{ $item->inventoryItem->branch->name }}
+                                </span>
+                            </td>
+                            <td>
+                                {{ $item->system_quantity }}
+                                @if($item->inventoryItem->isWarehouseItem())
+                                    <small class="text-muted">{{ $item->inventoryItem->unit }}</small>
+                                @endif
+                            </td>
+                            <td>
+                                {{ $item->actual_quantity }}
+                                @if($item->inventoryItem->isWarehouseItem())
+                                    <small class="text-muted">{{ $item->inventoryItem->unit }}</small>
+                                @endif
+                            </td>
                             <td>{!! $item->difference_status !!}</td>
                             <td>{{ $item->note ?: '-' }}</td>
                         </tr>
@@ -83,7 +103,7 @@
                 <div class="col-12">
                     <div class="text-center p-3 bg-light rounded">
                         <div class="fs-4 fw-bold">{{ $inventory->items->count() }}</div>
-                        <small class="text-muted">Всього товарів</small>
+                        <small class="text-muted">Всього позицій</small>
                     </div>
                 </div>
                 
@@ -130,7 +150,7 @@
                         @csrf
                         @method('PATCH')
                         <button type="submit" class="btn btn-success w-100" 
-                                onclick="return confirm('Завершити інвентаризацію? Залишки товарів будуть оновлені згідно з фактичними даними.')">
+                                onclick="return confirm('Завершити інвентаризацію? Залишки будуть оновлені.')">
                             <i class="bi bi-check-circle"></i> Завершити інвентаризацію
                         </button>
                     </form>

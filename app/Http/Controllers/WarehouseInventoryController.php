@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\WarehouseInventory;
 use App\Models\WarehouseInventoryItem;
-use App\Models\WarehouseItem;
+use App\Models\RoomInventory; // ЗМІНЕНО: замість WarehouseItem
 use App\Models\WarehouseMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\DB;
 
 class WarehouseInventoryController extends Controller
 {
-
     public function index(Request $request)
     {
         $query = WarehouseInventory::with('user')->withCount('items');
@@ -36,14 +35,19 @@ class WarehouseInventoryController extends Controller
 
     public function show(WarehouseInventory $inventory)
     {
-        $inventory->load(['items.warehouseItem', 'user']);
+        $inventory->load(['items.inventoryItem', 'user']);
         return view('warehouse-inventory.show', compact('inventory'));
     }
 
     public function create()
     {
-        $warehouseItems = WarehouseItem::active()->orderBy('name')->get();
-        return view('warehouse-inventory.create', compact('warehouseItems'));
+        // ЗМІНЕНО: показуємо ВСІ товари з room_inventory
+        $inventoryItems = RoomInventory::with('branch')
+            ->orderBy('branch_id')
+            ->orderBy('equipment_type')
+            ->get();
+            
+        return view('warehouse-inventory.create', compact('inventoryItems'));
     }
 
     public function store(Request $request)
@@ -52,7 +56,7 @@ class WarehouseInventoryController extends Controller
             'inventory_date' => 'required|date',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*' => 'exists:warehouse_items,id',
+            'items.*' => 'exists:room_inventory,id', // ЗМІНЕНО
         ]);
 
         DB::transaction(function() use ($request) {
@@ -63,13 +67,13 @@ class WarehouseInventoryController extends Controller
             ]);
 
             foreach ($request->items as $itemId) {
-                $warehouseItem = WarehouseItem::find($itemId);
+                $inventoryItem = RoomInventory::find($itemId);
                 
                 WarehouseInventoryItem::create([
-                    'inventory_id' => $inventory->id,
-                    'warehouse_item_id' => $itemId,
-                    'system_quantity' => $warehouseItem->quantity,
-                    'actual_quantity' => $warehouseItem->quantity, // начальное значение
+                    'warehouse_inventory_id' => $inventory->id,
+                    'inventory_id' => $itemId,
+                    'system_quantity' => $inventoryItem->quantity,
+                    'actual_quantity' => $inventoryItem->quantity,
                     'difference' => 0,
                 ]);
             }
@@ -84,14 +88,14 @@ class WarehouseInventoryController extends Controller
             return redirect()->back()->withErrors(['Неможливо редагувати завершену інвентаризацію']);
         }
 
-        $inventory->load(['items.warehouseItem']);
+        $inventory->load(['items.inventoryItem.branch']);
         return view('warehouse-inventory.edit', compact('inventory'));
     }
 
     public function updateItem(Request $request, $inventoryId, $itemId)
     {
         $inventory = WarehouseInventory::findOrFail($inventoryId);
-        $item = WarehouseInventoryItem::where('inventory_id', $inventoryId)
+        $item = WarehouseInventoryItem::where('warehouse_inventory_id', $inventoryId)
                                     ->where('id', $itemId)
                                     ->firstOrFail();
 
@@ -128,15 +132,15 @@ class WarehouseInventoryController extends Controller
         DB::transaction(function() use ($inventory) {
             $inventory->update(['status' => 'completed']);
 
-            // Обновляем остатки и создаем движения для расхождений
+            // Оновлюємо залишки та створюємо рухи для розбіжностей
             foreach ($inventory->items as $item) {
                 if ($item->difference != 0) {
-                    $warehouseItem = $item->warehouseItem;
-                    $warehouseItem->update(['quantity' => $item->actual_quantity]);
+                    $inventoryItem = $item->inventoryItem;
+                    $inventoryItem->update(['quantity' => $item->actual_quantity]);
 
                     WarehouseMovement::create([
                         'user_id' => Auth::id(),
-                        'warehouse_item_id' => $warehouseItem->id,
+                        'inventory_id' => $inventoryItem->id,
                         'type' => 'inventory',
                         'quantity' => $item->difference,
                         'balance_after' => $item->actual_quantity,
@@ -154,7 +158,12 @@ class WarehouseInventoryController extends Controller
 
     public function quickInventory()
     {
-        $items = WarehouseItem::active()->orderBy('name')->get();
+        // ЗМІНЕНО: показуємо ВСІ товари
+        $items = RoomInventory::with('branch')
+            ->orderBy('branch_id')
+            ->orderBy('equipment_type')
+            ->get();
+            
         return view('warehouse-inventory.quick', compact('items'));
     }
 
@@ -162,7 +171,7 @@ class WarehouseInventoryController extends Controller
     {
         $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.id' => 'required|exists:warehouse_items,id',
+            'items.*.id' => 'required|exists:room_inventory,id',
             'items.*.actual_quantity' => 'required|integer|min:0',
             'items.*.note' => 'nullable|string|max:500',
             'notes' => 'nullable|string',
@@ -177,25 +186,25 @@ class WarehouseInventoryController extends Controller
             ]);
 
             foreach ($request->items as $itemData) {
-                $warehouseItem = WarehouseItem::find($itemData['id']);
-                $difference = $itemData['actual_quantity'] - $warehouseItem->quantity;
+                $inventoryItem = RoomInventory::find($itemData['id']);
+                $difference = $itemData['actual_quantity'] - $inventoryItem->quantity;
 
-                $inventoryItem = WarehouseInventoryItem::create([
-                    'inventory_id' => $inventory->id,
-                    'warehouse_item_id' => $itemData['id'],
-                    'system_quantity' => $warehouseItem->quantity,
+                WarehouseInventoryItem::create([
+                    'warehouse_inventory_id' => $inventory->id,
+                    'inventory_id' => $itemData['id'],
+                    'system_quantity' => $inventoryItem->quantity,
                     'actual_quantity' => $itemData['actual_quantity'],
                     'difference' => $difference,
                     'note' => $itemData['note'] ?? null,
                 ]);
 
-                // Обновляем остатки если есть расхождения
+                // Оновлюємо залишки якщо є розбіжності
                 if ($difference != 0) {
-                    $warehouseItem->update(['quantity' => $itemData['actual_quantity']]);
+                    $inventoryItem->update(['quantity' => $itemData['actual_quantity']]);
 
                     WarehouseMovement::create([
                         'user_id' => Auth::id(),
-                        'warehouse_item_id' => $warehouseItem->id,
+                        'inventory_id' => $inventoryItem->id,
                         'type' => 'inventory',
                         'quantity' => $difference,
                         'balance_after' => $itemData['actual_quantity'],

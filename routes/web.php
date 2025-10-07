@@ -137,14 +137,16 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
     // API для автозаполнения
     Route::get('/api/warehouse-items/search', function(Request $request) {
         $query = $request->get('q', '');
-        $items = \App\Models\WarehouseItem::active()
+        
+        // ЗМІНЕНО: шукаємо в room_inventory замість warehouse_items
+        $items = \App\Models\RoomInventory::where('branch_id', 6) // Тільки склад
             ->where(function($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('code', 'like', "%{$query}%");
+                $q->where('equipment_type', 'like', "%{$query}%") // назва товару
+                  ->orWhere('inventory_number', 'like', "%{$query}%"); // код товару
             })
             ->limit(10)
-            ->get(['id', 'name', 'code', 'unit', 'price']);
-
+            ->get(['id', 'equipment_type as name', 'inventory_number as code', 'unit', 'price']);
+    
         return response()->json($items);
     })->name('api.warehouse-items.search');
 });

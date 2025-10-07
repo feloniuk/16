@@ -1,4 +1,5 @@
 <?php
+// app/Models/WarehouseMovement.php
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,9 +10,15 @@ class WarehouseMovement extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'warehouse_item_id', 'type', 'quantity', 
-        'balance_after', 'note', 'document_number', 
-        'issued_to_user_id', 'operation_date'
+        'user_id', 
+        'inventory_id', // ЗМІНЕНО: було warehouse_item_id
+        'type', 
+        'quantity', 
+        'balance_after', 
+        'note', 
+        'document_number', 
+        'issued_to_user_id', 
+        'operation_date'
     ];
 
     protected $casts = [
@@ -23,9 +30,16 @@ class WarehouseMovement extends Model
         return $this->belongsTo(User::class);
     }
 
+    // ЗМІНЕНО: тепер зв'язок з RoomInventory
+    public function inventoryItem()
+    {
+        return $this->belongsTo(RoomInventory::class, 'inventory_id');
+    }
+
+    // Для зворотної сумісності
     public function warehouseItem()
     {
-        return $this->belongsTo(WarehouseItem::class);
+        return $this->inventoryItem();
     }
 
     public function issuedToUser()

@@ -82,8 +82,8 @@
                             </td>
                             <td>
                                 <div>
-                                    <strong>{{ $movement->warehouseItem->name }}</strong>
-                                    <br><small class="text-muted">{{ $movement->warehouseItem->code }}</small>
+                                    <strong>{{ $movement->inventoryItem->equipment_type }}</strong>
+                                    <br><small class="text-muted">{{ $movement->inventoryItem->inventory_number }}</small>
                                 </div>
                             </td>
                             <td>{!! $movement->type_badge !!}</td>
@@ -93,10 +93,10 @@
                                 @else
                                     <span class="text-danger fw-bold">{{ $movement->quantity }}</span>
                                 @endif
-                                <small class="text-muted d-block">{{ $movement->warehouseItem->unit }}</small>
+                                <small class="text-muted d-block">{{ $movement->inventoryItem->unit }}</small>
                             </td>
                             <td>
-                                <span class="badge bg-info">{{ $movement->balance_after }} {{ $movement->warehouseItem->unit }}</span>
+                                <span class="badge bg-info">{{ $movement->balance_after }} {{ $movement->inventoryItem->unit }}</span>
                             </td>
                             <td>
                                 <div>{{ $movement->user->name }}</div>
@@ -142,7 +142,6 @@
     </div>
 </div>
 
-<!-- Статистика операций -->
 @if($movements->count() > 0)
 <div class="row g-4 mt-4">
     <div class="col-md-3">
