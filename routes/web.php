@@ -66,7 +66,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Мастеры по ремонту
         Route::resource('repair-masters', RepairMasterController::class)->only(['index', 'store', 'update', 'destroy']);
         
-        // Инвентарь
+        // Инвентарь - ВСІ РОУТИ ПЕРЕД Route::resource
+        Route::post('/inventory/store-bulk', [InventoryController::class, 'storeBulk'])->name('inventory.store-bulk');
+        Route::post('/inventory/validate-numbers', [InventoryController::class, 'validateNumbers'])->name('inventory.validate-numbers');
         Route::resource('inventory', InventoryController::class);
         Route::get('/inventory-export', [InventoryController::class, 'export'])->name('inventory.export');
         
@@ -104,21 +106,26 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
 
     // Инвентаризация склада
     Route::prefix('warehouse-inventory')->name('warehouse-inventory.')->group(function () {
+        // Основні маршрути
         Route::get('/', [WarehouseInventoryController::class, 'index'])->name('index');
         Route::get('/create', [WarehouseInventoryController::class, 'create'])->name('create');
         Route::post('/', [WarehouseInventoryController::class, 'store'])->name('store');
-        Route::get('/{inventory}', [WarehouseInventoryController::class, 'show'])->name('show');
-        Route::get('/{inventory}/edit', [WarehouseInventoryController::class, 'edit'])->name('edit');
-        Route::put('/{inventory}', [WarehouseInventoryController::class, 'update'])->name('update');
         
-        // Дополнительные действия с инвентаризацией
-        Route::patch('/{inventory}/complete', [WarehouseInventoryController::class, 'complete'])->name('complete');
-        Route::patch('/{inventory}/items/{item}', [WarehouseInventoryController::class, 'updateItem'])->name('update-item');
+        // ВАЖЛИВО: Швидка інвентаризація ПЕРЕД динамічними маршрутами
+        Route::get('quick/start', [WarehouseInventoryController::class, 'quickInventory'])->name('quick');
+        Route::post('quick/process', [WarehouseInventoryController::class, 'processQuickInventory'])->name('process-quick');
         
-        // Быстрая инвентаризация
-        Route::get('/quick/start', [WarehouseInventoryController::class, 'quickInventory'])->name('quick');
-        Route::post('/quick/process', [WarehouseInventoryController::class, 'processQuickInventory'])->name('process-quick');
+        // Динамічні маршруты (після quick)
+        Route::get('{inventory}', [WarehouseInventoryController::class, 'show'])->name('show');
+        Route::get('{inventory}/edit', [WarehouseInventoryController::class, 'edit'])->name('edit');
+        Route::put('{inventory}', [WarehouseInventoryController::class, 'update'])->name('update');
+        
+        // Додаткові дії
+        Route::patch('{inventory}/complete', [WarehouseInventoryController::class, 'complete'])->name('complete');
+        Route::patch('{inventory}/items/{item}', [WarehouseInventoryController::class, 'updateItem'])->name('update-item');
     });
+    
+    // ВИДАЛИВ ЗВІДСИ - тепер він в middleware role:admin
     
     // Заявки на закупку
     Route::resource('purchase-requests', PurchaseRequestController::class)->names([

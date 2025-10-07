@@ -6,9 +6,116 @@ use App\Models\Branch;
 use App\Models\InventoryTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class InventoryController extends Controller
 {
+
+
+/**
+ * Показати форму для масового додавання
+ */
+public function create()
+{
+    $branches = Branch::where('is_active', true)->get();
+    $templates = InventoryTemplate::orderBy('name')->get();
+    
+    return view('inventory.create', compact('branches', 'templates'));
+}
+
+/**
+ * Масове збереження обладнання
+ */
+public function storeBulk(Request $request)
+{
+    $request->validate([
+        'branch_id' => 'required|exists:branches,id',
+        'room_number' => 'required|string|max:50',
+        'items' => 'required|array|min:1',
+        'items.*.equipment_type' => 'required|string|max:100',
+        'items.*.brand' => 'nullable|string|max:100',
+        'items.*.model' => 'nullable|string|max:100',
+        'items.*.serial_number' => 'nullable|string|max:255',
+        'items.*.inventory_number' => 'required|string|max:255|unique:room_inventory,inventory_number',
+        'general_notes' => 'nullable|string|max:1000'
+    ], [
+        'items.required' => 'Додайте хоча б одну одиницю обладнання',
+        'items.*.equipment_type.required' => 'Тип обладнання обов\'язковий',
+        'items.*.inventory_number.required' => 'Інвентарний номер обов\'язковий',
+        'items.*.inventory_number.unique' => 'Інвентарний номер :input вже існує в базі',
+    ]);
+
+    try {
+        DB::transaction(function() use ($request) {
+            $createdCount = 0;
+            $generalNotes = $request->general_notes;
+            
+            foreach ($request->items as $itemData) {
+                // Об'єднуємо загальні примітки з індивідуальними (якщо є)
+                $notes = $generalNotes;
+                if (!empty($itemData['notes'])) {
+                    $notes = $notes ? $notes . "\n" . $itemData['notes'] : $itemData['notes'];
+                }
+                
+                RoomInventory::create([
+                    'admin_telegram_id' => Auth::user()->telegram_id ?? 0,
+                    'branch_id' => $request->branch_id,
+                    'room_number' => $request->room_number,
+                    'equipment_type' => $itemData['equipment_type'],
+                    'brand' => $itemData['brand'] ?? null,
+                    'model' => $itemData['model'] ?? null,
+                    'serial_number' => $itemData['serial_number'] ?? null,
+                    'inventory_number' => $itemData['inventory_number'],
+                    'notes' => $notes,
+                    'quantity' => 1, // Для обладнання завжди 1
+                    'unit' => 'шт',
+                ]);
+                
+                $createdCount++;
+            }
+            
+            // Логуємо операцію
+            Log::info("Масове додавання обладнання", [
+                'user_id' => Auth::id(),
+                'branch_id' => $request->branch_id,
+                'room' => $request->room_number,
+                'count' => $createdCount
+            ]);
+        });
+        
+        $count = count($request->items);
+        return redirect()->route('inventory.index')
+            ->with('success', "Успішно додано {$count} од. обладнання в кабінет {$request->room_number}");
+            
+    } catch (\Exception $e) {
+        Log::error('Помилка масового додавання обладнання: ' . $e->getMessage());
+        
+        return redirect()->back()
+            ->withInput()
+            ->withErrors(['error' => 'Помилка збереження: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Валідація унікальності інвентарних номерів (AJAX)
+ */
+public function validateInventoryNumbers(Request $request)
+{
+    $numbers = $request->input('numbers', []);
+    $duplicates = [];
+    
+    foreach ($numbers as $number) {
+        if (RoomInventory::where('inventory_number', $number)->exists()) {
+            $duplicates[] = $number;
+        }
+    }
+    
+    return response()->json([
+        'valid' => empty($duplicates),
+        'duplicates' => $duplicates
+    ]);
+}
+
     public function index(Request $request)
     {
         $query = RoomInventory::with('branch', 'template');
@@ -60,13 +167,6 @@ class InventoryController extends Controller
         }
 
         return view('inventory.show', compact('inventory', 'cartridgeReplacements'));
-    }
-
-    public function create()
-    {
-        $branches = Branch::where('is_active', true)->get();
-        $templates = InventoryTemplate::orderBy('name')->get();
-        return view('inventory.create', compact('branches', 'templates'));
     }
 
     public function store(Request $request)

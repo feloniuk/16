@@ -43,22 +43,51 @@
                 @endif
             </div>
             
+            <!-- Фільтри -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <input type="text" id="searchItems" class="form-control form-control-sm" 
+                           placeholder="Пошук по назві, коду або філії...">
+                </div>
+                <div class="col-md-3">
+                    <select id="filterBranch" class="form-select form-select-sm">
+                        <option value="">Всі філії</option>
+                        <option value="6">Склад</option>
+                        @foreach($inventory->items->pluck('inventoryItem.branch')->unique('id')->sortBy('name') as $branch)
+                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select id="filterDiscrepancy" class="form-select form-select-sm">
+                        <option value="">Всі позиції</option>
+                        <option value="0">Без розбіжностей</option>
+                        <option value="positive">Надлишки</option>
+                        <option value="negative">Нестачі</option>
+                    </select>
+                </div>
+            </div>
+            
             <h5 class="mb-3">Результати інвентаризації</h5>
             <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
+                <table class="table table-striped table-hover">
+                    <thead class="table-light">
                         <tr>
                             <th>Позиція</th>
                             <th>Філія</th>
+                            <th>Кабінет</th>
                             <th>В системі</th>
                             <th>Фактично</th>
                             <th>Різниця</th>
                             <th>Примітка</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="itemsTableBody">
                         @foreach($inventory->items as $item)
-                        <tr class="{{ $item->difference != 0 ? 'table-warning' : '' }}">
+                        <tr class="item-row {{ $item->difference != 0 ? 'table-warning' : '' }}"
+                            data-branch-id="{{ $item->inventoryItem->branch_id }}"
+                            data-difference="{{ $item->difference }}"
+                            data-search="{{ strtolower($item->inventoryItem->equipment_type . ' ' . $item->inventoryItem->inventory_number . ' ' . $item->inventoryItem->branch->name) }}">
                             <td>
                                 <div>
                                     <strong>{{ $item->inventoryItem->equipment_type }}</strong>
@@ -73,6 +102,7 @@
                                     {{ $item->inventoryItem->branch->name }}
                                 </span>
                             </td>
+                            <td>{{ $item->inventoryItem->room_number }}</td>
                             <td>
                                 {{ $item->system_quantity }}
                                 @if($item->inventoryItem->isWarehouseItem())
@@ -137,6 +167,38 @@
             </div>
         </div>
         
+        <!-- Статистика по філіях -->
+        <div class="stats-card p-4 mt-4">
+            <h5 class="mb-3">По філіях</h5>
+            
+            @php
+                $branchGroups = $inventory->items->groupBy('inventoryItem.branch.name');
+            @endphp
+            
+            <div class="list-group list-group-flush">
+                @foreach($branchGroups as $branchName => $items)
+                <div class="list-group-item px-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ $branchName }}</strong>
+                            <br><small class="text-muted">{{ $items->count() }} позицій</small>
+                        </div>
+                        <div class="text-end">
+                            @php
+                                $discrepancies = $items->where('difference', '!=', 0)->count();
+                            @endphp
+                            @if($discrepancies > 0)
+                                <span class="badge bg-warning">{{ $discrepancies }}</span>
+                            @else
+                                <span class="badge bg-success">✓</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        
         <div class="stats-card p-4 mt-4">
             <h5 class="mb-3">Дії</h5>
             
@@ -164,3 +226,58 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+// Пошук
+document.getElementById('searchItems').addEventListener('input', function() {
+    filterRows();
+});
+
+// Фільтр по філії
+document.getElementById('filterBranch').addEventListener('change', function() {
+    filterRows();
+});
+
+// Фільтр по розбіжностях
+document.getElementById('filterDiscrepancy').addEventListener('change', function() {
+    filterRows();
+});
+
+function filterRows() {
+    const searchTerm = document.getElementById('searchItems').value.toLowerCase();
+    const branchFilter = document.getElementById('filterBranch').value;
+    const discrepancyFilter = document.getElementById('filterDiscrepancy').value;
+    const rows = document.querySelectorAll('.item-row');
+    
+    rows.forEach(row => {
+        const searchData = row.dataset.search;
+        const branchId = row.dataset.branchId;
+        const difference = parseInt(row.dataset.difference);
+        
+        let showRow = true;
+        
+        // Пошук
+        if (searchTerm && !searchData.includes(searchTerm)) {
+            showRow = false;
+        }
+        
+        // Фільтр по філії
+        if (branchFilter && branchId !== branchFilter) {
+            showRow = false;
+        }
+        
+        // Фільтр по розбіжностях
+        if (discrepancyFilter === '0' && difference !== 0) {
+            showRow = false;
+        } else if (discrepancyFilter === 'positive' && difference <= 0) {
+            showRow = false;
+        } else if (discrepancyFilter === 'negative' && difference >= 0) {
+            showRow = false;
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    });
+}
+</script>
+@endpush

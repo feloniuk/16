@@ -10,31 +10,39 @@ class WarehouseInventoryItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'inventory_id', // ЗМІНЕНО: було warehouse_item_id
-        'warehouse_inventory_id', 
+        'warehouse_inventory_id',  // ВАЖЛИВО: правильна назва колонки
+        'inventory_id',             // Зв'язок з room_inventory
         'system_quantity', 
         'actual_quantity', 
         'difference', 
         'note'
     ];
 
+    protected $casts = [
+        'system_quantity' => 'integer',
+        'actual_quantity' => 'integer',
+        'difference' => 'integer',
+    ];
+
+    // Зв'язок з інвентаризацією
     public function warehouseInventory()
     {
         return $this->belongsTo(WarehouseInventory::class, 'warehouse_inventory_id');
     }
 
-    // ЗМІНЕНО: тепер зв'язок з RoomInventory
+    // Зв'язок з товаром/обладнанням з room_inventory
     public function inventoryItem()
     {
         return $this->belongsTo(RoomInventory::class, 'inventory_id');
     }
 
-    // Для зворотної сумісності
+    // Для зворотної сумісності (якщо десь використовується)
     public function warehouseItem()
     {
         return $this->inventoryItem();
     }
 
+    // Accessor для статусу різниці
     public function getDifferenceStatusAttribute()
     {
         if ($this->difference > 0) {

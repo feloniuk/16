@@ -159,3 +159,297 @@
                                     <input type="text" class="form-control form-control-sm item-note" 
                                            value="{{ $item->note }}" 
                                            data-item-id="{{ $item->id }}"
+                                           placeholder="Примітка...">
+                                @else
+                                    {{ $item->note ?: '-' }}
+                                @endif
+                            </td>
+                            <td>
+                                @if($inventory->status === 'in_progress')
+                                    <button type="button" class="btn btn-sm btn-outline-success" 
+                                            onclick="saveItem({{ $item->id }})"
+                                            title="Зберегти">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            
+            @if($inventory->status === 'in_progress')
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{{ route('warehouse-inventory.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад
+                </a>
+                <div>
+                    <button type="button" class="btn btn-warning me-2" onclick="saveProgress()">
+                        <i class="bi bi-save"></i> Зберегти прогрес
+                    </button>
+                    <form method="POST" action="{{ route('warehouse-inventory.complete', $inventory) }}" 
+                          class="d-inline" onsubmit="return confirm('Завершити інвентаризацію? Залишки будуть оновлені.')">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Завершити інвентаризацію
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @else
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{{ route('warehouse-inventory.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад до списку
+                </a>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+// Пошук по позиціях
+document.getElementById('searchItems').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    filterRows();
+});
+
+// Фільтр по статусу
+document.getElementById('filterStatus').addEventListener('change', function() {
+    filterRows();
+});
+
+// Фільтр по філії
+document.getElementById('filterBranch').addEventListener('change', function() {
+    filterRows();
+});
+
+function filterRows() {
+    const searchTerm = document.getElementById('searchItems').value.toLowerCase();
+    const statusFilter = document.getElementById('filterStatus').value;
+    const branchFilter = document.getElementById('filterBranch').value;
+    const rows = document.querySelectorAll('.inventory-row');
+    
+    rows.forEach(row => {
+        const itemName = row.dataset.itemName;
+        const itemCode = row.dataset.itemCode;
+        const branchName = row.dataset.branchName;
+        const branchId = row.dataset.branchId;
+        const difference = parseInt(row.querySelector('.difference-badge').dataset.difference);
+        
+        let showRow = true;
+        
+        // Пошук
+        if (searchTerm && !(itemName.includes(searchTerm) || itemCode.includes(searchTerm) || branchName.includes(searchTerm))) {
+            showRow = false;
+        }
+        
+        // Фільтр по статусу
+        if (statusFilter === 'unchanged' && difference !== 0) {
+            showRow = false;
+        } else if (statusFilter === 'changed' && difference === 0) {
+            showRow = false;
+        } else if (statusFilter === 'discrepancy' && difference === 0) {
+            showRow = false;
+        }
+        
+        // Фільтр по філії
+        if (branchFilter && branchId !== branchFilter) {
+            showRow = false;
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    });
+}
+
+// Розрахунок різниці
+function calculateDifference(input) {
+    const row = input.closest('tr');
+    const systemQuantity = parseInt(input.dataset.system);
+    const actualQuantity = parseInt(input.value) || 0;
+    const difference = actualQuantity - systemQuantity;
+    
+    const badge = row.querySelector('.difference-badge');
+    badge.dataset.difference = difference;
+    
+    if (difference > 0) {
+        badge.className = 'badge bg-success difference-badge';
+        badge.textContent = '+' + difference;
+    } else if (difference < 0) {
+        badge.className = 'badge bg-danger difference-badge';
+        badge.textContent = difference;
+    } else {
+        badge.className = 'badge bg-light text-dark difference-badge';
+        badge.textContent = '0';
+    }
+    
+    updateStatistics();
+}
+
+// Збереження окремої позиції
+function saveItem(itemId) {
+    const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
+    const actualQuantity = row.querySelector('.actual-quantity').value;
+    const note = row.querySelector('.item-note').value;
+    
+    fetch(`{{ route('warehouse-inventory.index') }}/${{{ $inventory->id }}}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            actual_quantity: actualQuantity,
+            note: note
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('success', 'Позицію збережено');
+            calculateDifference(row.querySelector('.actual-quantity'));
+        } else {
+            showNotification('error', 'Помилка збереження');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('error', 'Помилка збереження');
+    });
+}
+
+// Збереження прогресу (всі змінені позиції)
+function saveProgress() {
+    const rows = document.querySelectorAll('.inventory-row');
+    const updates = [];
+    
+    rows.forEach(row => {
+        const itemId = row.dataset.itemId;
+        const actualQuantity = row.querySelector('.actual-quantity');
+        const note = row.querySelector('.item-note');
+        
+        if (actualQuantity && note) {
+            updates.push({
+                id: itemId,
+                actual_quantity: actualQuantity.value,
+                note: note.value
+            });
+        }
+    });
+    
+    if (updates.length === 0) {
+        showNotification('warning', 'Немає змін для збереження');
+        return;
+    }
+    
+    // Показуємо прогрес
+    const progressBtn = event.target;
+    progressBtn.disabled = true;
+    progressBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Збереження...';
+    
+    Promise.all(updates.map(item => 
+        fetch(`{{ route('warehouse-inventory.index') }}/${{{ $inventory->id }}}/items/${item.id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                actual_quantity: item.actual_quantity,
+                note: item.note
+            })
+        })
+    ))
+    .then(() => {
+        showNotification('success', `Збережено ${updates.length} позицій`);
+        progressBtn.disabled = false;
+        progressBtn.innerHTML = '<i class="bi bi-save"></i> Зберегти прогрес';
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('error', 'Помилка збереження');
+        progressBtn.disabled = false;
+        progressBtn.innerHTML = '<i class="bi bi-save"></i> Зберегти прогрес';
+    });
+}
+
+// Заповнити всі з системних даних
+function fillAllFromSystem() {
+    if (!confirm('Заповнити всі позиції системними даними? Поточні зміни будуть втрачені.')) {
+        return;
+    }
+    
+    const rows = document.querySelectorAll('.inventory-row');
+    rows.forEach(row => {
+        const actualQuantity = row.querySelector('.actual-quantity');
+        if (actualQuantity) {
+            const systemQuantity = actualQuantity.dataset.system;
+            actualQuantity.value = systemQuantity;
+            calculateDifference(actualQuantity);
+        }
+    });
+    
+    updateStatistics();
+    showNotification('success', 'Всі позиції заповнені системними даними');
+}
+
+// Оновлення статистики
+function updateStatistics() {
+    const rows = document.querySelectorAll('.inventory-row:not([style*="display: none"])');
+    let noDiscrepancy = 0;
+    let withDiscrepancy = 0;
+    
+    rows.forEach(row => {
+        const difference = parseInt(row.querySelector('.difference-badge').dataset.difference);
+        if (difference === 0) {
+            noDiscrepancy++;
+        } else {
+            withDiscrepancy++;
+        }
+    });
+    
+    document.getElementById('noDiscrepancyCount').textContent = noDiscrepancy;
+    document.getElementById('discrepancyCount').textContent = withDiscrepancy;
+}
+
+// Показ сповіщень
+function showNotification(type, message) {
+    const alertClass = type === 'success' ? 'alert-success' : 
+                      type === 'error' ? 'alert-danger' : 
+                      type === 'warning' ? 'alert-warning' : 'alert-info';
+    
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
+}
+
+// Автозбереження кожні 2 хвилини
+let autoSaveInterval = setInterval(function() {
+    const inProgress = '{{ $inventory->status }}' === 'in_progress';
+    if (inProgress) {
+        saveProgress();
+    }
+}, 120000); // 2 хвилини
+
+// Очистка інтервалу при виході
+window.addEventListener('beforeunload', function() {
+    clearInterval(autoSaveInterval);
+});
+</script>
+@endpush

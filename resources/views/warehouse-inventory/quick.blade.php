@@ -50,6 +50,7 @@
                                         </th>
                                         <th>Код</th>
                                         <th>Назва товару</th>
+                                        <th>Філія</th>
                                         <th>Поточний залишок</th>
                                         <th>Фактична кількість</th>
                                         <th>Різниця</th>
@@ -58,21 +59,33 @@
                                 </thead>
                                 <tbody id="itemsTableBody">
                                     @foreach($items as $item)
-                                    <tr class="item-row" data-item-name="{{ strtolower($item->name) }}" data-item-code="{{ strtolower($item->code) }}">
+                                    <tr class="item-row" 
+                                        data-item-name="{{ strtolower($item->equipment_type) }}" 
+                                        data-item-code="{{ strtolower($item->inventory_number) }}">
                                         <td>
                                             <input type="checkbox" class="form-check-input item-checkbox" 
                                                    value="{{ $item->id }}" onchange="toggleItem(this, {{ $item->id }})">
                                         </td>
-                                        <td><code>{{ $item->code }}</code></td>
+                                        <td><code>{{ $item->inventory_number }}</code></td>
                                         <td>
-                                            <strong>{{ $item->name }}</strong>
+                                            <strong>{{ $item->equipment_type }}</strong>
                                             @if($item->category)
                                                 <br><small class="text-muted">{{ $item->category }}</small>
                                             @endif
+                                            @if($item->brand || $item->model)
+                                                <br><small class="text-muted">{{ $item->brand }} {{ $item->model }}</small>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <span class="badge {{ $item->isWarehouseItem() ? 'bg-warning' : 'bg-primary' }}">
+                                                {{ $item->branch->name }}
+                                            </span>
                                         </td>
                                         <td>
                                             <span class="badge bg-info system-quantity">{{ $item->quantity }}</span>
-                                            <span class="small text-muted">{{ $item->unit }}</span>
+                                            @if($item->unit)
+                                                <span class="small text-muted">{{ $item->unit }}</span>
+                                            @endif
                                         </td>
                                         <td>
                                             <input type="number" class="form-control form-control-sm actual-quantity" 
@@ -184,10 +197,20 @@ function toggleItem(checkbox, itemId) {
         noteInput.disabled = false;
         row.classList.add('table-primary');
         
-        // Добавляем скрытые поля в форму
-        addHiddenField('items[' + selectedItems.size + '][id]', itemId);
-        quantityInput.name = 'items[' + Array.from(selectedItems).indexOf(itemId) + '][actual_quantity]';
-        noteInput.name = 'items[' + Array.from(selectedItems).indexOf(itemId) + '][note]';
+        // Создаем скрытые поля для формы
+        const index = Array.from(selectedItems).indexOf(itemId);
+        quantityInput.name = `items[${index}][actual_quantity]`;
+        noteInput.name = `items[${index}][note]`;
+        
+        // Добавляем скрытое поле ID
+        if (!row.querySelector('input[name*="[id]"]')) {
+            const hiddenId = document.createElement('input');
+            hiddenId.type = 'hidden';
+            hiddenId.name = `items[${index}][id]`;
+            hiddenId.value = itemId;
+            hiddenId.className = 'hidden-id-field';
+            row.appendChild(hiddenId);
+        }
     } else {
         selectedItems.delete(itemId);
         quantityInput.disabled = true;
@@ -197,7 +220,10 @@ function toggleItem(checkbox, itemId) {
         row.classList.remove('table-primary');
         
         // Удаляем скрытое поле
-        removeHiddenField(itemId);
+        const hiddenField = row.querySelector('.hidden-id-field');
+        if (hiddenField) {
+            hiddenField.remove();
+        }
     }
     
     updateSelectedCount();
@@ -226,41 +252,31 @@ function calculateDifference(input) {
     }
 }
 
-// Добавление скрытого поля
-function addHiddenField(name, value) {
-    const hiddenField = document.createElement('input');
-    hiddenField.type = 'hidden';
-    hiddenField.name = name;
-    hiddenField.value = value;
-    hiddenField.dataset.itemId = value;
-    document.getElementById('inventoryForm').appendChild(hiddenField);
-}
-
-// Удаление скрытого поля
-function removeHiddenField(itemId) {
-    const hiddenField = document.querySelector(`input[data-item-id="${itemId}"]`);
-    if (hiddenField) {
-        hiddenField.remove();
-    }
-}
-
 // Пересчет имен полей после изменений
 function recalculateFieldNames() {
     const selectedItemsArray = Array.from(selectedItems);
     
     selectedItemsArray.forEach((itemId, index) => {
         const checkbox = document.querySelector(`.item-checkbox[value="${itemId}"]`);
+        if (!checkbox) return;
+        
         const row = checkbox.closest('tr');
         const quantityInput = row.querySelector('.actual-quantity');
         const noteInput = row.querySelector('.item-note');
+        const hiddenId = row.querySelector('.hidden-id-field');
         
-        quantityInput.name = `items[${index}][actual_quantity]`;
-        noteInput.name = `items[${index}][note]`;
-        
-        // Обновляем скрытое поле ID
-        const hiddenField = document.querySelector(`input[data-item-id="${itemId}"]`);
-        if (hiddenField) {
-            hiddenField.name = `items[${index}][id]`;
+        if (quantityInput) quantityInput.name = `items[${index}][actual_quantity]`;
+        if (noteInput) noteInput.name = `items[${index}][note]`;
+        if (hiddenId) {
+            hiddenId.name = `items[${index}][id]`;
+        } else {
+            // Создаем если нет
+            const newHiddenId = document.createElement('input');
+            newHiddenId.type = 'hidden';
+            newHiddenId.name = `items[${index}][id]`;
+            newHiddenId.value = itemId;
+            newHiddenId.className = 'hidden-id-field';
+            row.appendChild(newHiddenId);
         }
     });
 }
@@ -288,86 +304,6 @@ window.addEventListener('beforeunload', function(e) {
         e.preventDefault();
         e.returnValue = '';
     }
-});
-
-// Автосохранение в localStorage для восстановления данных
-function saveToLocalStorage() {
-    const formData = {
-        selectedItems: Array.from(selectedItems),
-        timestamp: Date.now()
-    };
-    
-    selectedItems.forEach(itemId => {
-        const checkbox = document.querySelector(`.item-checkbox[value="${itemId}"]`);
-        const row = checkbox.closest('tr');
-        const quantityInput = row.querySelector('.actual-quantity');
-        const noteInput = row.querySelector('.item-note');
-        
-        formData[`quantity_${itemId}`] = quantityInput.value;
-        formData[`note_${itemId}`] = noteInput.value;
-    });
-    
-    localStorage.setItem('inventoryFormData', JSON.stringify(formData));
-}
-
-// Восстановление данных из localStorage
-function restoreFromLocalStorage() {
-    const savedData = localStorage.getItem('inventoryFormData');
-    if (savedData) {
-        try {
-            const formData = JSON.parse(savedData);
-            
-            // Проверяем, что данные не старше 1 часа
-            if (Date.now() - formData.timestamp < 3600000) {
-                const shouldRestore = confirm('Знайдені збережені дані інвентаризації. Відновити їх?');
-                
-                if (shouldRestore) {
-                    formData.selectedItems.forEach(itemId => {
-                        const checkbox = document.querySelector(`.item-checkbox[value="${itemId}"]`);
-                        if (checkbox) {
-                            checkbox.checked = true;
-                            toggleItem(checkbox, itemId);
-                            
-                            const row = checkbox.closest('tr');
-                            const quantityInput = row.querySelector('.actual-quantity');
-                            const noteInput = row.querySelector('.item-note');
-                            
-                            quantityInput.value = formData[`quantity_${itemId}`] || quantityInput.dataset.system;
-                            noteInput.value = formData[`note_${itemId}`] || '';
-                            
-                            calculateDifference(quantityInput);
-                        }
-                    });
-                }
-            }
-        } catch (e) {
-            console.error('Помилка відновлення данних:', e);
-        }
-    }
-}
-
-// Очистка localStorage при успешной отправке
-document.getElementById('inventoryForm').addEventListener('submit', function() {
-    localStorage.removeItem('inventoryFormData');
-});
-
-// Автосохранение каждые 30 секунд
-setInterval(function() {
-    if (selectedItems.size > 0) {
-        saveToLocalStorage();
-    }
-}, 30000);
-
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    restoreFromLocalStorage();
-    
-    // Добавляем обработчики для автоматического расчета разности
-    document.querySelectorAll('.actual-quantity').forEach(input => {
-        input.addEventListener('input', function() {
-            calculateDifference(this);
-        });
-    });
 });
 
 // Горячие клавиши
@@ -416,57 +352,6 @@ document.addEventListener('keydown', function(e) {
     min-width: 40px;
     display: inline-block;
     text-align: center;
-}
-
-#selectedCount {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #0d6efd;
-}
-
-.form-control-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
-
-/* Адаптивность для мобильных устройств */
-@media (max-width: 768px) {
-    .table-responsive {
-        font-size: 0.875rem;
-    }
-    
-    .form-control-sm {
-        padding: 0.125rem 0.25rem;
-        font-size: 0.75rem;
-    }
-}
-
-/* Анимация для выбранных строк */
-.item-row {
-    transition: background-color 0.3s ease;
-}
-
-.item-row.table-primary {
-    animation: highlightRow 0.5s ease-in-out;
-}
-
-@keyframes highlightRow {
-    0% { background-color: transparent; }
-    50% { background-color: rgba(13, 110, 253, 0.3); }
-    100% { background-color: rgba(13, 110, 253, 0.1); }
-}
-
-/* Стилизация для количества товаров с расхождениями */
-.badge.bg-success::before {
-    content: '📈 ';
-}
-
-.badge.bg-danger::before {
-    content: '📉 ';
-}
-
-.badge.bg-light::before {
-    content: '✅ ';
 }
 </style>
 @endpush
