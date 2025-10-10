@@ -2,7 +2,7 @@
 // app/Http/Controllers/WarehouseController.php
 namespace App\Http\Controllers;
 
-use App\Models\RoomInventory; // ЗМІНЕНО: замість WarehouseItem
+use App\Models\RoomInventory;
 use App\Models\WarehouseMovement;
 use App\Models\Branch;
 use Illuminate\Http\Request;
@@ -17,7 +17,7 @@ class WarehouseController extends Controller
     public function index(Request $request)
     {
         // Отримуємо тільки товари зі складу
-        $query = RoomInventory::warehouse(); // використовуємо scope
+        $query = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID);
 
         if ($request->filled('category')) {
             $query->where('category', $request->category);
@@ -26,26 +26,31 @@ class WarehouseController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('equipment_type', 'like', "%{$search}%") // назва товару
-                  ->orWhere('inventory_number', 'like', "%{$search}%") // код товару
+                $q->where('equipment_type', 'like', "%{$search}%")
+                  ->orWhere('inventory_number', 'like', "%{$search}%")
                   ->orWhere('notes', 'like', "%{$search}%");
             });
         }
 
         if ($request->filled('low_stock')) {
-            $query->lowStock();
+            $query->where(function($q) {
+                $q->whereRaw('quantity <= min_quantity')
+                  ->orWhere('quantity', '<=', 0);
+            });
         }
 
         $items = $query->orderBy('equipment_type')->paginate(20);
         
         // Категорії товарів складу
-        $categories = RoomInventory::warehouse()
+        $categories = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->whereNotNull('category')
             ->distinct()
             ->pluck('category')
             ->filter();
         
-        $lowStockCount = RoomInventory::lowStock()->count();
+        $lowStockCount = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
+            ->whereRaw('quantity <= min_quantity')
+            ->count();
 
         return view('warehouse.index', compact('items', 'categories', 'lowStockCount'));
     }
@@ -53,12 +58,12 @@ class WarehouseController extends Controller
     public function show(RoomInventory $item)
     {
         // Перевіряємо чи це складський товар
-        if (!$item->isWarehouseItem()) {
+        if ($item->branch_id != self::WAREHOUSE_BRANCH_ID) {
             abort(404, 'Це не складський товар');
         }
 
         $item->load(['movements' => function($query) {
-            $query->with(['user', 'issuedToUser'])->orderBy('created_at', 'desc')->limit(20);
+            $query->with(['user'])->orderBy('created_at', 'desc')->limit(20);
         }]);
 
         return view('warehouse.show', compact('item'));
@@ -66,7 +71,7 @@ class WarehouseController extends Controller
 
     public function create()
     {
-        $categories = RoomInventory::warehouse()
+        $categories = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->whereNotNull('category')
             ->distinct()
             ->pluck('category')
@@ -78,8 +83,8 @@ class WarehouseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'equipment_type' => 'required|string|max:255', // назва товару
-            'inventory_number' => 'required|string|max:255|unique:room_inventory,inventory_number', // код товару
+            'equipment_type' => 'required|string|max:255',
+            'inventory_number' => 'required|string|max:255|unique:room_inventory,inventory_number',
             'notes' => 'nullable|string',
             'unit' => 'required|string|max:20',
             'quantity' => 'required|integer|min:0',
@@ -90,10 +95,10 @@ class WarehouseController extends Controller
 
         $item = RoomInventory::create([
             'branch_id' => self::WAREHOUSE_BRANCH_ID,
-            'room_number' => $request->category ?? 'Загальний', // категорія як "кімната"
-            'equipment_type' => $request->equipment_type, // назва товару
-            'inventory_number' => $request->inventory_number, // код товару
-            'notes' => $request->notes, // опис
+            'room_number' => $request->category ?? 'Загальний',
+            'equipment_type' => $request->equipment_type,
+            'inventory_number' => $request->inventory_number,
+            'notes' => $request->notes,
             'unit' => $request->unit,
             'quantity' => $request->quantity,
             'min_quantity' => $request->min_quantity,
@@ -120,11 +125,11 @@ class WarehouseController extends Controller
 
     public function edit(RoomInventory $item)
     {
-        if (!$item->isWarehouseItem()) {
+        if ($item->branch_id != self::WAREHOUSE_BRANCH_ID) {
             abort(404, 'Це не складський товар');
         }
 
-        $categories = RoomInventory::warehouse()
+        $categories = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->whereNotNull('category')
             ->distinct()
             ->pluck('category')
@@ -135,7 +140,7 @@ class WarehouseController extends Controller
 
     public function update(Request $request, RoomInventory $item)
     {
-        if (!$item->isWarehouseItem()) {
+        if ($item->branch_id != self::WAREHOUSE_BRANCH_ID) {
             abort(404, 'Це не складський товар');
         }
 
@@ -165,7 +170,7 @@ class WarehouseController extends Controller
 
     public function receipt(Request $request, RoomInventory $item)
     {
-        if (!$item->isWarehouseItem()) {
+        if ($item->branch_id != self::WAREHOUSE_BRANCH_ID) {
             abort(404, 'Це не складський товар');
         }
 
@@ -197,7 +202,7 @@ class WarehouseController extends Controller
 
     public function issue(Request $request, RoomInventory $item)
     {
-        if (!$item->isWarehouseItem()) {
+        if ($item->branch_id != self::WAREHOUSE_BRANCH_ID) {
             abort(404, 'Це не складський товар');
         }
 
@@ -228,7 +233,7 @@ class WarehouseController extends Controller
 
     public function movements(Request $request)
     {
-        $query = WarehouseMovement::with(['user', 'inventoryItem', 'issuedToUser']);
+        $query = WarehouseMovement::with(['user', 'inventoryItem']);
 
         if ($request->filled('type')) {
             $query->where('type', $request->type);

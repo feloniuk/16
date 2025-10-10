@@ -53,9 +53,9 @@ class InventoryController extends Controller
 
         // Групування по найменуванню для відображення
         if ($request->filled('group_view') && $request->group_view == '1') {
-            $grouped = $query->orderBy('equipment_type')
-                ->get()
-                ->groupBy('equipment_type')
+            $items = $query->orderBy('equipment_type')->get();
+            
+            $grouped = $items->groupBy('equipment_type')
                 ->map(function ($items) {
                     return [
                         'name' => $items->first()->equipment_type,
@@ -112,7 +112,8 @@ class InventoryController extends Controller
         // Замени картриджів якщо це принтер
         $cartridgeReplacements = null;
         if (stripos($inventory->equipment_type, 'принтер') !== false || 
-            stripos($inventory->equipment_type, 'мфу') !== false) {
+            stripos($inventory->equipment_type, 'мфу') !== false ||
+            stripos($inventory->equipment_type, 'бфп') !== false) {
             $cartridgeReplacements = \App\Models\CartridgeReplacement::where('printer_inventory_id', $inventory->id)
                 ->orderBy('replacement_date', 'desc')
                 ->limit(10)
@@ -153,7 +154,7 @@ class InventoryController extends Controller
                 $fromRoomNumber = $inventory->room_number;
 
                 if ($quantityToTransfer == $inventory->quantity) {
-                    // Переміщуємо всю позицію - просто змінюємо branch_id і room
+                    // Переміщуємо всю позицію
                     $inventory->update([
                         'branch_id' => $request->to_branch_id,
                         'room_number' => $request->to_room_number,
@@ -161,7 +162,7 @@ class InventoryController extends Controller
 
                     $transferredInventoryId = $inventory->id;
                 } else {
-                    // Часткове переміщення - зменшуємо кількість і створюємо новий запис
+                    // Часткове переміщення
                     $inventory->decrement('quantity', $quantityToTransfer);
 
                     $newInventory = $inventory->replicate();
@@ -290,7 +291,7 @@ class InventoryController extends Controller
             });
             
             return redirect()->route('inventory.index')
-                ->with('success', "Успішно додано {$request->items->count()} од. обладнання");
+                ->with('success', "Успішно додано " . count($request->items) . " од. обладнання");
                 
         } catch (\Exception $e) {
             Log::error('Bulk add error: ' . $e->getMessage());
@@ -300,9 +301,8 @@ class InventoryController extends Controller
         }
     }
 
-    /**
-     * Редагування позиції
-     */
+    // Решта методів залишається без змін...
+    
     public function edit(RoomInventory $inventory)
     {
         $branches = Branch::where('is_active', true)->get();
@@ -314,9 +314,6 @@ class InventoryController extends Controller
         return view('inventory.edit', compact('inventory', 'branches', 'balanceCodes'));
     }
 
-    /**
-     * Оновлення позиції
-     */
     public function update(Request $request, RoomInventory $inventory)
     {
         $request->validate([
@@ -342,9 +339,6 @@ class InventoryController extends Controller
             ->with('success', 'Обладнання оновлено');
     }
 
-    /**
-     * Видалення позиції
-     */
     public function destroy(RoomInventory $inventory)
     {
         $hasCartridges = \App\Models\CartridgeReplacement::where('printer_inventory_id', $inventory->id)->exists();
@@ -361,9 +355,6 @@ class InventoryController extends Controller
             ->with('success', 'Обладнання видалено');
     }
 
-    /**
-     * Експорт в Excel
-     */
     public function export(Request $request)
     {
         $query = RoomInventory::with('branch');
@@ -434,9 +425,6 @@ class InventoryController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    /**
-     * Валідація інвентарних номерів (AJAX)
-     */
     public function validateInventoryNumbers(Request $request)
     {
         $numbers = $request->input('numbers', []);
