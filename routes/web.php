@@ -66,11 +66,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Мастеры по ремонту
         Route::resource('repair-masters', RepairMasterController::class)->only(['index', 'store', 'update', 'destroy']);
         
-        // Инвентарь - ВСІ РОУТИ ПЕРЕД Route::resource
-        Route::post('/inventory/store-bulk', [InventoryController::class, 'storeBulk'])->name('inventory.store-bulk');
-        Route::post('/inventory/validate-numbers', [InventoryController::class, 'validateNumbers'])->name('inventory.validate-numbers');
+        // Основні маршрути інвентарю
         Route::resource('inventory', InventoryController::class);
-        Route::get('/inventory-export', [InventoryController::class, 'export'])->name('inventory.export');
+        
+        // Переміщення товарів
+        Route::get('inventory/{inventory}/transfer', [InventoryController::class, 'transferForm'])
+            ->name('inventory.transfer-form');
+        Route::post('inventory/{inventory}/transfer', [InventoryController::class, 'transfer'])
+            ->name('inventory.transfer');
+        
+        // Масове додавання
+        Route::post('inventory/bulk-store', [InventoryController::class, 'storeBulk'])
+            ->name('inventory.store-bulk');
+        
+        // Валідація інвентарних номерів (AJAX)
+        Route::post('inventory/validate-numbers', [InventoryController::class, 'validateInventoryNumbers'])
+            ->name('inventory.validate-numbers');
+        
+        // Експорт
+        Route::get('inventory-export', [InventoryController::class, 'export'])
+            ->name('inventory.export');
         
         // Експорт інвентарю
         Route::get('/inventory/export-form', [InventoryExportController::class, 'exportForm'])->name('inventory.export.form');
