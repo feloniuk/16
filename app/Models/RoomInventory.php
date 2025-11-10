@@ -1,5 +1,4 @@
 <?php
-// app/Models/RoomInventory.php
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,7 +9,12 @@ class RoomInventory extends Model
     use HasFactory;
 
     protected $table = 'room_inventory';
-    public $timestamps = true;
+    
+    // Вказуємо що використовуємо тільки created_at
+    const UPDATED_AT = null;
+    
+    // Або можна вимкнути timestamps повністю і керувати created_at вручну:
+    // public $timestamps = false;
 
     protected $fillable = [
         'admin_telegram_id',
@@ -27,6 +31,7 @@ class RoomInventory extends Model
         'price',
         'min_quantity',
         'category',
+        'balance_code',
         'notes'
     ];
 
@@ -35,9 +40,20 @@ class RoomInventory extends Model
         'quantity' => 'integer',
         'min_quantity' => 'integer',
         'price' => 'decimal:2',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'created_at' => 'datetime'
     ];
+
+    // Автоматично встановлювати created_at при створенні
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($model) {
+            if (!$model->created_at) {
+                $model->created_at = now();
+            }
+        });
+    }
 
     // Відносини
     public function branch()
@@ -70,16 +86,14 @@ class RoomInventory extends Model
         return $this->hasMany(PurchaseRequestItem::class, 'inventory_id');
     }
 
-    // Скопи (для складських товарів)
+    // Скопи
     public function scopeWarehouse($query)
     {
-        // Філія "Склад" має ID = 6
         return $query->where('branch_id', 6);
     }
 
     public function scopeEquipment($query)
     {
-        // Всі крім складу
         return $query->where('branch_id', '!=', 6);
     }
 
@@ -91,7 +105,7 @@ class RoomInventory extends Model
     public function scopeLowStock($query)
     {
         return $query->whereColumn('quantity', '<=', 'min_quantity')
-                     ->where('branch_id', 6); // Тільки для складу
+                     ->where('branch_id', 6);
     }
 
     // Методи

@@ -225,12 +225,16 @@ class InventoryController extends Controller
     public function create()
     {
         $branches = Branch::where('is_active', true)->get();
+        
         $balanceCodes = RoomInventory::whereNotNull('balance_code')
             ->distinct()
             ->pluck('balance_code')
             ->sort();
         
-        return view('inventory.create', compact('branches', 'balanceCodes'));
+        // Додаємо шаблони
+        $templates = \App\Models\InventoryTemplate::orderBy('equipment_type')->get();
+        
+        return view('inventory.create', compact('branches', 'balanceCodes', 'templates'));
     }
 
     /**
