@@ -10,6 +10,14 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+
 class InventoryController extends Controller
 {
     /**
@@ -19,13 +27,17 @@ class InventoryController extends Controller
     {
         $query = RoomInventory::with('branch');
 
-        // Фільтри
+        // Фильтры
         if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
         }
 
         if ($request->filled('balance_code')) {
             $query->where('balance_code', $request->balance_code);
+        }
+
+        if ($request->filled('room_number')) {
+            $query->where('room_number', 'like', '%' . $request->room_number . '%');
         }
 
         if ($request->filled('equipment_type')) {
@@ -36,12 +48,12 @@ class InventoryController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('inventory_number', 'like', "%{$search}%")
-                  ->orWhere('equipment_type', 'like', "%{$search}%")
-                  ->orWhere('balance_code', 'like', "%{$search}%")
-                  ->orWhere('serial_number', 'like', "%{$search}%")
-                  ->orWhere('brand', 'like', "%{$search}%")
-                  ->orWhere('model', 'like', "%{$search}%")
-                  ->orWhere('room_number', 'like', "%{$search}%");
+                ->orWhere('equipment_type', 'like', "%{$search}%")
+                ->orWhere('balance_code', 'like', "%{$search}%")
+                ->orWhere('serial_number', 'like', "%{$search}%")
+                ->orWhere('brand', 'like', "%{$search}%")
+                ->orWhere('model', 'like', "%{$search}%")
+                ->orWhere('room_number', 'like', "%{$search}%");
             });
         }
 
@@ -53,9 +65,9 @@ class InventoryController extends Controller
 
         // Групування по найменуванню для відображення
         if ($request->filled('group_view') && $request->group_view == '1') {
-            $items = $query->orderBy('equipment_type')->get();
+            $inventory = $query->orderBy('equipment_type')->get();
             
-            $grouped = $items->groupBy('equipment_type')
+            $grouped = $inventory->groupBy('equipment_type')
                 ->map(function ($items) {
                     return [
                         'name' => $items->first()->equipment_type,
@@ -71,6 +83,10 @@ class InventoryController extends Controller
 
         // Звичайний список
         $inventory = $query->orderBy('created_at', 'desc')->paginate(20);
+        
+        // Додаємо параметри запиту до посилань пагінації
+        $inventory->appends($request->query());
+
         $branches = Branch::where('is_active', true)->get();
         
         // Коди балансів для фільтра
@@ -251,7 +267,7 @@ class InventoryController extends Controller
             'items.*.brand' => 'nullable|string|max:100',
             'items.*.model' => 'nullable|string|max:100',
             'items.*.serial_number' => 'nullable|string|max:255',
-            'items.*.inventory_number' => 'required|string|max:255|unique:room_inventory,inventory_number',
+            'items.*.inventory_number' => 'required|string|max:255',
             'items.*.quantity' => 'nullable|integer|min:1',
             'general_notes' => 'nullable|string|max:1000'
         ]);
@@ -363,12 +379,17 @@ class InventoryController extends Controller
     {
         $query = RoomInventory::with('branch');
 
+        // Применяем те же фильтры, что и в методе index
         if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
         }
 
         if ($request->filled('balance_code')) {
             $query->where('balance_code', $request->balance_code);
+        }
+
+        if ($request->filled('room_number')) {
+            $query->where('room_number', 'like', '%' . $request->room_number . '%');
         }
 
         if ($request->filled('equipment_type')) {
@@ -379,54 +400,125 @@ class InventoryController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('inventory_number', 'like', "%{$search}%")
-                  ->orWhere('equipment_type', 'like', "%{$search}%");
+                ->orWhere('equipment_type', 'like', "%{$search}%")
+                ->orWhere('balance_code', 'like', "%{$search}%")
+                ->orWhere('serial_number', 'like', "%{$search}%")
+                ->orWhere('brand', 'like', "%{$search}%")
+                ->orWhere('model', 'like', "%{$search}%")
+                ->orWhere('room_number', 'like', "%{$search}%");
             });
         }
 
-        $inventory = $query->orderBy('balance_code')
+        $inventory = $query->orderBy('branch_id')
+            ->orderBy('room_number')
             ->orderBy('equipment_type')
-            ->orderBy('inventory_number')
             ->get();
 
-        $filename = 'inventory_' . date('Y-m-d_H-i') . '.csv';
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
         
-        $headers = [
-            'Content-Type' => 'text/csv; charset=utf-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        // Стили для заголовков
+        $headerStyle = [
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF']
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '4472C4']
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => '000000']
+                ]
+            ]
         ];
 
-        $callback = function() use ($inventory) {
-            $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            fputcsv($file, [
-                'ID', 'Код балансу', 'Найменування', 'Філія', 'Кабінет',
-                'Бренд', 'Модель', 'Серійний №', 'Інвентарний №', 
-                'Кількість', 'Од.виміру', 'Ціна', 'Примітки'
-            ], ';');
+        // Стили для данных
+        $dataStyle = [
+            'alignment' => [
+                'vertical' => Alignment::VERTICAL_CENTER,
+                'horizontal' => Alignment::HORIZONTAL_LEFT,
+                'wrapText' => true
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => '000000']
+                ]
+            ]
+        ];
 
-            foreach ($inventory as $item) {
-                fputcsv($file, [
-                    $item->id,
-                    $item->balance_code,
-                    $item->equipment_type,
-                    $item->branch->name,
-                    $item->room_number,
-                    $item->brand,
-                    $item->model,
-                    $item->serial_number,
-                    $item->inventory_number,
-                    $item->quantity,
-                    $item->unit,
-                    $item->price,
-                    $item->notes,
-                ], ';');
-            }
+        // Заголовки
+        $headers = [
+            '№ п/п', 'Філія', 'Кабінет', 'Код балансу', 
+            'Тип обладнання', 'Бренд', 'Модель', 
+            'Серійний №', 'Інвентарний №', 
+            'Кількість', 'Од. виміру', 
+            'Ціна (грн)', 'Мін. к-сть', 'Примітки', 
+            'Дата створення'
+        ];
 
-            fclose($file);
-        };
+        // Встановлюємо заголовки
+        foreach ($headers as $col => $header) {
+            $cell = Coordinate::stringFromColumnIndex($col + 1) . '1';
+            $sheet->setCellValue($cell, $header);
+            $sheet->getStyle($cell)->applyFromArray($headerStyle);
+        }
 
-        return response()->stream($callback, 200, $headers);
+        // Додаємо дані
+        $row = 2;
+        foreach ($inventory as $item) {
+            $sheet->setCellValue('A' . $row, $row - 1)
+                ->setCellValue('B' . $row, $item->branch->name)
+                ->setCellValue('C' . $row, $item->room_number)
+                ->setCellValue('D' . $row, $item->balance_code)
+                ->setCellValue('E' . $row, $item->equipment_type)
+                ->setCellValue('F' . $row, $item->brand)
+                ->setCellValue('G' . $row, $item->model)
+                ->setCellValue('H' . $row, $item->serial_number)
+                ->setCellValue('I' . $row, $item->inventory_number)
+                ->setCellValue('J' . $row, $item->quantity)
+                ->setCellValue('K' . $row, $item->unit)
+                ->setCellValue('L' . $row, $item->price)
+                ->setCellValue('M' . $row, $item->min_quantity)
+                ->setCellValue('N' . $row, $item->notes)
+                ->setCellValue('O' . $row, $item->created_at->format('d.m.Y H:i'));
+
+            // Застосовуємо стиль до всього рядка
+            $sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($dataStyle);
+
+            $row++;
+        }
+
+        // Автоширина стовпців
+        foreach (range('A', 'O') as $columnID) {
+            $sheet->getColumnDimension($columnID)->setAutoSize(true);
+        }
+
+        // Заморозка верхнього рядка
+        $sheet->freezePane('A2');
+
+        // Встановлення назви аркуша
+        $sheet->setTitle('Інвентар');
+
+        // Створення файлу
+        $filename = 'Інвентар_' . date('Y-m-d_H-i') . '.xlsx';
+        
+        $writer = new Xlsx($spreadsheet);
+        
+        // Відправка файлу
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        
+        $writer->save('php://output');
+        exit;
     }
 
     public function validateInventoryNumbers(Request $request)

@@ -57,8 +57,8 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="mb-0"><i class="bi bi-laptop"></i> Обладнання в кабінеті</h5>
                             <div>
-                                <button type="button" class="btn btn-sm btn-success" onclick="addItemFromTemplate()">
-                                    <i class="bi bi-list-ul"></i> З шаблону
+                                <button type="button" class="btn btn-sm btn-success" onclick="addComputerSet()">
+                                    <i class="bi bi-pc-display"></i> Комп'ютерний набір
                                 </button>
                                 <button type="button" class="btn btn-sm btn-primary" onclick="addItemRow()">
                                     <i class="bi bi-plus-lg"></i> Додати обладнання
@@ -134,52 +134,29 @@
         </div>
     </div>
 </div>
-
-<!-- Модалка вибору шаблону -->
-<div class="modal fade" id="templateModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-list-ul"></i> Обрати з шаблону</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <input type="text" class="form-control" id="templateSearch" 
-                           placeholder="Пошук шаблону...">
-                </div>
-                <div class="list-group" id="templateList">
-                    @foreach($templates as $template)
-                    <button type="button" class="list-group-item list-group-item-action template-item" 
-                            data-template="{{ json_encode([
-                                'equipment_type' => $template->equipment_type,
-                                'brand' => $template->brand,
-                                'model' => $template->model,
-                                'requires_serial' => $template->requires_serial,
-                                'requires_inventory' => $template->requires_inventory
-                            ]) }}">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>{{ $template->equipment_type }}</strong>
-                                @if($template->brand || $template->model)
-                                    <br><small class="text-muted">{{ $template->brand }} {{ $template->model }}</small>
-                                @endif
-                            </div>
-                            <span class="badge bg-primary">Обрати</span>
-                        </div>
-                    </button>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 @endsection
 
 @push('scripts')
 <script>
 let itemCounter = 0;
+
+// Додавання комп'ютерного набору
+function addComputerSet() {
+    const computerTypes = [
+        { type: 'Комп\'ютер', brand: '', model: '' },
+        { type: 'Монітор', brand: 'Acer', model: '' },
+        { type: 'Клавіатура', brand: '', model: '' },
+        { type: 'Миша', brand: '', model: '' }
+    ];
+
+    computerTypes.forEach(item => {
+        addItemRow({
+            equipment_type: item.type,
+            brand: item.brand,
+            model: item.model
+        });
+    });
+}
 
 // Додавання нового рядка обладнання
 function addItemRow(templateData = null) {
@@ -237,14 +214,12 @@ function addItemRow(templateData = null) {
         <td>
             <input type="text" name="items[${itemCounter}][serial_number]" 
                    class="form-control form-control-sm" 
-                   placeholder="S/N"
-                   ${templateData?.requires_serial ? 'required' : ''}>
+                   placeholder="S/N">
         </td>
         <td>
             <input type="text" name="items[${itemCounter}][inventory_number]" 
                    class="form-control form-control-sm" 
-                   placeholder="INV-00${itemCounter + 1}" 
-                   required>
+                   placeholder="INV-00${itemCounter + 1}">
         </td>
         <td class="text-center">
             <button type="button" class="btn btn-sm btn-outline-danger" 
@@ -264,7 +239,6 @@ function addItemRow(templateData = null) {
     row.querySelector('input').focus();
 }
 
-// Видалення рядка
 function removeItemRow(button) {
     const row = button.closest('tr');
     row.remove();
@@ -408,75 +382,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // AJAX валідація інвентарних номерів при втраті фокусу
-    document.getElementById('itemsTableBody').addEventListener('blur', function(e) {
-        if (e.target.name && e.target.name.includes('[inventory_number]')) {
-            validateInventoryNumber(e.target);
-        }
-    }, true);
 });
-
-// Валідація інвентарного номера
-async function validateInventoryNumber(input) {
-    const value = input.value.trim();
-    if (!value) return;
-    
-    try {
-        const response = await fetch('{{ route("inventory.validate-numbers") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                numbers: [value]
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (!data.valid && data.duplicates.includes(value)) {
-            input.classList.add('is-invalid');
-            
-            // Показуємо повідомлення
-            let feedback = input.nextElementSibling;
-            if (!feedback || !feedback.classList.contains('invalid-feedback')) {
-                feedback = document.createElement('div');
-                feedback.className = 'invalid-feedback';
-                input.parentNode.appendChild(feedback);
-            }
-            feedback.textContent = 'Цей інвентарний номер вже існує!';
-            feedback.style.display = 'block';
-        } else {
-            input.classList.remove('is-invalid');
-            const feedback = input.nextElementSibling;
-            if (feedback && feedback.classList.contains('invalid-feedback')) {
-                feedback.style.display = 'none';
-            }
-        }
-    } catch (error) {
-        console.error('Помилка валідації:', error);
-    }
-}
-
-// Швидке введення (Enter для переходу до наступного поля)
-document.getElementById('itemsTableBody').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
-        e.preventDefault();
-        
-        const currentRow = e.target.closest('tr');
-        const inputs = Array.from(currentRow.querySelectorAll('input'));
-        const currentIndex = inputs.indexOf(e.target);
-        
-        // Якщо це останнє поле в рядку - додаємо новий рядок
-        if (currentIndex === inputs.length - 1) {
-            addItemRow();
-        } else {
-            // Переходимо до наступного поля
-            inputs[currentIndex + 1]?.focus();
-        }
-    }
-}, true);
 </script>
 
 <style>

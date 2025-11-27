@@ -21,6 +21,13 @@
                 </div>
                 
                 <div class="col-md-2">
+                    <label for="room_number" class="form-label">Кабінет</label>
+                    <input type="text" name="room_number" id="room_number" 
+                           class="form-control" placeholder="Номер кабінету"
+                           value="{{ request('room_number') }}">
+                </div>
+
+                <div class="col-md-2">
                     <label for="balance_code" class="form-label">Код балансу</label>
                     <select name="balance_code" id="balance_code" class="form-select">
                         <option value="">Всі коди</option>
@@ -39,7 +46,7 @@
                            value="{{ request('equipment_type') }}">
                 </div>
                 
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="search" class="form-label">Загальний пошук</label>
                     <input type="text" name="search" id="search" class="form-control" 
                            placeholder="Інв.номер, серійний номер..." 
@@ -56,9 +63,9 @@
                     </div>
                 </div>
                 
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Фільтрувати
+                        <i class="bi bi-search"></i> Пошук
                     </button>
                 </div>
             </form>
@@ -67,7 +74,7 @@
 </div>
 
 <!-- Статистика фільтрації -->
-@if(request()->hasAny(['branch_id', 'balance_code', 'equipment_type', 'search']))
+@if(request()->hasAny(['branch_id', 'balance_code', 'equipment_type', 'room_number', 'search']))
 <div class="row mb-3">
     <div class="col">
         <div class="alert alert-info d-flex justify-content-between align-items-center">
@@ -97,7 +104,7 @@
             </h2>
             <div>
                 <a href="{{ route('inventory.export', request()->all()) }}" 
-                   class="btn btn-outline-success me-2">
+                class="btn btn-outline-success me-2">
                     <i class="bi bi-file-earmark-excel"></i> Експорт
                 </a>
                 <a href="{{ route('inventory.create') }}" class="btn btn-primary">
@@ -107,6 +114,21 @@
         </div>
     </div>
 </div>
+
+<!-- Пагінація -->
+@if($inventory->total() > 0)
+<div class="stats-card mb-4 p-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            Показано {{ $inventory->firstItem() }} - {{ $inventory->lastItem() }} 
+            з {{ $inventory->total() }} записів
+        </div>
+        <div>
+            {{ $inventory->withQueryString()->links('vendor.pagination.bootstrap-5') }}
+        </div>
+    </div>
+</div>
+@endif
 
 <!-- Таблиця інвентарю -->
 <div class="stats-card">
@@ -177,10 +199,6 @@
                     </tbody>
                 </table>
             </div>
-            
-            <div class="card-footer bg-white">
-                {{ $inventory->withQueryString()->links() }}
-            </div>
         @else
             <div class="text-center py-5">
                 <i class="bi bi-inbox fs-1 text-muted"></i>
@@ -193,6 +211,21 @@
         @endif
     </div>
 </div>
+
+<!-- Друга пагінація -->
+@if($inventory->total() > 0)
+<div class="stats-card mt-4 p-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            Показано {{ $inventory->firstItem() }} - {{ $inventory->lastItem() }} 
+            з {{ $inventory->total() }} записів
+        </div>
+        <div>
+            {{ $inventory->withQueryString()->links('vendor.pagination.bootstrap-5') }}
+        </div>
+    </div>
+</div>
+@endif
 
 <!-- Статистика по типах -->
 @if($equipmentStats->count() > 0)
@@ -232,6 +265,8 @@
 @endif
 @endsection
 
+
+
 @push('styles')
 <style>
 .table td {
@@ -243,6 +278,13 @@
 }
 code {
     font-size: 0.9em;
+}
+.pagination {
+    margin: 0;
+}
+.page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
 }
 </style>
 @endpush
