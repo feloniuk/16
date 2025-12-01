@@ -77,8 +77,13 @@ class InventoryController extends Controller
                         'items' => $items,
                     ];
                 });
+                $totals = $this->calculateGroupedTotals($grouped);
 
-            return view('inventory.index-grouped', compact('grouped', 'filteredStats'));
+                return view('inventory.index-grouped', compact(
+                    'filteredStats', 
+                    'grouped',
+                    'totals'
+                ));
         }
 
         // Звичайний список
@@ -109,6 +114,25 @@ class InventoryController extends Controller
             'balanceCodes',
             'filteredStats'
         ));
+    }
+
+    public function calculateGroupedTotals($grouped)
+    {
+        $totals = [
+            'total_equipment_types' => $grouped->count(),
+            'total_positions' => $grouped->sum('count'),
+            'total_quantity' => $grouped->sum('total_quantity'),
+            'total_balance_groups' => $grouped->pluck('balance_code')->unique()->count(),
+            'balance_code_details' => $grouped->groupBy('balance_code')->map(function($group) {
+                return [
+                    'equipment_types_count' => $group->count(),
+                    'positions_count' => $group->sum('count'),
+                    'total_quantity' => $group->sum('total_quantity')
+                ];
+            })
+        ];
+
+        return $totals;
     }
 
     /**

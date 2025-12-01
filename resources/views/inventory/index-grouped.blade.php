@@ -170,6 +170,80 @@
             </div>
         </div>
     @endif
+
+    <!-- Итоговая статистика -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="stats-card p-4">
+            <h5 class="mb-3">Итоговая статистика</h5>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card border-primary mb-2">
+                        <div class="card-body text-center">
+                            <h3 class="text-primary mb-0">{{ $totals['total_equipment_types'] }}</h3>
+                            <small class="text-muted">Уникальных наименований</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-info mb-2">
+                        <div class="card-body text-center">
+                            <h3 class="text-info mb-0">{{ $totals['total_positions'] }}</h3>
+                            <small class="text-muted">Позиций</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-success mb-2">
+                        <div class="card-body text-center">
+                            <h3 class="text-success mb-0">{{ $totals['total_quantity'] }}</h3>
+                            <small class="text-muted">Общее количество</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-warning mb-2">
+                        <div class="card-body text-center">
+                            <h3 class="text-warning mb-0">{{ $totals['total_balance_groups'] }}</h3>
+                            <small class="text-muted">Групп баланса</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Детали групп баланса -->
+            <div class="table-responsive mt-3">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Группа баланса</th>
+                            <th>Уникальных наименований</th>
+                            <th>Позиций</th>
+                            <th>Общее количество</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($totals['balance_code_details'] as $balanceCode => $details)
+                        <tr>
+                            <td>{{ $balanceCode }}</td>
+                            <td>{{ $details['equipment_types_count'] }}</td>
+                            <td>{{ $details['positions_count'] }}</td>
+                            <td>{{ $details['total_quantity'] }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Кнопка экспорта -->
+            <div class="text-end mt-3">
+                <a href="{{ route('inventory.export.totals', request()->all()) }}" class="btn btn-success">
+                    <i class="bi bi-file-excel"></i> Экспорт итогов
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 @endsection
 

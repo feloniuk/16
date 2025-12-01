@@ -84,6 +84,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('inventory.validate-numbers');
         
         // Експорт
+        
+        Route::get('/inventory/export/totals', [InventoryExportController::class, 'exportGroupedTotals'])
+    ->name('inventory.export.totals');
+    
         Route::get('inventory-export', [InventoryController::class, 'export'])
             ->name('inventory.export');
         
@@ -92,6 +96,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/inventory/export-printers', [InventoryExportController::class, 'exportPrinters'])->name('inventory.export.printers');
         Route::get('/inventory/export-branch', [InventoryExportController::class, 'exportByBranch'])->name('inventory.export.branch');
         Route::get('/inventory/export-room', [InventoryExportController::class, 'exportByRoom'])->name('inventory.export.room');
+
     });
 
     // API маршруты для AJAX запросов

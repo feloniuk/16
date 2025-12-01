@@ -36,6 +36,95 @@ class InventoryExportController extends Controller
         return $this->generateExcel($printers, 'Принтери');
     }
 
+    public function exportGroupedTotals(Request $request)
+    {
+        // Воссоздаем логику группировки из контроллера
+        $query = RoomInventory::with('branch');
+
+        // Применяем те же фильтры, что и в методе index
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        // ... (остальные фильтры как в основном методе)
+
+        $inventory = $query->get();
+
+        $grouped = $inventory->groupBy('equipment_type')
+            ->map(function ($items) {
+                return [
+                    'name' => $items->first()->equipment_type,
+                    'count' => $items->count(),
+                    'total_quantity' => $items->sum('quantity'),
+                    'balance_code' => $items->first()->balance_code,
+                    'items' => $items,
+                ];
+            });
+
+        // Создаем Excel файл с итогами
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Итоги инвентаря');
+
+        // Заголовки
+        $headers = [
+            'Общая статистика',
+            'Значение'
+        ];
+        $sheet->fromArray([$headers], null, 'A1');
+
+        // Стили для заголовков
+        $sheet->getStyle('A1:B1')->applyFromArray([
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => 'E3F2FD']
+            ]
+        ]);
+
+        // Общие итоги
+        $totalStats = [
+            ['Уникальных наименований', $grouped->count()],
+            ['Позиций', $grouped->sum('count')],
+            ['Общее количество', $grouped->sum('total_quantity')],
+            ['Групп баланса', $grouped->pluck('balance_code')->unique()->count()]
+        ];
+        $sheet->fromArray($totalStats, null, 'A2');
+
+        // Группы баланса
+        $balanceDetails = $grouped->groupBy('balance_code')
+            ->map(function($group) {
+                return [
+                    $group->first()->balance_code,
+                    $group->count(),
+                    $group->sum('count'),
+                    $group->sum('total_quantity')
+                ];
+            });
+
+        $sheet->fromArray([
+            ['', '', '', ''],
+            ['Группы баланса', 'Уникальных наименований', 'Позиций', 'Общее количество']
+        ], null, 'A6');
+        $sheet->fromArray($balanceDetails->values()->toArray(), null, 'A8');
+
+        // Автоширина колонок
+        foreach (range('A', 'D') as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        // Сохраняем файл
+        $filename = 'inventory_totals_' . date('Y-m-d_H-i') . '.xlsx';
+        $writer = new Xlsx($spreadsheet);
+        
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        
+        $writer->save('php://output');
+        exit;
+    }
+
     public function exportByBranch(Request $request)
     {
         $branchId = $request->get('branch_id');
