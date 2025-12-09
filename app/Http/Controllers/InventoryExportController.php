@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class InventoryExportController extends Controller
 {
@@ -38,18 +39,41 @@ class InventoryExportController extends Controller
 
     public function exportGroupedTotals(Request $request)
     {
-        // Воссоздаем логику группировки из контроллера
         $query = RoomInventory::with('branch');
 
-        // Применяем те же фильтры, что и в методе index
+        // Применяем фильтры как в основном методе index
         if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
         }
 
-        // ... (остальные фильтры как в основном методе)
+        if ($request->filled('room_number')) {
+            $query->where('room_number', 'like', '%' . $request->room_number . '%');
+        }
+
+        if ($request->filled('balance_code')) {
+            $query->where('balance_code', $request->balance_code);
+        }
+
+        if ($request->filled('equipment_type')) {
+            $query->where('equipment_type', 'like', '%' . $request->equipment_type . '%');
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('inventory_number', 'like', "%{$search}%")
+                ->orWhere('equipment_type', 'like', "%{$search}%")
+                ->orWhere('balance_code', 'like', "%{$search}%")
+                ->orWhere('serial_number', 'like', "%{$search}%")
+                ->orWhere('brand', 'like', "%{$search}%")
+                ->orWhere('model', 'like', "%{$search}%")
+                ->orWhere('room_number', 'like', "%{$search}%");
+            });
+        }
 
         $inventory = $query->get();
 
+        // Группировка
         $grouped = $inventory->groupBy('equipment_type')
             ->map(function ($items) {
                 return [
@@ -57,6 +81,9 @@ class InventoryExportController extends Controller
                     'count' => $items->count(),
                     'total_quantity' => $items->sum('quantity'),
                     'balance_code' => $items->first()->balance_code,
+                    'total_price' => $items->sum(function($item) {
+                        return $item->quantity * ($item->price ?? 0);
+                    }),
                     'items' => $items,
                 ];
             });
@@ -66,50 +93,137 @@ class InventoryExportController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Итоги инвентаря');
 
-        // Заголовки
-        $headers = [
-            'Общая статистика',
-            'Значение'
-        ];
-        $sheet->fromArray([$headers], null, 'A1');
-
-        // Стили для заголовков
-        $sheet->getStyle('A1:B1')->applyFromArray([
-            'font' => ['bold' => true],
+        // Стили
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => 'E3F2FD']
+                'startColor' => ['rgb' => '4472C4']
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => '000000']
+                ]
             ]
-        ]);
+        ];
 
-        // Общие итоги
+        $dataStyle = [
+            'alignment' => [
+                'vertical' => Alignment::VERTICAL_CENTER,
+                'horizontal' => Alignment::HORIZONTAL_LEFT,
+                'wrapText' => true
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => '000000']
+                ]
+            ]
+        ];
+
+        // Общая статистика
+        $sheet->setCellValue('A1', 'Общая статистика');
+        $sheet->setCellValue('B1', 'Значение');
+        $sheet->getStyle('A1:B1')->applyFromArray($headerStyle);
+
         $totalStats = [
             ['Уникальных наименований', $grouped->count()],
             ['Позиций', $grouped->sum('count')],
             ['Общее количество', $grouped->sum('total_quantity')],
-            ['Групп баланса', $grouped->pluck('balance_code')->unique()->count()]
+            ['Групп баланса', $grouped->pluck('balance_code')->unique()->count()],
+            ['Общая стоимость', number_format($grouped->sum('total_price'), 2) . ' грн']
         ];
-        $sheet->fromArray($totalStats, null, 'A2');
+
+        // Заполнение общей статистики
+        foreach ($totalStats as $index => $stat) {
+            $sheet->setCellValue("A" . ($index + 2), $stat[0]);
+            $sheet->setCellValue("B" . ($index + 2), $stat[1]);
+        }
+        $sheet->getStyle('A2:B' . (count($totalStats) + 1))->applyFromArray($dataStyle);
 
         // Группы баланса
         $balanceDetails = $grouped->groupBy('balance_code')
             ->map(function($group) {
                 return [
-                    $group->first()->balance_code,
-                    $group->count(),
-                    $group->sum('count'),
-                    $group->sum('total_quantity')
+                    'balance_code' => $group->first()->balance_code,
+                    'equipment_types_count' => $group->count(),
+                    'positions_count' => $group->sum('count'),
+                    'total_quantity' => $group->sum('total_quantity'),
+                    'total_price' => $group->sum('total_price')
                 ];
             });
 
-        $sheet->fromArray([
-            ['', '', '', ''],
-            ['Группы баланса', 'Уникальных наименований', 'Позиций', 'Общее количество']
-        ], null, 'A6');
-        $sheet->fromArray($balanceDetails->values()->toArray(), null, 'A8');
+        // Заголовки групп баланса
+        $sheet->setCellValue('A' . (count($totalStats) + 3), 'Группы баланса');
+        $sheet->mergeCells('A' . (count($totalStats) + 3) . ':E' . (count($totalStats) + 3));
+        $sheet->getStyle('A' . (count($totalStats) + 3))->applyFromArray($headerStyle);
+
+        // Заголовки таблицы групп баланса
+        $balanceHeaders = [
+            'Код баланса', 
+            'Уникальных наименований', 
+            'Позиций', 
+            'Общее количество',
+            'Общая стоимость (грн)'
+        ];
+        $startRow = count($totalStats) + 4;
+        foreach ($balanceHeaders as $col => $header) {
+            $sheet->setCellValue(chr(65 + $col) . $startRow, $header);
+        }
+        $sheet->getStyle('A' . $startRow . ':E' . $startRow)->applyFromArray($headerStyle);
+
+        // Заполнение данных групп баланса
+        $row = $startRow + 1;
+        foreach ($balanceDetails as $detail) {
+            $sheet->setCellValue('A' . $row, $detail['balance_code']);
+            $sheet->setCellValue('B' . $row, $detail['equipment_types_count']);
+            $sheet->setCellValue('C' . $row, $detail['positions_count']);
+            $sheet->setCellValue('D' . $row, $detail['total_quantity']);
+            $sheet->setCellValue('E' . $row, number_format($detail['total_price'], 2));
+            $row++;
+        }
+        $sheet->getStyle('A' . ($startRow + 1) . ':E' . ($row - 1))->applyFromArray($dataStyle);
+
+        // Детальная информация о наименованиях
+        $sheet->setCellValue('A' . $row, 'Детали наименований');
+        $sheet->mergeCells('A' . $row . ':F' . $row);
+        $sheet->getStyle('A' . $row)->applyFromArray($headerStyle);
+
+        // Заголовки для детальной информации
+        $detailHeaders = [
+            'Наименование', 
+            'Код баланса', 
+            'Позиций', 
+            'Общее количество', 
+            'Ед. измерения', 
+            'Общая стоимость (грн)'
+        ];
+        $row++;
+        foreach ($detailHeaders as $col => $header) {
+            $sheet->setCellValue(chr(65 + $col) . $row, $header);
+        }
+        $sheet->getStyle('A' . $row . ':F' . $row)->applyFromArray($headerStyle);
+
+        // Заполнение детальной информации
+        $row++;
+        foreach ($grouped->sortByDesc('total_quantity') as $detail) {
+            $sheet->setCellValue('A' . $row, $detail['name']);
+            $sheet->setCellValue('B' . $row, $detail['balance_code']);
+            $sheet->setCellValue('C' . $row, $detail['count']);
+            $sheet->setCellValue('D' . $row, $detail['total_quantity']);
+            $sheet->setCellValue('E' . $row, $detail['items']->first()->unit);
+            $sheet->setCellValue('F' . $row, number_format($detail['total_price'], 2));
+            $row++;
+        }
+        $sheet->getStyle('A' . ($row - $grouped->count()) . ':F' . ($row - 1))->applyFromArray($dataStyle);
 
         // Автоширина колонок
-        foreach (range('A', 'D') as $column) {
+        foreach (range('A', 'F') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
