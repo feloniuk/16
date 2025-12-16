@@ -1,9 +1,9 @@
-<?php 
+<?php
 
 namespace App\Http\Controllers;
 
-use App\Models\RepairRequest;
 use App\Models\Branch;
+use App\Models\RepairRequest;
 use Illuminate\Http\Request;
 
 class RepairRequestController extends Controller
@@ -23,14 +23,16 @@ class RepairRequestController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('room_number', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%");
+                    ->orWhere('room_number', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%");
             });
         }
 
         $repairs = $query->orderBy('created_at', 'desc')->paginate(20);
+        $repairs->appends($request->query());
+
         $branches = Branch::where('is_active', true)->get();
 
         return view('repairs.index', compact('repairs', 'branches'));
@@ -39,18 +41,19 @@ class RepairRequestController extends Controller
     public function show(RepairRequest $repair)
     {
         $repair->load('branch');
+
         return view('repairs.show', compact('repair'));
     }
 
     public function update(Request $request, RepairRequest $repair)
     {
         $request->validate([
-            'status' => 'required|in:нова,в_роботі,виконана'
+            'status' => 'required|in:нова,в_роботі,виконана',
         ]);
 
         $repair->update([
             'status' => $request->status,
-            'updated_at' => now()
+            'updated_at' => now(),
         ]);
 
         return redirect()->back()->with('success', 'Статус заявки оновлено');

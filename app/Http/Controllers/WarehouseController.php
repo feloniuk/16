@@ -1,10 +1,11 @@
 <?php
+
 // app/Http/Controllers/WarehouseController.php
+
 namespace App\Http\Controllers;
 
 use App\Models\RoomInventory;
 use App\Models\WarehouseMovement;
-use App\Models\Branch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,29 +26,30 @@ class WarehouseController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('equipment_type', 'like', "%{$search}%")
-                  ->orWhere('inventory_number', 'like', "%{$search}%")
-                  ->orWhere('notes', 'like', "%{$search}%");
+                    ->orWhere('inventory_number', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%");
             });
         }
 
         if ($request->filled('low_stock')) {
-            $query->where(function($q) {
+            $query->where(function ($q) {
                 $q->whereRaw('quantity <= min_quantity')
-                  ->orWhere('quantity', '<=', 0);
+                    ->orWhere('quantity', '<=', 0);
             });
         }
 
         $items = $query->orderBy('equipment_type')->paginate(20);
-        
+        $items->appends($request->query());
+
         // Категорії товарів складу
         $categories = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->whereNotNull('category')
             ->distinct()
             ->pluck('category')
             ->filter();
-        
+
         $lowStockCount = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->whereRaw('quantity <= min_quantity')
             ->count();
@@ -62,7 +64,7 @@ class WarehouseController extends Controller
             abort(404, 'Це не складський товар');
         }
 
-        $item->load(['movements' => function($query) {
+        $item->load(['movements' => function ($query) {
             $query->with(['user'])->orderBy('created_at', 'desc')->limit(20);
         }]);
 
@@ -76,7 +78,7 @@ class WarehouseController extends Controller
             ->distinct()
             ->pluck('category')
             ->filter();
-            
+
         return view('warehouse.create', compact('categories'));
     }
 
@@ -134,7 +136,7 @@ class WarehouseController extends Controller
             ->distinct()
             ->pluck('category')
             ->filter();
-            
+
         return view('warehouse.edit', compact('item', 'categories'));
     }
 
@@ -146,7 +148,7 @@ class WarehouseController extends Controller
 
         $request->validate([
             'equipment_type' => 'required|string|max:255',
-            'inventory_number' => 'required|string|max:255|unique:room_inventory,inventory_number,' . $item->id,
+            'inventory_number' => 'required|string|max:255|unique:room_inventory,inventory_number,'.$item->id,
             'notes' => 'nullable|string',
             'unit' => 'required|string|max:20',
             'min_quantity' => 'required|integer|min:0',
@@ -180,9 +182,9 @@ class WarehouseController extends Controller
             'document_number' => 'nullable|string|max:255',
         ]);
 
-        DB::transaction(function() use ($request, $item) {
+        DB::transaction(function () use ($request, $item) {
             $newBalance = $item->quantity + $request->quantity;
-            
+
             $item->update(['quantity' => $newBalance]);
 
             WarehouseMovement::create([
@@ -207,14 +209,14 @@ class WarehouseController extends Controller
         }
 
         $request->validate([
-            'quantity' => 'required|integer|min:1|max:' . $item->quantity,
+            'quantity' => 'required|integer|min:1|max:'.$item->quantity,
             'note' => 'nullable|string|max:500',
             'issued_to' => 'nullable|string|max:255',
         ]);
 
-        DB::transaction(function() use ($request, $item) {
+        DB::transaction(function () use ($request, $item) {
             $newBalance = $item->quantity - $request->quantity;
-            
+
             $item->update(['quantity' => $newBalance]);
 
             WarehouseMovement::create([
@@ -223,7 +225,7 @@ class WarehouseController extends Controller
                 'type' => 'issue',
                 'quantity' => -$request->quantity,
                 'balance_after' => $newBalance,
-                'note' => $request->note . ($request->issued_to ? " (Видано: {$request->issued_to})" : ''),
+                'note' => $request->note.($request->issued_to ? " (Видано: {$request->issued_to})" : ''),
                 'operation_date' => now()->toDateString(),
             ]);
         });
@@ -248,6 +250,7 @@ class WarehouseController extends Controller
         }
 
         $movements = $query->orderBy('created_at', 'desc')->paginate(20);
+        $movements->appends($request->query());
 
         return view('warehouse.movements', compact('movements'));
     }

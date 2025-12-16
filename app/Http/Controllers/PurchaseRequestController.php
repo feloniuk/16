@@ -1,9 +1,10 @@
 <?php
+
 // app/Http/Controllers/PurchaseRequestController.php
+
 namespace App\Http\Controllers;
 
 use App\Models\PurchaseRequest;
-use App\Models\PurchaseRequestItem;
 use App\Models\RoomInventory; // ЗМІНЕНО: замість WarehouseItem
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +31,7 @@ class PurchaseRequestController extends Controller
         }
 
         $requests = $query->orderBy('created_at', 'desc')->paginate(20);
+        $requests->appends($request->query());
 
         return view('purchase-requests.index', compact('requests'));
     }
@@ -37,6 +39,7 @@ class PurchaseRequestController extends Controller
     public function show(PurchaseRequest $purchaseRequest)
     {
         $purchaseRequest->load(['items.inventoryItem', 'user']);
+
         return view('purchase-requests.show', compact('purchaseRequest'));
     }
 
@@ -46,9 +49,9 @@ class PurchaseRequestController extends Controller
         $warehouseItems = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->orderBy('equipment_type')
             ->get();
-            
+
         $lowStockItems = RoomInventory::lowStock()->get();
-        
+
         return view('purchase-requests.create', compact('warehouseItems', 'lowStockItems'));
     }
 
@@ -65,7 +68,7 @@ class PurchaseRequestController extends Controller
             'items.*.estimated_price' => 'nullable|numeric|min:0',
         ]);
 
-        DB::transaction(function() use ($request) {
+        DB::transaction(function () use ($request) {
             $purchaseRequest = PurchaseRequest::create([
                 'user_id' => Auth::id(),
                 'description' => $request->description,
@@ -85,7 +88,7 @@ class PurchaseRequestController extends Controller
 
     public function edit(PurchaseRequest $purchaseRequest)
     {
-        if (!in_array($purchaseRequest->status, ['draft', 'submitted'])) {
+        if (! in_array($purchaseRequest->status, ['draft', 'submitted'])) {
             return redirect()->back()->withErrors(['Неможливо редагувати заявку в поточному статусі']);
         }
 
@@ -93,13 +96,13 @@ class PurchaseRequestController extends Controller
         $warehouseItems = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->orderBy('equipment_type')
             ->get();
-        
+
         return view('purchase-requests.edit', compact('purchaseRequest', 'warehouseItems'));
     }
 
     public function update(Request $request, PurchaseRequest $purchaseRequest)
     {
-        if (!in_array($purchaseRequest->status, ['draft', 'submitted'])) {
+        if (! in_array($purchaseRequest->status, ['draft', 'submitted'])) {
             return redirect()->back()->withErrors(['Неможливо редагувати заявку в поточному статусі']);
         }
 
@@ -114,7 +117,7 @@ class PurchaseRequestController extends Controller
             'items.*.estimated_price' => 'nullable|numeric|min:0',
         ]);
 
-        DB::transaction(function() use ($request, $purchaseRequest) {
+        DB::transaction(function () use ($request, $purchaseRequest) {
             $purchaseRequest->update([
                 'description' => $request->description,
                 'requested_date' => $request->requested_date,
@@ -122,7 +125,7 @@ class PurchaseRequestController extends Controller
             ]);
 
             $purchaseRequest->items()->delete();
-            
+
             foreach ($request->items as $itemData) {
                 $purchaseRequest->items()->create($itemData);
             }
@@ -147,6 +150,7 @@ class PurchaseRequestController extends Controller
     public function print(PurchaseRequest $purchaseRequest)
     {
         $purchaseRequest->load(['items.inventoryItem', 'user']);
+
         return view('purchase-requests.print', compact('purchaseRequest'));
     }
 }

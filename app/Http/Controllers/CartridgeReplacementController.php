@@ -1,9 +1,9 @@
-<?php 
+<?php
 
 namespace App\Http\Controllers;
 
-use App\Models\CartridgeReplacement;
 use App\Models\Branch;
+use App\Models\CartridgeReplacement;
 use Illuminate\Http\Request;
 
 class CartridgeReplacementController extends Controller
@@ -18,10 +18,10 @@ class CartridgeReplacementController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('cartridge_type', 'like', "%{$search}%")
-                  ->orWhere('printer_info', 'like', "%{$search}%")
-                  ->orWhere('room_number', 'like', "%{$search}%");
+                    ->orWhere('printer_info', 'like', "%{$search}%")
+                    ->orWhere('room_number', 'like', "%{$search}%");
             });
         }
 
@@ -34,6 +34,8 @@ class CartridgeReplacementController extends Controller
         }
 
         $cartridges = $query->orderBy('replacement_date', 'desc')->paginate(20);
+        $cartridges->appends($request->query());
+
         $branches = Branch::where('is_active', true)->get();
 
         return view('cartridges.index', compact('cartridges', 'branches'));
@@ -42,6 +44,7 @@ class CartridgeReplacementController extends Controller
     public function show(CartridgeReplacement $cartridge)
     {
         $cartridge->load('branch', 'printer');
+
         return view('cartridges.show', compact('cartridge'));
     }
 }

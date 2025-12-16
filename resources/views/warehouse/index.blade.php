@@ -150,10 +150,6 @@
                     </tbody>
                 </table>
             </div>
-            
-            <div class="card-footer bg-white">
-                {{ $items->withQueryString()->links() }}
-            </div>
         @else
             <div class="text-center py-5">
                 <i class="bi bi-box fs-1 text-muted"></i>
@@ -166,6 +162,21 @@
         @endif
     </div>
 </div>
+
+<!-- Pagination -->
+@if($items->total() > 0)
+<div class="stats-card mt-4 p-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            Показано {{ $items->firstItem() }} - {{ $items->lastItem() }}
+            з {{ $items->total() }} записів
+        </div>
+        <div>
+            {{ $items->withQueryString()->links('vendor.pagination.bootstrap-5') }}
+        </div>
+    </div>
+</div>
+@endif
 
 <!-- Receipt Modal -->
 <div class="modal fade" id="receiptModal" tabindex="-1">
@@ -269,4 +280,16 @@ function showIssueModal(itemId, itemName, available) {
     new bootstrap.Modal(document.getElementById('issueModal')).show();
 }
 </script>
+@endpush
+
+@push('styles')
+<style>
+.pagination {
+    margin: 0;
+}
+.page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+</style>
 @endpush

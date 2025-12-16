@@ -1,10 +1,12 @@
 <?php
+
 // app/Http/Controllers/WarehouseInventoryController.php
+
 namespace App\Http\Controllers;
 
+use App\Models\RoomInventory;
 use App\Models\WarehouseInventory;
-use App\Models\WarehouseInventoryItem;
-use App\Models\RoomInventory; // ЗМІНЕНО: замість WarehouseItem
+use App\Models\WarehouseInventoryItem; // ЗМІНЕНО: замість WarehouseItem
 use App\Models\WarehouseMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +31,7 @@ class WarehouseInventoryController extends Controller
         }
 
         $inventories = $query->orderBy('created_at', 'desc')->paginate(20);
+        $inventories->appends($request->query());
 
         return view('warehouse-inventory.index', compact('inventories'));
     }
@@ -36,6 +39,7 @@ class WarehouseInventoryController extends Controller
     public function show(WarehouseInventory $inventory)
     {
         $inventory->load(['items.inventoryItem', 'user']);
+
         return view('warehouse-inventory.show', compact('inventory'));
     }
 
@@ -46,7 +50,7 @@ class WarehouseInventoryController extends Controller
             ->orderBy('branch_id')
             ->orderBy('equipment_type')
             ->get();
-            
+
         return view('warehouse-inventory.create', compact('inventoryItems'));
     }
 
@@ -59,7 +63,7 @@ class WarehouseInventoryController extends Controller
             'items.*' => 'exists:room_inventory,id', // ВИПРАВЛЕНО: room_inventory
         ]);
 
-        DB::transaction(function() use ($request) {
+        DB::transaction(function () use ($request) {
             // Створюємо інвентаризацію
             $inventory = WarehouseInventory::create([
                 'user_id' => Auth::id(),
@@ -71,7 +75,7 @@ class WarehouseInventoryController extends Controller
             // Додаємо позиції
             foreach ($request->items as $itemId) {
                 $inventoryItem = RoomInventory::find($itemId);
-                
+
                 WarehouseInventoryItem::create([
                     'warehouse_inventory_id' => $inventory->id,  // ВИПРАВЛЕНО: правильна назва
                     'inventory_id' => $itemId,                   // ВИПРАВЛЕНО: inventory_id
@@ -93,6 +97,7 @@ class WarehouseInventoryController extends Controller
         }
 
         $inventory->load(['items.inventoryItem.branch']);
+
         return view('warehouse-inventory.edit', compact('inventory'));
     }
 
@@ -100,8 +105,8 @@ class WarehouseInventoryController extends Controller
     {
         $inventory = WarehouseInventory::findOrFail($inventoryId);
         $item = WarehouseInventoryItem::where('warehouse_inventory_id', $inventoryId)
-                                    ->where('id', $itemId)
-                                    ->firstOrFail();
+            ->where('id', $itemId)
+            ->firstOrFail();
 
         if ($inventory->status === 'completed') {
             return response()->json(['error' => 'Неможливо редагувати завершену інвентаризацію'], 422);
@@ -121,9 +126,9 @@ class WarehouseInventoryController extends Controller
         ]);
 
         return response()->json([
-            'success' => true, 
+            'success' => true,
             'difference' => $difference,
-            'message' => 'Позицію оновлено'
+            'message' => 'Позицію оновлено',
         ]);
     }
 
@@ -133,7 +138,7 @@ class WarehouseInventoryController extends Controller
             return redirect()->back()->withErrors(['Інвентаризація вже завершена']);
         }
 
-        DB::transaction(function() use ($inventory) {
+        DB::transaction(function () use ($inventory) {
             $inventory->update(['status' => 'completed']);
 
             // Оновлюємо залишки та створюємо рухи для розбіжностей
@@ -148,7 +153,7 @@ class WarehouseInventoryController extends Controller
                         'type' => 'inventory',
                         'quantity' => $item->difference,
                         'balance_after' => $item->actual_quantity,
-                        'note' => "Інвентаризація #{$inventory->inventory_number}" . 
+                        'note' => "Інвентаризація #{$inventory->inventory_number}".
                                  ($item->note ? " - {$item->note}" : ''),
                         'operation_date' => $inventory->inventory_date,
                     ]);
@@ -157,72 +162,72 @@ class WarehouseInventoryController extends Controller
         });
 
         return redirect()->route('warehouse-inventory.show', $inventory)
-                        ->with('success', 'Інвентаризацію завершено');
+            ->with('success', 'Інвентаризацію завершено');
     }
 
     public function quickInventory()
-{
-    // ВИПРАВЛЕНО: отримуємо ВСІ товари з room_inventory
-    $items = RoomInventory::with('branch')
-        ->orderBy('branch_id')
-        ->orderBy('equipment_type')
-        ->get();
-        
-    return view('warehouse-inventory.quick', compact('items'));
-}
+    {
+        // ВИПРАВЛЕНО: отримуємо ВСІ товари з room_inventory
+        $items = RoomInventory::with('branch')
+            ->orderBy('branch_id')
+            ->orderBy('equipment_type')
+            ->get();
 
-public function processQuickInventory(Request $request)
-{
-    $request->validate([
-        'items' => 'required|array|min:1',
-        'items.*.id' => 'required|exists:room_inventory,id',
-        'items.*.actual_quantity' => 'required|integer|min:0',
-        'items.*.note' => 'nullable|string|max:500',
-        'notes' => 'nullable|string',
-    ]);
+        return view('warehouse-inventory.quick', compact('items'));
+    }
 
-    DB::transaction(function() use ($request) {
-        // Створюємо інвентаризацію
-        $inventory = WarehouseInventory::create([
-            'user_id' => Auth::id(),
-            'inventory_date' => now()->toDateString(),
-            'status' => 'completed',
-            'notes' => $request->notes,
+    public function processQuickInventory(Request $request)
+    {
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required|exists:room_inventory,id',
+            'items.*.actual_quantity' => 'required|integer|min:0',
+            'items.*.note' => 'nullable|string|max:500',
+            'notes' => 'nullable|string',
         ]);
 
-        foreach ($request->items as $itemData) {
-            $inventoryItem = RoomInventory::find($itemData['id']);
-            $difference = $itemData['actual_quantity'] - $inventoryItem->quantity;
-
-            // ВИПРАВЛЕНО: warehouse_inventory_id замість inventory_id
-            WarehouseInventoryItem::create([
-                'warehouse_inventory_id' => $inventory->id,
-                'inventory_id' => $itemData['id'],
-                'system_quantity' => $inventoryItem->quantity,
-                'actual_quantity' => $itemData['actual_quantity'],
-                'difference' => $difference,
-                'note' => $itemData['note'] ?? null,
+        DB::transaction(function () use ($request) {
+            // Створюємо інвентаризацію
+            $inventory = WarehouseInventory::create([
+                'user_id' => Auth::id(),
+                'inventory_date' => now()->toDateString(),
+                'status' => 'completed',
+                'notes' => $request->notes,
             ]);
 
-            // Оновлюємо залишки якщо є розбіжності
-            if ($difference != 0) {
-                $inventoryItem->update(['quantity' => $itemData['actual_quantity']]);
+            foreach ($request->items as $itemData) {
+                $inventoryItem = RoomInventory::find($itemData['id']);
+                $difference = $itemData['actual_quantity'] - $inventoryItem->quantity;
 
-                WarehouseMovement::create([
-                    'user_id' => Auth::id(),
-                    'inventory_id' => $inventoryItem->id,
-                    'type' => 'inventory',
-                    'quantity' => $difference,
-                    'balance_after' => $itemData['actual_quantity'],
-                    'note' => "Швидка інвентаризація #{$inventory->inventory_number}" . 
-                             ($itemData['note'] ? " - {$itemData['note']}" : ''),
-                    'operation_date' => now()->toDateString(),
+                // ВИПРАВЛЕНО: warehouse_inventory_id замість inventory_id
+                WarehouseInventoryItem::create([
+                    'warehouse_inventory_id' => $inventory->id,
+                    'inventory_id' => $itemData['id'],
+                    'system_quantity' => $inventoryItem->quantity,
+                    'actual_quantity' => $itemData['actual_quantity'],
+                    'difference' => $difference,
+                    'note' => $itemData['note'] ?? null,
                 ]);
-            }
-        }
-    });
 
-    return redirect()->route('warehouse-inventory.index')
-                    ->with('success', 'Швидку інвентаризацію завершено');
-}
+                // Оновлюємо залишки якщо є розбіжності
+                if ($difference != 0) {
+                    $inventoryItem->update(['quantity' => $itemData['actual_quantity']]);
+
+                    WarehouseMovement::create([
+                        'user_id' => Auth::id(),
+                        'inventory_id' => $inventoryItem->id,
+                        'type' => 'inventory',
+                        'quantity' => $difference,
+                        'balance_after' => $itemData['actual_quantity'],
+                        'note' => "Швидка інвентаризація #{$inventory->inventory_number}".
+                                 ($itemData['note'] ? " - {$itemData['note']}" : ''),
+                        'operation_date' => now()->toDateString(),
+                    ]);
+                }
+            }
+        });
+
+        return redirect()->route('warehouse-inventory.index')
+            ->with('success', 'Швидку інвентаризацію завершено');
+    }
 }

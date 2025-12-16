@@ -125,10 +125,6 @@
                     </tbody>
                 </table>
             </div>
-            
-            <div class="card-footer bg-white">
-                {{ $movements->withQueryString()->links() }}
-            </div>
         @else
             <div class="text-center py-5">
                 <i class="bi bi-arrow-left-right fs-1 text-muted"></i>
@@ -141,6 +137,21 @@
         @endif
     </div>
 </div>
+
+<!-- Pagination -->
+@if($movements->total() > 0)
+<div class="stats-card mt-4 p-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            Показано {{ $movements->firstItem() }} - {{ $movements->lastItem() }}
+            з {{ $movements->total() }} записів
+        </div>
+        <div>
+            {{ $movements->withQueryString()->links('vendor.pagination.bootstrap-5') }}
+        </div>
+    </div>
+</div>
+@endif
 
 @if($movements->count() > 0)
 <div class="row g-4 mt-4">
@@ -193,4 +204,16 @@
     </div>
 </div>
 @endif
+
+@push('styles')
+<style>
+.pagination {
+    margin: 0;
+}
+.page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+</style>
+@endpush
 @endsection

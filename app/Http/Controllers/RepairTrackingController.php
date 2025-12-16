@@ -1,13 +1,14 @@
 <?php
+
 // app/Http/Controllers/RepairTrackingController.php
+
 namespace App\Http\Controllers;
 
-use App\Models\RepairTracking;
-use App\Models\RepairMaster;
-use App\Models\RoomInventory;
 use App\Models\Branch;
+use App\Models\RepairMaster;
+use App\Models\RepairTracking;
+use App\Models\RoomInventory;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class RepairTrackingController extends Controller
 {
@@ -21,7 +22,7 @@ class RepairTrackingController extends Controller
         }
 
         if ($request->filled('branch_id')) {
-            $query->whereHas('equipment', function($q) use ($request) {
+            $query->whereHas('equipment', function ($q) use ($request) {
                 $q->where('branch_id', $request->branch_id);
             });
         }
@@ -32,17 +33,19 @@ class RepairTrackingController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('invoice_number', 'like', "%{$search}%")
-                  ->orWhere('our_description', 'like', "%{$search}%")
-                  ->orWhereHas('equipment', function($eq) use ($search) {
-                      $eq->where('inventory_number', 'like', "%{$search}%")
-                         ->orWhere('equipment_type', 'like', "%{$search}%");
-                  });
+                    ->orWhere('our_description', 'like', "%{$search}%")
+                    ->orWhereHas('equipment', function ($eq) use ($search) {
+                        $eq->where('inventory_number', 'like', "%{$search}%")
+                            ->orWhere('equipment_type', 'like', "%{$search}%");
+                    });
             });
         }
 
         $trackings = $query->orderBy('created_at', 'desc')->paginate(20);
+        $trackings->appends($request->query());
+
         $branches = Branch::where('is_active', true)->get();
         $masters = RepairMaster::where('is_active', true)->get();
 
@@ -52,6 +55,7 @@ class RepairTrackingController extends Controller
     public function show(RepairTracking $repairTracking)
     {
         $repairTracking->load(['equipment.branch', 'repairMaster']);
+
         return view('repair-tracking.show', compact('repairTracking'));
     }
 
@@ -59,6 +63,7 @@ class RepairTrackingController extends Controller
     {
         $equipment = RoomInventory::with('branch')->orderBy('equipment_type')->get();
         $masters = RepairMaster::where('is_active', true)->get();
+
         return view('repair-tracking.create', compact('equipment', 'masters'));
     }
 
@@ -70,7 +75,7 @@ class RepairTrackingController extends Controller
             'sent_date' => 'required|date',
             'invoice_number' => 'nullable|string|max:255',
             'our_description' => 'required|string|max:1000',
-            'cost' => 'nullable|numeric|min:0'
+            'cost' => 'nullable|numeric|min:0',
         ]);
 
         RepairTracking::create($request->all());
@@ -83,6 +88,7 @@ class RepairTrackingController extends Controller
     {
         $equipment = RoomInventory::with('branch')->orderBy('equipment_type')->get();
         $masters = RepairMaster::where('is_active', true)->get();
+
         return view('repair-tracking.edit', compact('repairTracking', 'equipment', 'masters'));
     }
 
@@ -98,7 +104,7 @@ class RepairTrackingController extends Controller
             'repair_description' => 'nullable|string|max:1000',
             'cost' => 'nullable|numeric|min:0',
             'status' => 'required|in:sent,in_repair,completed,cancelled',
-            'notes' => 'nullable|string|max:1000'
+            'notes' => 'nullable|string|max:1000',
         ]);
 
         $repairTracking->update($request->all());
@@ -110,6 +116,7 @@ class RepairTrackingController extends Controller
     public function destroy(RepairTracking $repairTracking)
     {
         $repairTracking->delete();
+
         return redirect()->route('repair-tracking.index')
             ->with('success', 'Запис видалено');
     }
