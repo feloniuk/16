@@ -1,0 +1,20 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+
+    # ------------------------------
+    # Блокируем доступ к системным файлам и папкам Laravel
+    # ------------------------------
+    RewriteRule ^(\.env|artisan|composer\.(json|lock)|README\.md) - [F,L]
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|vendor|storage)/ - [F,L]
+    RewriteRule ^\.git - [F,L]
+    RewriteRule ^storage/logs/ - [F,L]
+
+    # ------------------------------
+    # Если файл или папка реально существует — отдаем напрямую
+    # ------------------------------
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+</IfModule>
