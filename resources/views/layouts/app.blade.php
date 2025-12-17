@@ -21,29 +21,95 @@
 
     <style>
         .sidebar {
-            min-height: 100vh;
+            height: 100vh;
             background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
-        
+
+        .sidebar .p-3 {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .sidebar .p-3 > h4 {
+            flex-shrink: 0;
+        }
+
+        .sidebar .nav {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 0.5rem;
+        }
+
+        /* Firefox scrollbar styling */
+        .sidebar .nav {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
+        }
+
+        /* Webkit (Chrome, Safari, Edge) scrollbar styling */
+        .sidebar .nav::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar .nav::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar .nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .sidebar .nav::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
         .sidebar .nav-link {
             color: rgba(255, 255, 255, 0.8);
             padding: 0.75rem 1rem;
             margin: 0.25rem 0;
             border-radius: 0.5rem;
             transition: all 0.3s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        
+
         .sidebar .nav-link:hover,
         .sidebar .nav-link.active {
             color: white;
             background-color: rgba(255, 255, 255, 0.1);
         }
-        
+
+        .sidebar hr {
+            margin: 0.75rem 0 0.5rem 0;
+            flex-shrink: 0;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-footer {
+            flex-shrink: 0;
+        }
+
+        .sidebar-footer .nav {
+            overflow: visible;
+        }
+
+        .sidebar-footer .nav-link {
+            margin: 0.25rem 0;
+        }
+
         .main-content {
             margin-left: 250px;
             padding: 2rem;
         }
-        
+
         .stats-card {
             background: white;
             border-radius: 1rem;
@@ -51,12 +117,12 @@
             border: 1px solid rgba(0, 0, 0, 0.05);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        
+
         .stats-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
-        
+
         @media (max-width: 768px) {
             .sidebar {
                 margin-left: -250px;
@@ -64,11 +130,11 @@
                 z-index: 1000;
                 transition: margin-left 0.3s ease;
             }
-            
+
             .sidebar.show {
                 margin-left: 0;
             }
-            
+
             .main-content {
                 margin-left: 0;
                 padding: 1rem;
@@ -81,11 +147,11 @@
         <!-- Sidebar -->
         <nav class="sidebar position-fixed" style="width: 250px;">
             <div class="p-3">
-                <h4 class="text-white mb-4">
+                <h4 class="text-white mb-3">
                     <i class="bi bi-hospital me-2"></i>
                     IT Support Panel
                 </h4>
-                
+
                 <ul class="nav flex-column">
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
@@ -203,26 +269,30 @@
                         </a>
                     </li>
                     @endif
-                    
-                    <hr class="text-white-50">
-                    
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('profile.edit') }}">
-                            <i class="bi bi-person me-2"></i>
-                            Профіль
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start">
-                                <i class="bi bi-box-arrow-right me-2"></i>
-                                Вихід
-                            </button>
-                        </form>
-                    </li>
                 </ul>
+
+                <hr class="text-white-50">
+
+                <div class="sidebar-footer">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('profile.edit') }}">
+                                <i class="bi bi-person me-2"></i>
+                                Профіль
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start">
+                                    <i class="bi bi-box-arrow-right me-2"></i>
+                                    Вихід
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </nav>
 
