@@ -1,20 +1,21 @@
 <?php
+
 // routes/web.php
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\RepairRequestController;
-use App\Http\Controllers\WarehouseController;
-use App\Http\Controllers\WarehouseInventoryController;
-use App\Http\Controllers\PurchaseRequestController;
-use App\Http\Controllers\CartridgeReplacementController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\CartridgeReplacementController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\InventoryExportController;
-use App\Http\Controllers\RepairTrackingController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\RepairMasterController;
+use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\RepairTrackingController;
 use App\Http\Controllers\ReportsController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\WarehouseInventoryController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,7 +32,7 @@ require __DIR__.'/auth.php';
 
 // Защищенные маршруты
 Route::middleware(['auth', 'verified'])->group(function () {
-    
+
     // Главная страница - дашборд
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -39,16 +40,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    
+
     // Заявки на ремонт
     Route::resource('repairs', RepairRequestController::class)->only(['index', 'show', 'update']);
-    
+
     // Замены картриджей
     Route::resource('cartridges', CartridgeReplacementController::class)->only(['index', 'show']);
-    
+
     // Облік ремонтів (доступно всем авторизованным пользователям)
     Route::resource('repair-tracking', RepairTrackingController::class);
-    
+
     // Отчеты
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [ReportsController::class, 'index'])->name('index');
@@ -57,45 +58,47 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/inventory', [ReportsController::class, 'inventory'])->name('inventory');
         Route::get('/export', [ReportsController::class, 'export'])->name('export');
     });
-    
+
     // Только для администраторов
     Route::middleware('role:admin')->group(function () {
         // Филиалы
         Route::resource('branches', BranchController::class);
-        
+
         // Мастеры по ремонту
         Route::resource('repair-masters', RepairMasterController::class)->only(['index', 'store', 'update', 'destroy']);
-        
-        // Основні маршрути інвентарю
-        Route::resource('inventory', InventoryController::class);
-        
-        // Переміщення товарів
+
+        // Експорт інвентарю (ПЕРЕД resource route!)
+        Route::get('inventory-export', [InventoryController::class, 'export'])
+            ->name('inventory.export');
+        Route::get('inventory/export-form', [InventoryExportController::class, 'exportForm'])
+            ->name('inventory.export.form');
+        Route::get('inventory/export-printers', [InventoryExportController::class, 'exportPrinters'])
+            ->name('inventory.export.printers');
+        Route::get('inventory/export-branch', [InventoryExportController::class, 'exportByBranch'])
+            ->name('inventory.export.branch');
+        Route::get('inventory/export-room', [InventoryExportController::class, 'exportByRoom'])
+            ->name('inventory.export.room');
+        Route::get('inventory/export/totals', [InventoryExportController::class, 'exportGroupedTotals'])
+            ->name('inventory.export.totals');
+        Route::get('inventory/export/grouped-detailed', [InventoryExportController::class, 'exportGroupedDetailed'])
+            ->name('inventory.export.grouped');
+
+        // Масове додавання (ПЕРЕД resource route!)
+        Route::post('inventory/bulk-store', [InventoryController::class, 'storeBulk'])
+            ->name('inventory.store-bulk');
+
+        // Валідація інвентарних номерів (AJAX)
+        Route::post('inventory/validate-numbers', [InventoryController::class, 'validateInventoryNumbers'])
+            ->name('inventory.validate-numbers');
+
+        // Переміщення товарів (ПЕРЕД resource route!)
         Route::get('inventory/{inventory}/transfer', [InventoryController::class, 'transferForm'])
             ->name('inventory.transfer-form');
         Route::post('inventory/{inventory}/transfer', [InventoryController::class, 'transfer'])
             ->name('inventory.transfer');
-        
-        // Масове додавання
-        Route::post('inventory/bulk-store', [InventoryController::class, 'storeBulk'])
-            ->name('inventory.store-bulk');
-        
-        // Валідація інвентарних номерів (AJAX)
-        Route::post('inventory/validate-numbers', [InventoryController::class, 'validateInventoryNumbers'])
-            ->name('inventory.validate-numbers');
-        
-        // Експорт
-        
-        Route::get('/inventory/export/totals', [InventoryExportController::class, 'exportGroupedTotals'])
-    ->name('inventory.export.totals');
-    
-        Route::get('inventory-export', [InventoryController::class, 'export'])
-            ->name('inventory.export');
-        
-        // Експорт інвентарю
-        Route::get('/inventory/export-form', [InventoryExportController::class, 'exportForm'])->name('inventory.export.form');
-        Route::get('/inventory/export-printers', [InventoryExportController::class, 'exportPrinters'])->name('inventory.export.printers');
-        Route::get('/inventory/export-branch', [InventoryExportController::class, 'exportByBranch'])->name('inventory.export.branch');
-        Route::get('/inventory/export-room', [InventoryExportController::class, 'exportByRoom'])->name('inventory.export.room');
+
+        // Основні маршрути інвентарю (resource route ОСТАННІМ!)
+        Route::resource('inventory', InventoryController::class);
 
     });
 
@@ -113,11 +116,18 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
     Route::get('/warehouse', [WarehouseController::class, 'index'])->name('warehouse.index');
     Route::get('/warehouse/create', [WarehouseController::class, 'create'])->name('warehouse.create');
     Route::post('/warehouse', [WarehouseController::class, 'store'])->name('warehouse.store');
+
+    // Операції по найменуванню (ПЕРЕД динамічними маршрутами!)
+    Route::get('/warehouse/by-name', [WarehouseController::class, 'showByName'])->name('warehouse.show-by-name');
+    Route::post('/warehouse/issue-by-name', [WarehouseController::class, 'issueByName'])->name('warehouse.issue-by-name');
+    Route::post('/warehouse/receipt-by-name', [WarehouseController::class, 'receiptByName'])->name('warehouse.receipt-by-name');
+
+    // Динамічні маршрути (ПІСЛЯ статичних!)
     Route::get('/warehouse/{item}', [WarehouseController::class, 'show'])->name('warehouse.show');
     Route::get('/warehouse/{item}/edit', [WarehouseController::class, 'edit'])->name('warehouse.edit');
     Route::patch('/warehouse/{item}', [WarehouseController::class, 'update'])->name('warehouse.update');
 
-    // Операции с товарами
+    // Операции с конкретними товарами
     Route::post('/warehouse/{item}/receipt', [WarehouseController::class, 'receipt'])->name('warehouse.receipt');
     Route::post('/warehouse/{item}/issue', [WarehouseController::class, 'issue'])->name('warehouse.issue');
 
@@ -130,23 +140,23 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
         Route::get('/', [WarehouseInventoryController::class, 'index'])->name('index');
         Route::get('/create', [WarehouseInventoryController::class, 'create'])->name('create');
         Route::post('/', [WarehouseInventoryController::class, 'store'])->name('store');
-        
+
         // ВАЖЛИВО: Швидка інвентаризація ПЕРЕД динамічними маршрутами
         Route::get('quick/start', [WarehouseInventoryController::class, 'quickInventory'])->name('quick');
         Route::post('quick/process', [WarehouseInventoryController::class, 'processQuickInventory'])->name('process-quick');
-        
+
         // Динамічні маршруты (після quick)
         Route::get('{inventory}', [WarehouseInventoryController::class, 'show'])->name('show');
         Route::get('{inventory}/edit', [WarehouseInventoryController::class, 'edit'])->name('edit');
         Route::put('{inventory}', [WarehouseInventoryController::class, 'update'])->name('update');
-        
+
         // Додаткові дії
         Route::patch('{inventory}/complete', [WarehouseInventoryController::class, 'complete'])->name('complete');
         Route::patch('{inventory}/items/{item}', [WarehouseInventoryController::class, 'updateItem'])->name('update-item');
     });
-    
+
     // ВИДАЛИВ ЗВІДСИ - тепер він в middleware role:admin
-    
+
     // Заявки на закупку
     Route::resource('purchase-requests', PurchaseRequestController::class)->names([
         'index' => 'purchase-requests.index',
@@ -162,18 +172,18 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
     Route::get('/purchase-requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('purchase-requests.print');
 
     // API для автозаполнения
-    Route::get('/api/warehouse-items/search', function(Request $request) {
+    Route::get('/api/warehouse-items/search', function (Request $request) {
         $query = $request->get('q', '');
-        
+
         // ЗМІНЕНО: шукаємо в room_inventory замість warehouse_items
         $items = \App\Models\RoomInventory::where('branch_id', 6) // Тільки склад
-            ->where(function($q) use ($query) {
+            ->where(function ($q) use ($query) {
                 $q->where('equipment_type', 'like', "%{$query}%") // назва товару
-                  ->orWhere('inventory_number', 'like', "%{$query}%"); // код товару
+                    ->orWhere('inventory_number', 'like', "%{$query}%"); // код товару
             })
             ->limit(10)
             ->get(['id', 'equipment_type as name', 'inventory_number as code', 'unit', 'price']);
-    
+
         return response()->json($items);
     })->name('api.warehouse-items.search');
 });

@@ -1,22 +1,22 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\RepairRequest;
-use App\Models\CartridgeReplacement;
 use App\Models\Branch;
+use App\Models\CartridgeReplacement;
+use App\Models\RepairRequest;
 use App\Models\RoomInventory;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
         $user = Auth::user();
-        
-        return match($user->role) {
+
+        return match ($user->role) {
             'admin' => $this->adminDashboard(),
             // 'warehouse_manager' => $this->warehouseManagerDashboard(),
             'warehouse_keeper' => $this->warehouseKeeperDashboard(),
@@ -65,9 +65,9 @@ class DashboardController extends Controller
 
         // Активность по дням (последние 7 дней)
         $dailyActivity = \App\Models\WarehouseMovement::select(
-                DB::raw('DATE(operation_date) as date'),
-                DB::raw('COUNT(*) as movements_count')
-            )
+            DB::raw('DATE(operation_date) as date'),
+            DB::raw('COUNT(*) as movements_count')
+        )
             ->where('operation_date', '>=', Carbon::now()->subDays(7))
             ->groupBy('date')
             ->orderBy('date')
@@ -75,12 +75,12 @@ class DashboardController extends Controller
 
         // Топ-5 наиболее активных товаров за месяц
         $topActiveItems = \App\Models\WarehouseMovement::select(
-                'warehouse_item_id',
-                DB::raw('SUM(ABS(quantity)) as total_movements')
-            )
+            'inventory_id',
+            DB::raw('SUM(ABS(quantity)) as total_movements')
+        )
             ->with('warehouseItem')
             ->where('created_at', '>=', Carbon::now()->subMonth())
-            ->groupBy('warehouse_item_id')
+            ->groupBy('inventory_id')
             ->orderBy('total_movements', 'desc')
             ->limit(5)
             ->get();
@@ -124,10 +124,10 @@ class DashboardController extends Controller
         $inventoryCount = RoomInventory::count();
 
         return view('dashboard.admin', compact(
-            'repairStats', 
-            'recentRepairs', 
-            'cartridgeCount', 
-            'branchStats', 
+            'repairStats',
+            'recentRepairs',
+            'cartridgeCount',
+            'branchStats',
             'inventoryCount'
         ));
     }
@@ -144,7 +144,7 @@ class DashboardController extends Controller
 
         // Статистика за периоды
         $monthlyStats = $this->getMonthlyStats();
-        
+
         // Статистика по статусам заявок
         $statusStats = RepairRequest::select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
@@ -164,15 +164,15 @@ class DashboardController extends Controller
             DB::raw('MONTH(created_at) as month'),
             DB::raw('COUNT(*) as count')
         )
-        ->where('created_at', '>=', Carbon::now()->subMonths(6))
-        ->groupBy('year', 'month')
-        ->orderBy('year', 'asc')
-        ->orderBy('month', 'asc')
-        ->get();
+            ->where('created_at', '>=', Carbon::now()->subMonths(6))
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'asc')
+            ->orderBy('month', 'asc')
+            ->get();
 
         return view('dashboard.director', compact(
             'totalStats',
-            'monthlyStats', 
+            'monthlyStats',
             'statusStats',
             'topBranches',
             'monthlyRepairs'
@@ -187,13 +187,13 @@ class DashboardController extends Controller
         return [
             'repairs_this_month' => RepairRequest::where('created_at', '>=', $currentMonth)->count(),
             'repairs_last_month' => RepairRequest::whereBetween('created_at', [
-                $lastMonth, 
-                $lastMonth->copy()->endOfMonth()
+                $lastMonth,
+                $lastMonth->copy()->endOfMonth(),
             ])->count(),
             'cartridges_this_month' => CartridgeReplacement::where('created_at', '>=', $currentMonth)->count(),
             'cartridges_last_month' => CartridgeReplacement::whereBetween('created_at', [
                 $lastMonth,
-                $lastMonth->copy()->endOfMonth()
+                $lastMonth->copy()->endOfMonth(),
             ])->count(),
         ];
     }

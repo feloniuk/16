@@ -68,6 +68,30 @@
                         <i class="bi bi-search"></i> Пошук
                     </button>
                 </div>
+
+                <div class="col-12">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleAdvancedSearch">
+                        <i class="bi bi-funnel-fill"></i> Розширений пошук
+                    </button>
+                </div>
+
+                <!-- Розширений пошук (Advanced Search) -->
+                <div class="col-12" id="advancedSearchContainer" style="display: none;">
+                    <div class="card mt-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="bi bi-funnel-fill"></i> Розширені фільтри
+                                <small class="text-muted">(дозволяє виключати/включати конкретні значення)</small>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="advancedFilters"></div>
+                            <button type="button" class="btn btn-sm btn-success mt-2" id="addAdvancedFilter">
+                                <i class="bi bi-plus-circle"></i> Додати фільтр
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -286,5 +310,143 @@ code {
     background-color: #007bff;
     border-color: #007bff;
 }
+.advanced-filter-row {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+}
 </style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let filterIndex = 0;
+    const branches = @json($branches);
+    const balanceCodes = @json($balanceCodes);
+
+    // Toggle advanced search visibility
+    document.getElementById('toggleAdvancedSearch').addEventListener('click', function() {
+        const container = document.getElementById('advancedSearchContainer');
+        if (container.style.display === 'none') {
+            container.style.display = 'block';
+            this.innerHTML = '<i class="bi bi-funnel-fill"></i> Приховати розширений пошук';
+        } else {
+            container.style.display = 'none';
+            this.innerHTML = '<i class="bi bi-funnel-fill"></i> Розширений пошук';
+        }
+    });
+
+    // Add new filter
+    document.getElementById('addAdvancedFilter').addEventListener('click', function() {
+        addFilterRow();
+    });
+
+    function createValueInput(field, value, index) {
+        if (field === 'branch_id') {
+            // Для филіалів - select з їхніми ID
+            return `
+                <select name="advanced_filters[${index}][value]" class="form-control form-control-sm filter-value">
+                    <option value="">Оберіть філію...</option>
+                    ${branches.map(b => `<option value="${b.id}" ${String(value) === String(b.id) ? 'selected' : ''}>${b.name}</option>`).join('')}
+                </select>
+            `;
+        } else {
+            // Для інших полів - текстовое поле
+            return `
+                <input type="text" name="advanced_filters[${index}][value]"
+                       class="form-control form-control-sm filter-value"
+                       placeholder="Значення..."
+                       value="${value}">
+            `;
+        }
+    }
+
+    function addFilterRow(field = '', operator = 'and', value = '') {
+        const currentIndex = filterIndex; // Захопити індекс для замикання
+
+        const filterHtml = `
+            <div class="advanced-filter-row" id="filter-${currentIndex}">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-1">
+                        <select name="advanced_filters[${currentIndex}][operator]" class="form-select form-select-sm">
+                            <option value="and" ${operator === 'and' ? 'selected' : ''}>І (AND)</option>
+                            <option value="not" ${operator === 'not' ? 'selected' : ''}>НЕ (NOT)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="advanced_filters[${currentIndex}][field]" class="form-select form-select-sm filter-field">
+                            <option value="">Оберіть поле...</option>
+                            <option value="branch_id" ${field === 'branch_id' ? 'selected' : ''}>Філія</option>
+                            <option value="room_number" ${field === 'room_number' ? 'selected' : ''}>Кабінет</option>
+                            <option value="balance_code" ${field === 'balance_code' ? 'selected' : ''}>Код балансу</option>
+                            <option value="equipment_type" ${field === 'equipment_type' ? 'selected' : ''}>Найменування</option>
+                            <option value="brand" ${field === 'brand' ? 'selected' : ''}>Бренд</option>
+                            <option value="model" ${field === 'model' ? 'selected' : ''}>Модель</option>
+                            <option value="serial_number" ${field === 'serial_number' ? 'selected' : ''}>Серійний номер</option>
+                            <option value="inventory_number" ${field === 'inventory_number' ? 'selected' : ''}>Інвентарний номер</option>
+                        </select>
+                    </div>
+                    <div class="col-md-7" id="value-input-${currentIndex}">
+                        ${createValueInput(field, value, currentIndex)}
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-sm btn-danger remove-filter">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('advancedFilters').insertAdjacentHTML('beforeend', filterHtml);
+
+        // Отримуємо контейнер фільтра
+        const filterRow = document.getElementById(`filter-${currentIndex}`);
+
+        // Знаходимо select поля всередині цього контейнера
+        const fieldSelect = filterRow.querySelector('.filter-field');
+
+        // Знаходимо контейнер для значення
+        const valueContainer = filterRow.querySelector(`#value-input-${currentIndex}`);
+
+        // Вешаємо listener на change поля
+        fieldSelect.addEventListener('change', function() {
+            const newField = this.value;
+            valueContainer.innerHTML = createValueInput(newField, '', currentIndex);
+        });
+
+        // Вешаємо listener на remove кнопку
+        const removeBtn = filterRow.querySelector('.remove-filter');
+        removeBtn.addEventListener('click', function() {
+            filterRow.remove();
+        });
+
+        filterIndex++;
+    }
+
+    // Load existing filters from URL if any
+    const urlParams = new URLSearchParams(window.location.search);
+    const existingFilters = [];
+    let i = 0;
+    while (urlParams.has(`advanced_filters[${i}][field]`)) {
+        existingFilters.push({
+            field: urlParams.get(`advanced_filters[${i}][field]`),
+            operator: urlParams.get(`advanced_filters[${i}][operator]`) || 'and',
+            value: urlParams.get(`advanced_filters[${i}][value]`) || ''
+        });
+        i++;
+    }
+
+    if (existingFilters.length > 0) {
+        document.getElementById('advancedSearchContainer').style.display = 'block';
+        document.getElementById('toggleAdvancedSearch').innerHTML = '<i class="bi bi-funnel-fill"></i> Приховати розширений пошук';
+        existingFilters.forEach(filter => {
+            addFilterRow(filter.field, filter.operator, filter.value);
+        });
+    }
+});
+</script>
 @endpush

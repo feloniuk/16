@@ -1,4 +1,5 @@
-<?php 
+<?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,8 +10,8 @@ class PurchaseRequestItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'purchase_request_id', 'warehouse_item_id', 'item_name', 
-        'item_code', 'quantity', 'unit', 'estimated_price', 'specifications'
+        'purchase_request_id', 'warehouse_item_id', 'item_name',
+        'item_code', 'quantity', 'unit', 'estimated_price', 'specifications',
     ];
 
     protected $casts = [
@@ -24,7 +25,12 @@ class PurchaseRequestItem extends Model
 
     public function warehouseItem()
     {
-        return $this->belongsTo(WarehouseItem::class);
+        return $this->belongsTo(RoomInventory::class, 'warehouse_item_id');
+    }
+
+    public function inventoryItem()
+    {
+        return $this->warehouseItem();
     }
 
     public function getTotalAttribute()

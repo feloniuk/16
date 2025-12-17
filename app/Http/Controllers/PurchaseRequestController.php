@@ -45,12 +45,36 @@ class PurchaseRequestController extends Controller
 
     public function create()
     {
-        // ЗМІНЕНО: товари складу з room_inventory
+        // Товари складу з room_inventory, згруповані по найменуванню
         $warehouseItems = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
+            ->select(
+                'equipment_type',
+                DB::raw('MAX(id) as id'),
+                DB::raw('MAX(unit) as unit'),
+                DB::raw('MAX(price) as price'),
+                DB::raw('SUM(quantity) as total_quantity'),
+                DB::raw('MAX(min_quantity) as min_quantity'),
+                DB::raw('MAX(inventory_number) as inventory_number')
+            )
+            ->groupBy('equipment_type')
             ->orderBy('equipment_type')
             ->get();
 
-        $lowStockItems = RoomInventory::lowStock()->get();
+        // Товари з низким запасом
+        $lowStockItems = RoomInventory::select(
+            'equipment_type',
+            DB::raw('MAX(id) as id'),
+            DB::raw('MAX(unit) as unit'),
+            DB::raw('SUM(quantity) as total_quantity'),
+            DB::raw('MAX(min_quantity) as min_quantity'),
+            DB::raw('MAX(price) as price'),
+            DB::raw('MAX(inventory_number) as inventory_number')
+        )
+            ->where('branch_id', self::WAREHOUSE_BRANCH_ID)
+            ->groupBy('equipment_type')
+            ->havingRaw('SUM(quantity) <= MAX(min_quantity)')
+            ->orderBy('equipment_type')
+            ->get();
 
         return view('purchase-requests.create', compact('warehouseItems', 'lowStockItems'));
     }
@@ -93,7 +117,19 @@ class PurchaseRequestController extends Controller
         }
 
         $purchaseRequest->load('items');
+
+        // Товари складу з room_inventory, згруповані по найменуванню
         $warehouseItems = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
+            ->select(
+                'equipment_type',
+                DB::raw('MAX(id) as id'),
+                DB::raw('MAX(unit) as unit'),
+                DB::raw('MAX(price) as price'),
+                DB::raw('SUM(quantity) as total_quantity'),
+                DB::raw('MAX(min_quantity) as min_quantity'),
+                DB::raw('MAX(inventory_number) as inventory_number')
+            )
+            ->groupBy('equipment_type')
             ->orderBy('equipment_type')
             ->get();
 

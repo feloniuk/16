@@ -117,6 +117,13 @@
                     </li>
                     
                     <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}" href="{{ route('purchase-requests.index') }}">
+                            <i class="bi bi-cart-plus me-2"></i>
+                            Заявки на закупівлю
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}" href="{{ route('branches.index') }}">
                             <i class="bi bi-building me-2"></i>
                             Філії
@@ -131,26 +138,19 @@
                     </li>
                     
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('warehouse.*') ? 'active' : '' }}" href="{{ route('warehouse.index') }}">
+                        <a class="nav-link {{ request()->routeIs('warehouse.index', 'warehouse.show', 'warehouse.create', 'warehouse.edit', 'warehouse.show-by-name') ? 'active' : '' }}" href="{{ route('warehouse.index') }}">
                             <i class="bi bi-box-seam me-2"></i>
                             Склад
                         </a>
                     </li>
-                    
-                    <li class="nav-item">
+
+                    <!-- <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('warehouse-inventory.*') ? 'active' : '' }}" href="{{ route('warehouse-inventory.index') }}">
                             <i class="bi bi-clipboard-check me-2"></i>
                             Інвентаризація складу
                         </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}" href="{{ route('purchase-requests.index') }}">
-                            <i class="bi bi-cart-plus me-2"></i>
-                            Заявки на закупівлю
-                        </a>
-                    </li>
-                    
+                    </li> -->
+
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('warehouse.movements') ? 'active' : '' }}" href="{{ route('warehouse.movements') }}">
                             <i class="bi bi-arrow-left-right me-2"></i>
@@ -167,45 +167,39 @@
                     @endif
 
                     @if(Auth::user()->role === 'warehouse_keeper')
+
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('warehouse.*') ? 'active' : '' }}" href="{{ route('warehouse.index') }}">
+                        <a class="nav-link {{ request()->routeIs('warehouse.index', 'warehouse.show', 'warehouse.create', 'warehouse.edit', 'warehouse.show-by-name') ? 'active' : '' }}" href="{{ route('warehouse.index') }}">
                             <i class="bi bi-box-seam me-2"></i>
                             Склад
                         </a>
                     </li>
-                    
+
                     <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}">
+                            <i class="bi bi-pc-display me-2"></i>
+                            Інвентар обладнання
+                        </a>
+                    </li>
+
+                    <!-- <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('warehouse-inventory.*') ? 'active' : '' }}" href="{{ route('warehouse-inventory.index') }}">
                             <i class="bi bi-clipboard-check me-2"></i>
                             Інвентаризація складу
                         </a>
-                    </li>
-                    
+                    </li> -->
+
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}" href="{{ route('purchase-requests.index') }}">
                             <i class="bi bi-cart-plus me-2"></i>
                             Заявки на закупівлю
                         </a>
                     </li>
-                    
+
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('warehouse.movements') ? 'active' : '' }}" href="{{ route('warehouse.movements') }}">
                             <i class="bi bi-arrow-left-right me-2"></i>
                             Рух товарів
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}" href="{{ route('branches.index') }}">
-                            <i class="bi bi-building me-2"></i>
-                            Філії
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}">
-                            <i class="bi bi-pc-display me-2"></i>
-                            Інвентар обладнання
                         </a>
                     </li>
                     @endif

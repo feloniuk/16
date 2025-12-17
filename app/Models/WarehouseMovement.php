@@ -1,5 +1,7 @@
 <?php
+
 // app/Models/WarehouseMovement.php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -41,17 +43,25 @@ class WarehouseMovement extends Model
     }
 
     /**
+     * Alias для inventoryItem (для сумісності)
+     */
+    public function warehouseItem(): BelongsTo
+    {
+        return $this->inventoryItem();
+    }
+
+    /**
      * Отримати badge для типу операції
      */
     public function getTypeBadgeAttribute(): string
     {
-        return match($this->type) {
+        return match ($this->type) {
             'receipt' => '<span class="badge bg-success">Надходження</span>',
             'issue' => '<span class="badge bg-warning">Видача</span>',
             'writeoff' => '<span class="badge bg-danger">Списання</span>',
             'inventory' => '<span class="badge bg-info">Інвентаризація</span>',
             'transfer' => '<span class="badge bg-primary">Переміщення</span>',
-            default => '<span class="badge bg-secondary">' . $this->type . '</span>',
+            default => '<span class="badge bg-secondary">'.$this->type.'</span>',
         };
     }
 
