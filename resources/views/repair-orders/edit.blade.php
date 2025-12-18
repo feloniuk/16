@@ -256,10 +256,21 @@ function selectEquipment(index, equipmentId, equipmentType, branchName) {
 
 function calculateTotal() {
     let total = 0;
+    let hasValues = false;
+
     document.querySelectorAll('.cost-input').forEach(input => {
-        total += parseFloat(input.value) || 0;
+        const value = parseFloat(input.value);
+        if (!isNaN(value) && value > 0) {
+            total += value;
+            hasValues = true;
+        }
     });
-    document.getElementById('totalCost').textContent = total.toFixed(2) + ' грн';
+
+    if (hasValues) {
+        document.getElementById('totalCost').textContent = total.toFixed(2) + ' грн';
+    } else {
+        document.getElementById('totalCost').textContent = '0.00 грн';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

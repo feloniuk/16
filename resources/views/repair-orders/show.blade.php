@@ -92,7 +92,13 @@
                                 <td>{{ $item->equipment->inventory_number }}</td>
                                 <td>{{ $item->equipment->branch->name ?? '-' }}</td>
                                 <td>{{ $item->repair_description }}</td>
-                                <td class="fw-bold">{{ number_format($item->cost, 2, ',', ' ') }} грн</td>
+                                <td class="fw-bold">
+                                    @if($item->cost === null)
+                                        <span class="text-muted">-</span>
+                                    @else
+                                        {{ number_format($item->cost, 2, ',', ' ') }} грн
+                                    @endif
+                                </td>
                                 <td><span class="badge bg-success">OK</span></td>
                             </tr>
                         @empty

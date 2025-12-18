@@ -22,6 +22,15 @@ class RepairOrderItem extends Model
         'cost' => 'decimal:2',
     ];
 
+    public function getFormattedCostAttribute(): string
+    {
+        if ($this->cost === null) {
+            return '-';
+        }
+
+        return number_format($this->cost, 2, ',', ' ').' грн';
+    }
+
     public function repairOrder(): BelongsTo
     {
         return $this->belongsTo(RepairOrder::class);
