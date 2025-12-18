@@ -9,6 +9,7 @@ use App\Http\Controllers\InventoryExportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\RepairMasterController;
+use App\Http\Controllers\RepairOrderController;
 use App\Http\Controllers\RepairRequestController;
 use App\Http\Controllers\RepairTrackingController;
 use App\Http\Controllers\ReportsController;
@@ -171,6 +172,22 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
     Route::post('/purchase-requests/{purchaseRequest}/submit', [PurchaseRequestController::class, 'submit'])->name('purchase-requests.submit');
     Route::get('/purchase-requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('purchase-requests.print');
 
+    // Заявки на ремонт (новая система)
+    Route::resource('repair-orders', RepairOrderController::class)->names([
+        'index' => 'repair-orders.index',
+        'create' => 'repair-orders.create',
+        'store' => 'repair-orders.store',
+        'show' => 'repair-orders.show',
+        'edit' => 'repair-orders.edit',
+        'update' => 'repair-orders.update',
+        'destroy' => 'repair-orders.destroy',
+    ]);
+
+    // Дополнительные действия с заявками на ремонт
+    Route::post('/repair-orders/{repairOrder}/submit', [RepairOrderController::class, 'submit'])->name('repair-orders.submit');
+
+    // Одобрение/отклонение (только для director и admin) - см. ниже
+
     // API для автозаполнения
     Route::get('/api/warehouse-items/search', function (Request $request) {
         $query = $request->get('q', '');
@@ -186,6 +203,12 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
 
         return response()->json($items);
     })->name('api.warehouse-items.search');
+});
+
+// === МАРШРУТЫ ДЛЯ ОДОБРЕНИЯ ЗАЯВОК НА РЕМОНТ (только director и admin) ===
+Route::middleware('role:admin,director')->group(function () {
+    Route::post('/repair-orders/{repairOrder}/approve', [RepairOrderController::class, 'approve'])->name('repair-orders.approve');
+    Route::post('/repair-orders/{repairOrder}/reject', [RepairOrderController::class, 'reject'])->name('repair-orders.reject');
 });
 
 // === МАРШРУТЫ ДЛЯ ВСЕХ (включая складовщика) ===

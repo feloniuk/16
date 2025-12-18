@@ -7,7 +7,11 @@
       "Bash(php artisan tinker:*)",
       "Bash(php artisan:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nFix menu active state for warehouse movements\n\nChanged warehouse menu item from wildcard ''warehouse.*'' pattern to specific routes\n(''warehouse.index'', ''warehouse.show'', ''warehouse.create'', ''warehouse.edit'', ''warehouse.show-by-name'')\nto prevent both warehouse and warehouse.movements menu items from being highlighted when\nviewing the warehouse movements page.\n\nThe wildcard pattern was incorrectly matching all warehouse-related routes including\nwarehouse.movements, causing duplicate active states in the navigation menu.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix menu active state for warehouse movements\n\nChanged warehouse menu item from wildcard ''warehouse.*'' pattern to specific routes\n(''warehouse.index'', ''warehouse.show'', ''warehouse.create'', ''warehouse.edit'', ''warehouse.show-by-name'')\nto prevent both warehouse and warehouse.movements menu items from being highlighted when\nviewing the warehouse movements page.\n\nThe wildcard pattern was incorrectly matching all warehouse-related routes including\nwarehouse.movements, causing duplicate active states in the navigation menu.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(git log:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
