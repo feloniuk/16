@@ -25,6 +25,7 @@ class StoreRepairOrderRequest extends FormRequest
             'description' => 'nullable|string|max:1000',
             'repair_master_id' => 'nullable|exists:repair_masters,id',
             'notes' => 'nullable|string|max:2000',
+            'status' => 'required|in:draft,pending_approval',
             'items' => 'required|array|min:1',
             'items.*.equipment_id' => 'required|exists:room_inventory,id',
             'items.*.repair_description' => 'required|string|max:1000',

@@ -13,6 +13,7 @@
 
             <form method="POST" action="{{ route('repair-orders.store') }}" id="repairForm">
                 @csrf
+                <input type="hidden" name="status" id="formStatus" value="draft">
 
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
@@ -273,22 +274,16 @@ document.addEventListener('DOMContentLoaded', () => {
     addItemRow();
 
     // Обработка действия формы
-    document.getElementById('repairForm').addEventListener('submit', function(e) {
-        const action = document.querySelector('[type="submit"][name="action"]:focus')?.value;
-        if (action === 'submit') {
-            // Изменить статус перед отправкой
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'status';
-            input.value = 'pending_approval';
-            this.appendChild(input);
-        }
-    });
-
-    // Установить фокус на кнопку при клике
     document.querySelectorAll('[type="submit"][name="action"]').forEach(btn => {
-        btn.addEventListener('click', function() {
-            this.focus();
+        btn.addEventListener('click', function(e) {
+            const action = this.value;
+            const statusInput = document.getElementById('formStatus');
+
+            if (action === 'submit') {
+                statusInput.value = 'pending_approval';
+            } else if (action === 'save_draft') {
+                statusInput.value = 'draft';
+            }
         });
     });
 });

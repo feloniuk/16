@@ -176,12 +176,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('repair-tracking.*') ? 'active' : '' }}" href="{{ route('repair-tracking.index') }}">
-                            <i class="bi bi-gear-wide-connected me-2"></i>
-                            Облік ремонтів
+                        <a class="nav-link {{ request()->routeIs('repair-orders.*') ? 'active' : '' }}" href="{{ route('repair-orders.index') }}">
+                            <i class="bi bi-tools me-2"></i>
+                            Заявки на ремонт
                         </a>
                     </li>
-                    
+
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}" href="{{ route('purchase-requests.index') }}">
                             <i class="bi bi-cart-plus me-2"></i>
@@ -245,6 +245,13 @@
                         <a class="nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}">
                             <i class="bi bi-pc-display me-2"></i>
                             Інвентар обладнання
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('repair-orders.*') ? 'active' : '' }}" href="{{ route('repair-orders.index') }}">
+                            <i class="bi bi-tools me-2"></i>
+                            Заявки на ремонт
                         </a>
                     </li>
 

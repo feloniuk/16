@@ -74,10 +74,12 @@ class RepairOrderController extends Controller
     public function store(StoreRepairOrderRequest $request)
     {
         DB::transaction(function () use ($request) {
+            $status = $request->input('status', 'draft');
+
             $order = RepairOrder::create([
-                ...$request->except('items'),
+                ...$request->except('items', 'status'),
                 'user_id' => auth()->id(),
-                'status' => 'draft',
+                'status' => $status,
             ]);
 
             foreach ($request->items as $itemData) {

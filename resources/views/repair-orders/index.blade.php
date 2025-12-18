@@ -129,6 +129,16 @@
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
                                             @endif
+                                            @if($order->status === 'draft' && $order->user_id === auth()->id())
+                                                <form method="POST" action="{{ route('repair-orders.submit', $order) }}" class="d-inline"
+                                                      style="margin: 0;">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-outline-success btn-sm"
+                                                            title="Подати на затвердження">
+                                                        <i class="bi bi-send"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
