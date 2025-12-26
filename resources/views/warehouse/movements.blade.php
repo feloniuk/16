@@ -96,7 +96,7 @@
                                 <small class="text-muted d-block">{{ $movement->inventoryItem->unit }}</small>
                             </td>
                             <td>
-                                <span class="badge bg-info">{{ $movement->balance_after }} {{ $movement->inventoryItem->unit }}</span>
+                                <span class="badge bg-info">{{ $movement->grouped_balance_after }} {{ $movement->inventoryItem->unit }}</span>
                             </td>
                             <td>
                                 <div>{{ $movement->user->name }}</div>

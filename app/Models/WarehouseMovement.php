@@ -80,4 +80,21 @@ class WarehouseMovement extends Model
     {
         return $query->whereBetween('operation_date', [$dateFrom, $dateTo]);
     }
+
+    /**
+     * Отримати загальний залишок для групи товарів (всі записи з одним equipment_type)
+     */
+    public function getGroupedBalanceAfterAttribute(): int
+    {
+        $equipmentType = $this->inventoryItem->equipment_type ?? null;
+
+        if (! $equipmentType) {
+            return $this->balance_after;
+        }
+
+        // Суммируем quantity для всех товаров с одинаковым equipment_type в складе (branch_id = 6)
+        return RoomInventory::where('branch_id', 6)
+            ->where('equipment_type', $equipmentType)
+            ->sum('quantity');
+    }
 }
