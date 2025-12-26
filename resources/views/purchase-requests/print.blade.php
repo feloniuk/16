@@ -80,6 +80,7 @@
             border-collapse: collapse;
             margin-bottom: 20px;
             font-size: 12pt;
+            table-layout: fixed;
         }
 
         .items-table th,
@@ -88,12 +89,16 @@
             padding: 8px;
             text-align: left;
             vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .items-table th {
             background-color: #f5f5f5;
             font-weight: bold;
             text-align: center;
+            white-space: normal;
         }
 
         .items-table .col-number {
@@ -103,7 +108,6 @@
 
         .items-table .col-name {
             width: 70%;
-            word-wrap: break-word;
         }
 
         .items-table .col-unit {
