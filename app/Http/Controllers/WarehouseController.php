@@ -48,11 +48,7 @@ class WarehouseController extends Controller
         $items->appends($request->query());
 
         // Категорії товарів складу
-        $categories = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
-            ->whereNotNull('category')
-            ->distinct()
-            ->pluck('category')
-            ->filter();
+        $categories = config('warehouse-categories');
 
         // Кількість найменувань з низьким залишком
         $lowStockCount = RoomInventory::select('equipment_type')
@@ -81,17 +77,15 @@ class WarehouseController extends Controller
 
     public function create()
     {
-        $categories = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
-            ->whereNotNull('category')
-            ->distinct()
-            ->pluck('category')
-            ->filter();
+        $categories = config('warehouse-categories');
 
         return view('warehouse.create', compact('categories'));
     }
 
     public function store(Request $request)
     {
+        $categories = config('warehouse-categories');
+
         $request->validate([
             'equipment_type' => 'required|string|max:255',
             'inventory_number' => 'required|string|max:255|unique:room_inventory,inventory_number',
@@ -100,7 +94,7 @@ class WarehouseController extends Controller
             'quantity' => 'required|integer|min:0',
             'min_quantity' => 'required|integer|min:0',
             'price' => 'nullable|numeric|min:0',
-            'category' => 'nullable|string|max:100',
+            'category' => 'nullable|in:'.implode(',', $categories),
         ]);
 
         $item = RoomInventory::create([
@@ -139,11 +133,7 @@ class WarehouseController extends Controller
             abort(404, 'Це не складський товар');
         }
 
-        $categories = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
-            ->whereNotNull('category')
-            ->distinct()
-            ->pluck('category')
-            ->filter();
+        $categories = config('warehouse-categories');
 
         return view('warehouse.edit', compact('item', 'categories'));
     }
@@ -154,6 +144,8 @@ class WarehouseController extends Controller
             abort(404, 'Це не складський товар');
         }
 
+        $categories = config('warehouse-categories');
+
         $request->validate([
             'equipment_type' => 'required|string|max:255',
             'inventory_number' => 'required|string|max:255|unique:room_inventory,inventory_number,'.$item->id,
@@ -161,7 +153,7 @@ class WarehouseController extends Controller
             'unit' => 'required|string|max:20',
             'min_quantity' => 'required|integer|min:0',
             'price' => 'nullable|numeric|min:0',
-            'category' => 'nullable|string|max:100',
+            'category' => 'nullable|in:'.implode(',', $categories),
         ]);
 
         $item->update([

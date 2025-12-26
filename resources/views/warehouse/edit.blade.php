@@ -39,14 +39,14 @@
                     
                     <div class="col-md-6">
                         <label for="category" class="form-label">Категорія</label>
-                        <input type="text" name="category" id="category" 
-                               class="form-control @error('category') is-invalid @enderror" 
-                               value="{{ old('category', $item->category) }}" list="categoryList">
-                        <datalist id="categoryList">
+                        <select name="category" id="category" class="form-select @error('category') is-invalid @enderror">
+                            <option value="">-- Виберіть категорію --</option>
                             @foreach($categories as $category)
-                                <option value="{{ $category }}">
+                                <option value="{{ $category }}" {{ old('category', $item->category) === $category ? 'selected' : '' }}>
+                                    {{ $category }}
+                                </option>
                             @endforeach
-                        </datalist>
+                        </select>
                         @error('category')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
