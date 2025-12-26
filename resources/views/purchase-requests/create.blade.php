@@ -14,11 +14,15 @@
             @if($lowStockItems->count() > 0)
             <div class="alert alert-warning mb-4">
                 <h6 class="mb-3"><i class="bi bi-exclamation-triangle"></i> Товари з низькими залишками:</h6>
-                <div class="row g-2">
+                <div class="row g-2" id="lowStockContainer">
                     @foreach($lowStockItems as $item)
                     <div class="col-md-6 col-lg-4">
-                        <button type="button" class="btn btn-sm btn-outline-warning w-100 text-start"
-                                onclick="addLowStockItem('{{ addslashes($item->equipment_type) }}', '{{ $item->inventory_number }}', {{ $item->min_quantity - $item->total_quantity }}, '{{ $item->unit }}', {{ $item->price ?? 0 }})">
+                        <button type="button" class="btn btn-sm btn-outline-warning w-100 text-start add-low-stock-btn"
+                                data-name="{{ $item->equipment_type }}"
+                                data-code="{{ $item->inventory_number }}"
+                                data-qty="{{ $item->min_quantity - $item->total_quantity }}"
+                                data-unit="{{ $item->unit }}"
+                                data-price="{{ $item->price ?? 0 }}">
                             <strong>{{ $item->equipment_type }}</strong>
                             <br><small>Залишок: {{ $item->total_quantity }}/{{ $item->min_quantity }} | Недостає: {{ $item->min_quantity - $item->total_quantity }}</small>
                         </button>
@@ -210,10 +214,12 @@ function addItemRow(itemData = null) {
 function showItemSelect(index) {
     currentRowIndex = index;
     const itemsList = document.getElementById('itemsList');
-    itemsList.innerHTML = warehouseItems.map(item => `
+    itemsList.innerHTML = warehouseItems.map((item, itemIndex) => `
         <div class="card mb-2">
             <div class="card-body p-2">
-                <button type="button" class="btn btn-light w-100 text-start" onclick="selectItem(${index}, '${item.equipment_type.replace(/'/g, "\\'")}', '${item.inventory_number}', '${item.unit}', ${item.price})">
+                <button type="button" class="btn btn-light w-100 text-start select-item-btn"
+                        data-row-index="${index}"
+                        data-item-index="${itemIndex}">
                     <div class="d-flex justify-content-between">
                         <div>
                             <strong>${item.equipment_type}</strong>
@@ -228,6 +234,16 @@ function showItemSelect(index) {
             </div>
         </div>
     `).join('');
+
+    // Додаємо обробники для всіх кнопок
+    document.querySelectorAll('.select-item-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rowIndex = parseInt(this.dataset.rowIndex);
+            const itemIndex = parseInt(this.dataset.itemIndex);
+            const item = warehouseItems[itemIndex];
+            selectItem(rowIndex, item.equipment_type, item.inventory_number, item.unit, item.price);
+        });
+    });
 
     const modal = new bootstrap.Modal(document.getElementById('itemSelectModal'));
     modal.show();
@@ -245,10 +261,14 @@ function filterItems() {
     );
 
     const itemsList = document.getElementById('itemsList');
-    itemsList.innerHTML = items.map(item => `
+    itemsList.innerHTML = items.map((item, itemIndex) => {
+        const originalIndex = warehouseItems.indexOf(item);
+        return `
         <div class="card mb-2">
             <div class="card-body p-2">
-                <button type="button" class="btn btn-light w-100 text-start" onclick="selectItem(${currentRowIndex}, '${item.equipment_type.replace(/'/g, "\\'")}', '${item.inventory_number}', '${item.unit}', ${item.price})">
+                <button type="button" class="btn btn-light w-100 text-start select-item-btn"
+                        data-row-index="${currentRowIndex}"
+                        data-item-index="${originalIndex}">
                     <div class="d-flex justify-content-between">
                         <div>
                             <strong>${item.equipment_type}</strong>
@@ -262,11 +282,23 @@ function filterItems() {
                 </button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     if (items.length === 0) {
         itemsList.innerHTML = '<div class="text-center text-muted p-3">Товари не знайдені</div>';
+        return;
     }
+
+    // Додаємо обробники для відфільтрованих кнопок
+    document.querySelectorAll('.select-item-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rowIndex = parseInt(this.dataset.rowIndex);
+            const itemIndex = parseInt(this.dataset.itemIndex);
+            const item = warehouseItems[itemIndex];
+            selectItem(rowIndex, item.equipment_type, item.inventory_number, item.unit, item.price);
+        });
+    });
 }
 
 function selectItem(index, name, code, unit, price) {
@@ -328,6 +360,18 @@ function addLowStockItem(name, code, suggestedQty, unit, price) {
 // Додаємо першу строку при завантаженні
 document.addEventListener('DOMContentLoaded', function() {
     addItemRow();
+
+    // Обробник для кнопок товарів з низькими залишками
+    document.querySelectorAll('.add-low-stock-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const name = this.dataset.name;
+            const code = this.dataset.code;
+            const qty = parseInt(this.dataset.qty);
+            const unit = this.dataset.unit;
+            const price = parseFloat(this.dataset.price);
+            addLowStockItem(name, code, qty, unit, price);
+        });
+    });
 });
 </script>
 @endpush
