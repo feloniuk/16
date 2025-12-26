@@ -28,7 +28,7 @@
             <div>
                 @if($totalQuantity > 0)
                 <button type="button" class="btn btn-info me-2"
-                        onclick="showIssueModal('{{ addslashes($equipmentType) }}', {{ $totalQuantity }})">
+                        onclick="showIssueModal('{{ addslashes($equipmentType) }}', {{ $totalQuantity }}, '{{ addslashes($items->first()->unit) }}')">
                     <i class="bi bi-box-arrow-right"></i> Видати
                 </button>
                 @endif
@@ -206,10 +206,10 @@ function showReceiptModal(equipmentType) {
     new bootstrap.Modal(document.getElementById('receiptModal')).show();
 }
 
-function showIssueModal(equipmentType, available) {
+function showIssueModal(equipmentType, available, unit) {
     document.getElementById('issueEquipmentType').value = equipmentType;
     document.getElementById('issueItemName').value = equipmentType;
-    document.getElementById('issueAvailable').value = available + ' шт';
+    document.getElementById('issueAvailable').value = available + ' ' + unit;
     document.getElementById('issueQuantity').max = available;
     document.getElementById('issueQuantity').value = '';
     document.getElementById('issuedTo').value = '';
