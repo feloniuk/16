@@ -97,21 +97,22 @@
         }
 
         .items-table .col-number {
-            width: 7%;
+            width: 6%;
             text-align: center;
         }
 
         .items-table .col-name {
-            width: 60%;
+            width: 70%;
+            word-wrap: break-word;
         }
 
         .items-table .col-unit {
-            width: 12%;
+            width: 10%;
             text-align: center;
         }
 
         .items-table .col-quantity {
-            width: 21%;
+            width: 14%;
             text-align: center;
         }
 
@@ -227,15 +228,7 @@
                 @forelse($purchaseRequest->items as $index => $item)
                 <tr>
                     <td class="col-number">{{ $index + 1 }}</td>
-                    <td class="col-name">
-                        {{ $item->item_name }}
-                        @if($item->item_code)
-                            ({{ $item->item_code }})
-                        @endif
-                        @if($item->specifications)
-                            <br><small>{{ $item->specifications }}</small>
-                        @endif
-                    </td>
+                    <td class="col-name">{{ $item->item_name }}</td>
                     <td class="col-unit">{{ $item->unit ?? 'шт.' }}</td>
                     <td class="col-quantity">{{ $item->quantity }}</td>
                 </tr>
@@ -254,7 +247,7 @@
 
         <div class="signatures">
             <div class="signature-row">
-                Заст. директора з АГР _________________
+                Заст. директора з АГР _____________ Олександр ХРОМЧЕНКО
             </div>
         </div>
     </div>
