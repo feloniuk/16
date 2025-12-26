@@ -79,45 +79,47 @@
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
-            font-size: 12pt;
-            table-layout: fixed;
+            font-size: 10pt;
         }
 
         .items-table th,
         .items-table td {
             border: 1px solid #000;
-            padding: 8px;
+            padding: 6px 4px;
             text-align: left;
-            vertical-align: top;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+            vertical-align: middle;
+            overflow: visible;
             word-break: break-word;
+            hyphens: auto;
         }
 
         .items-table th {
             background-color: #f5f5f5;
             font-weight: bold;
             text-align: center;
-            white-space: normal;
+            padding: 8px 4px;
         }
 
         .items-table .col-number {
-            width: 6%;
+            width: 8mm;
             text-align: center;
+            white-space: nowrap;
         }
 
         .items-table .col-name {
-            width: 70%;
+            width: 120mm;
         }
 
         .items-table .col-unit {
-            width: 10%;
+            width: 18mm;
             text-align: center;
+            white-space: nowrap;
         }
 
         .items-table .col-quantity {
-            width: 14%;
+            width: 20mm;
             text-align: center;
+            white-space: nowrap;
         }
 
         .signatures {
