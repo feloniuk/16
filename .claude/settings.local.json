@@ -11,7 +11,10 @@
       "Bash(git commit:*)",
       "Bash(dir:*)",
       "Bash(findstr:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(ls:*)",
+      "Bash(cmd /c \"dir D:\\\\16\\\\16\\\\*.docx\")",
+      "Bash(python3:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -214,7 +214,7 @@
 
         <div class="director-signature">
             Директор КНП «ЦПМСД № 16» ОМР<br>
-            _____________
+            Ганна ПАВЛЕГА
         </div>
 
         <div class="title">
