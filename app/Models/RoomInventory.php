@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,10 +10,10 @@ class RoomInventory extends Model
     use HasFactory;
 
     protected $table = 'room_inventory';
-    
+
     // Вказуємо що використовуємо тільки created_at
     const UPDATED_AT = null;
-    
+
     // Або можна вимкнути timestamps повністю і керувати created_at вручну:
     // public $timestamps = false;
 
@@ -22,6 +23,7 @@ class RoomInventory extends Model
         'room_number',
         'template_id',
         'equipment_type',
+        'full_name',
         'brand',
         'model',
         'serial_number',
@@ -32,7 +34,7 @@ class RoomInventory extends Model
         'min_quantity',
         'category',
         'balance_code',
-        'notes'
+        'notes',
     ];
 
     protected $casts = [
@@ -40,16 +42,16 @@ class RoomInventory extends Model
         'quantity' => 'integer',
         'min_quantity' => 'integer',
         'price' => 'decimal:2',
-        'created_at' => 'datetime'
+        'created_at' => 'datetime',
     ];
 
     // Автоматично встановлювати created_at при створенні
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($model) {
-            if (!$model->created_at) {
+            if (! $model->created_at) {
                 $model->created_at = now();
             }
         });
@@ -105,7 +107,7 @@ class RoomInventory extends Model
     public function scopeLowStock($query)
     {
         return $query->whereColumn('quantity', '<=', 'min_quantity')
-                     ->where('branch_id', 6);
+            ->where('branch_id', 6);
     }
 
     // Методи

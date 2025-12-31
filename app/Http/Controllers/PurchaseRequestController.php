@@ -49,6 +49,7 @@ class PurchaseRequestController extends Controller
         $warehouseItems = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->select(
                 'equipment_type',
+                DB::raw('MAX(full_name) as full_name'),
                 DB::raw('MAX(id) as id'),
                 DB::raw('MAX(unit) as unit'),
                 DB::raw('MAX(price) as price'),
@@ -63,6 +64,7 @@ class PurchaseRequestController extends Controller
         // Товари з низким запасом
         $lowStockItems = RoomInventory::select(
             'equipment_type',
+            DB::raw('MAX(full_name) as full_name'),
             DB::raw('MAX(id) as id'),
             DB::raw('MAX(unit) as unit'),
             DB::raw('SUM(quantity) as total_quantity'),
@@ -122,6 +124,7 @@ class PurchaseRequestController extends Controller
         $warehouseItems = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->select(
                 'equipment_type',
+                DB::raw('MAX(full_name) as full_name'),
                 DB::raw('MAX(id) as id'),
                 DB::raw('MAX(unit) as unit'),
                 DB::raw('MAX(price) as price'),

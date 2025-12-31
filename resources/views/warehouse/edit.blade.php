@@ -27,10 +27,26 @@
                         @enderror
                     </div>
                     
+                    <div class="col-12">
+                        <label for="full_name" class="form-label">
+                            Повна назва
+                            <i class="bi bi-info-circle text-muted"
+                               data-bs-toggle="tooltip"
+                               title="буде використовуватись при формуванні заявки на закупівлю"></i>
+                        </label>
+                        <textarea name="full_name" id="full_name" rows="2"
+                                  class="form-control @error('full_name') is-invalid @enderror"
+                                  placeholder="Введіть повну назву товару для друку в заявках">{{ old('full_name', $item->full_name) }}</textarea>
+                        <small class="form-text text-muted">Опціонально. Якщо не вказано, буде використана коротка назва.</small>
+                        @error('full_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
                     <div class="col-md-6">
                         <label for="inventory_number" class="form-label">Код товару <span class="text-danger">*</span></label>
-                        <input type="text" name="inventory_number" id="inventory_number" 
-                               class="form-control @error('inventory_number') is-invalid @enderror" 
+                        <input type="text" name="inventory_number" id="inventory_number"
+                               class="form-control @error('inventory_number') is-invalid @enderror"
                                value="{{ old('inventory_number', $item->inventory_number) }}" required>
                         @error('inventory_number')
                             <div class="invalid-feedback">{{ $message }}</div>

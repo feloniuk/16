@@ -37,7 +37,10 @@ class WarehouseController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where('equipment_type', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('equipment_type', 'like', "%{$search}%")
+                    ->orWhere('full_name', 'like', "%{$search}%");
+            });
         }
 
         if ($request->filled('low_stock')) {
@@ -88,6 +91,7 @@ class WarehouseController extends Controller
 
         $request->validate([
             'equipment_type' => 'required|string|max:255',
+            'full_name' => 'nullable|string',
             'inventory_number' => 'required|string|max:255|unique:room_inventory,inventory_number',
             'notes' => 'nullable|string',
             'unit' => 'required|string|max:20',
@@ -101,6 +105,7 @@ class WarehouseController extends Controller
             'branch_id' => self::WAREHOUSE_BRANCH_ID,
             'room_number' => $request->category ?? 'Загальний',
             'equipment_type' => $request->equipment_type,
+            'full_name' => $request->full_name,
             'inventory_number' => $request->inventory_number,
             'notes' => $request->notes,
             'unit' => $request->unit,
@@ -148,6 +153,7 @@ class WarehouseController extends Controller
 
         $request->validate([
             'equipment_type' => 'required|string|max:255',
+            'full_name' => 'nullable|string',
             'inventory_number' => 'required|string|max:255|unique:room_inventory,inventory_number,'.$item->id,
             'notes' => 'nullable|string',
             'unit' => 'required|string|max:20',
@@ -158,6 +164,7 @@ class WarehouseController extends Controller
 
         $item->update([
             'equipment_type' => $request->equipment_type,
+            'full_name' => $request->full_name,
             'inventory_number' => $request->inventory_number,
             'notes' => $request->notes,
             'unit' => $request->unit,

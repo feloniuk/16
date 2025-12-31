@@ -19,6 +19,7 @@
                     <div class="col-md-6 col-lg-4">
                         <button type="button" class="btn btn-sm btn-outline-warning w-100 text-start add-low-stock-btn"
                                 data-name="{{ $item->equipment_type }}"
+                                data-full-name="{{ $item->full_name ?? '' }}"
                                 data-code="{{ $item->inventory_number }}"
                                 data-qty="{{ $item->min_quantity - $item->total_quantity }}"
                                 data-unit="{{ $item->unit }}"
@@ -150,6 +151,7 @@ let currentRowIndex = -1;
 const warehouseItems = {!! json_encode($warehouseItems->map(function($item) {
     return [
         'equipment_type' => $item->equipment_type,
+        'full_name' => $item->full_name,
         'inventory_number' => $item->inventory_number,
         'unit' => $item->unit,
         'price' => $item->price,
@@ -223,6 +225,7 @@ function showItemSelect(index) {
                     <div class="d-flex justify-content-between">
                         <div>
                             <strong>${item.equipment_type}</strong>
+                            ${item.full_name ? '<br><small class="text-success">✓ Повна назва</small>' : ''}
                             <br><small class="text-muted">Код: ${item.inventory_number}</small>
                         </div>
                         <div class="text-end">
@@ -241,7 +244,7 @@ function showItemSelect(index) {
             const rowIndex = parseInt(this.dataset.rowIndex);
             const itemIndex = parseInt(this.dataset.itemIndex);
             const item = warehouseItems[itemIndex];
-            selectItem(rowIndex, item.equipment_type, item.inventory_number, item.unit, item.price);
+            selectItem(rowIndex, item.equipment_type, item.full_name, item.inventory_number, item.unit, item.price);
         });
     });
 
@@ -272,6 +275,7 @@ function filterItems() {
                     <div class="d-flex justify-content-between">
                         <div>
                             <strong>${item.equipment_type}</strong>
+                            ${item.full_name ? '<br><small class="text-success">✓ Повна назва</small>' : ''}
                             <br><small class="text-muted">Код: ${item.inventory_number}</small>
                         </div>
                         <div class="text-end">
@@ -296,17 +300,20 @@ function filterItems() {
             const rowIndex = parseInt(this.dataset.rowIndex);
             const itemIndex = parseInt(this.dataset.itemIndex);
             const item = warehouseItems[itemIndex];
-            selectItem(rowIndex, item.equipment_type, item.inventory_number, item.unit, item.price);
+            selectItem(rowIndex, item.equipment_type, item.full_name, item.inventory_number, item.unit, item.price);
         });
     });
 }
 
-function selectItem(index, name, code, unit, price) {
+function selectItem(index, name, fullName, code, unit, price) {
     const row = document.getElementById('itemsTableBody').children[index];
     if (!row) return;
 
-    row.querySelector('.item-name').textContent = name;
-    row.querySelector('.item-name-hidden').value = name;
+    // Використовуємо повну назву якщо є, інакше коротку
+    const displayName = fullName || name;
+
+    row.querySelector('.item-name').textContent = displayName;
+    row.querySelector('.item-name-hidden').value = displayName;
     row.querySelector('.item-code').value = code;
     row.querySelector('input[name="items[' + index + '][item_code]"]').value = code;
     row.querySelector('input[name="items[' + index + '][unit]"]').value = unit;
@@ -347,9 +354,9 @@ function calculateTotal() {
     document.getElementById('totalAmount').textContent = total.toFixed(2) + ' грн';
 }
 
-function addLowStockItem(name, code, suggestedQty, unit, price) {
+function addLowStockItem(name, fullName, code, suggestedQty, unit, price) {
     addItemRow({
-        equipment_type: name,
+        equipment_type: fullName || name,
         inventory_number: code,
         quantity: suggestedQty,
         unit: unit,
@@ -365,11 +372,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.add-low-stock-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const name = this.dataset.name;
+            const fullName = this.dataset.fullName || '';
             const code = this.dataset.code;
             const qty = parseInt(this.dataset.qty);
             const unit = this.dataset.unit;
             const price = parseFloat(this.dataset.price);
-            addLowStockItem(name, code, qty, unit, price);
+            addLowStockItem(name, fullName, code, qty, unit, price);
         });
     });
 });

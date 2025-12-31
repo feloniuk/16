@@ -180,6 +180,7 @@ let currentRowIndex = -1;
 const warehouseItems = {!! json_encode($warehouseItems->map(function($item) {
     return [
         'equipment_type' => $item->equipment_type,
+        'full_name' => $item->full_name,
         'inventory_number' => $item->inventory_number,
         'unit' => $item->unit,
         'price' => $item->price,
@@ -247,10 +248,11 @@ function showItemSelect(index) {
     itemsList.innerHTML = warehouseItems.map(item => `
         <div class="card mb-2">
             <div class="card-body p-2">
-                <button type="button" class="btn btn-light w-100 text-start" onclick="selectItem(${index}, '${item.equipment_type.replace(/'/g, "\\'")}', '${item.inventory_number}', '${item.unit}', ${item.price})">
+                <button type="button" class="btn btn-light w-100 text-start" onclick="selectItem(${index}, '${item.equipment_type.replace(/'/g, "\\'")}', '${(item.full_name || '').replace(/'/g, "\\'")}', '${item.inventory_number}', '${item.unit}', ${item.price})">
                     <div class="d-flex justify-content-between">
                         <div>
                             <strong>${item.equipment_type}</strong>
+                            ${item.full_name ? '<br><small class="text-success">✓ Повна назва</small>' : ''}
                             <br><small class="text-muted">Код: ${item.inventory_number}</small>
                         </div>
                         <div class="text-end">
@@ -281,10 +283,11 @@ function filterItems() {
     itemsList.innerHTML = items.map(item => `
         <div class="card mb-2">
             <div class="card-body p-2">
-                <button type="button" class="btn btn-light w-100 text-start" onclick="selectItem(${currentRowIndex}, '${item.equipment_type.replace(/'/g, "\\'")}', '${item.inventory_number}', '${item.unit}', ${item.price})">
+                <button type="button" class="btn btn-light w-100 text-start" onclick="selectItem(${currentRowIndex}, '${item.equipment_type.replace(/'/g, "\\'")}', '${(item.full_name || '').replace(/'/g, "\\'")}', '${item.inventory_number}', '${item.unit}', ${item.price})">
                     <div class="d-flex justify-content-between">
                         <div>
                             <strong>${item.equipment_type}</strong>
+                            ${item.full_name ? '<br><small class="text-success">✓ Повна назва</small>' : ''}
                             <br><small class="text-muted">Код: ${item.inventory_number}</small>
                         </div>
                         <div class="text-end">
@@ -302,12 +305,15 @@ function filterItems() {
     }
 }
 
-function selectItem(index, name, code, unit, price) {
+function selectItem(index, name, fullName, code, unit, price) {
     const row = document.getElementById('itemsTableBody').children[index];
     if (!row) return;
 
-    row.querySelector('.item-name').textContent = name;
-    row.querySelector('.item-name-hidden').value = name;
+    // Використовуємо повну назву якщо є, інакше коротку
+    const displayName = fullName || name;
+
+    row.querySelector('.item-name').textContent = displayName;
+    row.querySelector('.item-name-hidden').value = displayName;
     row.querySelector('.item-code').value = code;
     row.querySelector('input[name="items[' + index + '][item_code]"]').value = code;
     row.querySelector('input[name="items[' + index + '][unit]"]').value = unit;
