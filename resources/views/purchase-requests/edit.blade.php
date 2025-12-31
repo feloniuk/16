@@ -313,7 +313,10 @@ function selectItem(index, name, fullName, code, unit, price) {
     const displayName = (fullName && fullName.trim() !== '') ? fullName : name;
 
     row.querySelector('.item-name').textContent = displayName;
-    row.querySelector('.item-name-hidden').value = displayName;
+    const hiddenInput = row.querySelector('.item-name-hidden');
+    if (hiddenInput) {
+        hiddenInput.value = displayName;
+    }
     row.querySelector('.item-code').value = code;
     row.querySelector('input[name="items[' + index + '][item_code]"]').value = code;
     row.querySelector('input[name="items[' + index + '][unit]"]').value = unit;
