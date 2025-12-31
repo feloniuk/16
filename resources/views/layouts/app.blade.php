@@ -127,10 +127,14 @@
             .sidebar {
                 margin-left: -250px;
                 position: fixed;
+                top: 0;
+                left: 0;
                 z-index: 1000;
                 transition: margin-left 0.3s ease;
-                max-height: 100vh;
-                overflow-y: auto;
+                height: 100vh;
+                overflow-y: auto !important;
+                overflow-x: hidden;
+                width: 250px;
             }
 
             .sidebar.show {
@@ -143,6 +147,11 @@
 
             .sidebar .nav {
                 overflow-y: visible;
+                overflow-x: hidden;
+            }
+
+            .sidebar-footer {
+                padding-top: 1rem;
             }
 
             .main-content {
