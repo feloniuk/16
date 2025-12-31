@@ -41,6 +41,7 @@
 
         .sidebar .nav {
             flex: 1;
+            min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
             padding-right: 0.5rem;
@@ -95,10 +96,11 @@
 
         .sidebar-footer {
             flex-shrink: 0;
+            overflow: hidden;
         }
 
         .sidebar-footer .nav {
-            overflow: visible;
+            overflow: hidden;
         }
 
         .sidebar-footer .nav-link {
@@ -127,31 +129,12 @@
             .sidebar {
                 margin-left: -250px;
                 position: fixed;
-                top: 0;
-                left: 0;
                 z-index: 1000;
                 transition: margin-left 0.3s ease;
-                height: 100vh;
-                overflow-y: auto !important;
-                overflow-x: hidden;
-                width: 250px;
             }
 
             .sidebar.show {
                 margin-left: 0;
-            }
-
-            .sidebar .p-3 {
-                height: auto;
-            }
-
-            .sidebar .nav {
-                overflow-y: visible;
-                overflow-x: hidden;
-            }
-
-            .sidebar-footer {
-                padding-top: 1rem;
             }
 
             .main-content {
