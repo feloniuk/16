@@ -309,8 +309,8 @@ function selectItem(index, name, fullName, code, unit, price) {
     const row = document.getElementById('itemsTableBody').children[index];
     if (!row) return;
 
-    // Використовуємо повну назву якщо є, інакше коротку
-    const displayName = fullName || name;
+    // Використовуємо повну назву якщо є та не порожня, інакше коротку
+    const displayName = (fullName && fullName.trim() !== '') ? fullName : name;
 
     row.querySelector('.item-name').textContent = displayName;
     row.querySelector('.item-name-hidden').value = displayName;
