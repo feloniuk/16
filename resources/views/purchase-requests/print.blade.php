@@ -80,6 +80,7 @@
             border-collapse: collapse;
             margin-bottom: 20px;
             font-size: 10pt;
+            table-layout: auto;
         }
 
         .items-table th,
@@ -87,10 +88,12 @@
             border: 1px solid #000;
             padding: 6px 4px;
             text-align: left;
-            vertical-align: middle;
+            vertical-align: top;
             overflow: visible;
             word-break: break-word;
+            word-wrap: break-word;
             hyphens: auto;
+            white-space: normal;
         }
 
         .items-table th {
@@ -108,6 +111,10 @@
 
         .items-table .col-name {
             width: 120mm;
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            line-height: 1.4;
         }
 
         .items-table .col-unit {
