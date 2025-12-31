@@ -189,6 +189,14 @@ const warehouseItems = {!! json_encode($warehouseItems->map(function($item) {
     ];
 })) !!};
 
+// Функція для екранування HTML спецсимволів
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function addItemRow(itemData = null) {
     const tbody = document.getElementById('itemsTableBody');
     const row = document.createElement('tr');
@@ -197,8 +205,8 @@ function addItemRow(itemData = null) {
             <button type="button" class="btn btn-outline-primary btn-sm w-100 text-start item-select-btn"
                     onclick="showItemSelect(${itemCounter})">
                 <span class="item-name">${itemData?.equipment_type || 'Вибрати товар...'}</span>
-                <input type="hidden" name="items[${itemCounter}][item_name]" class="item-name-hidden" value="${itemData?.equipment_type || ''}">
             </button>
+            <input type="hidden" name="items[${itemCounter}][item_name]" class="item-name-hidden" value="${itemData?.equipment_type || ''}">
         </td>
         <td>
             <input type="text" class="form-control form-control-sm item-code"
@@ -245,15 +253,17 @@ function addItemRow(itemData = null) {
 function showItemSelect(index) {
     currentRowIndex = index;
     const itemsList = document.getElementById('itemsList');
-    itemsList.innerHTML = warehouseItems.map(item => `
+    itemsList.innerHTML = warehouseItems.map((item, itemIndex) => `
         <div class="card mb-2">
             <div class="card-body p-2">
-                <button type="button" class="btn btn-light w-100 text-start" onclick="selectItem(${index}, '${item.equipment_type.replace(/'/g, "\\'")}', '${(item.full_name || '').replace(/'/g, "\\'")}', '${item.inventory_number}', '${item.unit}', ${item.price})">
+                <button type="button" class="btn btn-light w-100 text-start select-item-btn"
+                        data-row-index="${index}"
+                        data-item-index="${itemIndex}">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <strong>${item.equipment_type}</strong>
+                            <strong>${escapeHtml(item.equipment_type)}</strong>
                             ${item.full_name ? '<br><small class="text-success">✓ Повна назва</small>' : ''}
-                            <br><small class="text-muted">Код: ${item.inventory_number}</small>
+                            <br><small class="text-muted">Код: ${escapeHtml(item.inventory_number)}</small>
                         </div>
                         <div class="text-end">
                             <small>На складі: <span class="badge bg-info">${item.total_quantity}</span></small>
@@ -264,6 +274,16 @@ function showItemSelect(index) {
             </div>
         </div>
     `).join('');
+
+    // Додаємо обробники для всіх кнопок
+    document.querySelectorAll('.select-item-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rowIndex = parseInt(this.dataset.rowIndex);
+            const itemIndex = parseInt(this.dataset.itemIndex);
+            const item = warehouseItems[itemIndex];
+            selectItem(rowIndex, item.equipment_type, item.full_name, item.inventory_number, item.unit, item.price);
+        });
+    });
 
     const modal = new bootstrap.Modal(document.getElementById('itemSelectModal'));
     modal.show();
@@ -280,15 +300,19 @@ function filterItems() {
     );
 
     const itemsList = document.getElementById('itemsList');
-    itemsList.innerHTML = items.map(item => `
+    itemsList.innerHTML = items.map((item, itemIndex) => {
+        const originalIndex = warehouseItems.indexOf(item);
+        return `
         <div class="card mb-2">
             <div class="card-body p-2">
-                <button type="button" class="btn btn-light w-100 text-start" onclick="selectItem(${currentRowIndex}, '${item.equipment_type.replace(/'/g, "\\'")}', '${(item.full_name || '').replace(/'/g, "\\'")}', '${item.inventory_number}', '${item.unit}', ${item.price})">
+                <button type="button" class="btn btn-light w-100 text-start select-item-btn"
+                        data-row-index="${currentRowIndex}"
+                        data-item-index="${originalIndex}">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <strong>${item.equipment_type}</strong>
+                            <strong>${escapeHtml(item.equipment_type)}</strong>
                             ${item.full_name ? '<br><small class="text-success">✓ Повна назва</small>' : ''}
-                            <br><small class="text-muted">Код: ${item.inventory_number}</small>
+                            <br><small class="text-muted">Код: ${escapeHtml(item.inventory_number)}</small>
                         </div>
                         <div class="text-end">
                             <small>На складі: <span class="badge bg-info">${item.total_quantity}</span></small>
@@ -298,7 +322,18 @@ function filterItems() {
                 </button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
+
+    // Додаємо обробники для відфільтрованих кнопок
+    document.querySelectorAll('.select-item-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rowIndex = parseInt(this.dataset.rowIndex);
+            const itemIndex = parseInt(this.dataset.itemIndex);
+            const item = warehouseItems[itemIndex];
+            selectItem(rowIndex, item.equipment_type, item.full_name, item.inventory_number, item.unit, item.price);
+        });
+    });
 
     if (items.length === 0) {
         itemsList.innerHTML = '<div class="text-center text-muted p-3">Товари не знайдені</div>';

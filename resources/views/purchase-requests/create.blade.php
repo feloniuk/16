@@ -160,6 +160,13 @@ const warehouseItems = {!! json_encode($warehouseItems->map(function($item) {
     ];
 })) !!};
 
+// Функція для екранування HTML спецсимволів
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
 function addItemRow(itemData = null) {
     const tbody = document.getElementById('itemsTableBody');
@@ -225,9 +232,9 @@ function showItemSelect(index) {
                         data-item-index="${itemIndex}">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <strong>${item.equipment_type}</strong>
+                            <strong>${escapeHtml(item.equipment_type)}</strong>
                             ${item.full_name ? '<br><small class="text-success">✓ Повна назва</small>' : ''}
-                            <br><small class="text-muted">Код: ${item.inventory_number}</small>
+                            <br><small class="text-muted">Код: ${escapeHtml(item.inventory_number)}</small>
                         </div>
                         <div class="text-end">
                             <small>На складі: <span class="badge bg-info">${item.total_quantity}</span></small>
@@ -275,9 +282,9 @@ function filterItems() {
                         data-item-index="${originalIndex}">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <strong>${item.equipment_type}</strong>
+                            <strong>${escapeHtml(item.equipment_type)}</strong>
                             ${item.full_name ? '<br><small class="text-success">✓ Повна назва</small>' : ''}
-                            <br><small class="text-muted">Код: ${item.inventory_number}</small>
+                            <br><small class="text-muted">Код: ${escapeHtml(item.inventory_number)}</small>
                         </div>
                         <div class="text-end">
                             <small>На складі: <span class="badge bg-info">${item.total_quantity}</span></small>
