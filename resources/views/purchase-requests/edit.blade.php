@@ -78,8 +78,8 @@
                                                 <button type="button" class="btn btn-outline-primary btn-sm w-100 text-start item-select-btn"
                                                         onclick="showItemSelect({{ $index }})">
                                                     <span class="item-name">{{ $item->item_name }}</span>
-                                                    <input type="hidden" name="items[{{ $index }}][item_name]" class="item-name-hidden" value="{{ $item->item_name }}">
                                                 </button>
+                                                <input type="hidden" name="items[{{ $index }}][item_name]" class="item-name-hidden" value="{{ $item->item_name }}">
                                             </td>
                                             <td>
                                                 <input type="text" class="form-control form-control-sm item-code"
