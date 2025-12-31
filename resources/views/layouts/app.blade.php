@@ -21,56 +21,34 @@
 
     <style>
         .sidebar {
-            height: 100vh !important;
-            max-height: 100vh !important;
+            height: 100vh;
+            max-height: 100vh;
             background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
-            display: flex !important;
-            flex-direction: column !important;
-            overflow: hidden !important;
-        }
-
-        .sidebar .p-3 {
-            display: flex !important;
-            flex-direction: column !important;
-            flex: 1 1 0 !important;
-            min-height: 0 !important;
-            max-height: 100% !important;
-            overflow: hidden !important;
-        }
-
-        .sidebar .p-3 > h4 {
-            flex-shrink: 0 !important;
-        }
-
-        .sidebar .nav-main {
-            flex: 1 1 0 !important;
-            min-height: 0 !important;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            padding-right: 0.5rem;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         /* Firefox scrollbar styling */
-        .sidebar .nav-main {
+        .sidebar {
             scrollbar-width: thin;
             scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
         }
 
         /* Webkit (Chrome, Safari, Edge) scrollbar styling */
-        .sidebar .nav-main::-webkit-scrollbar {
+        .sidebar::-webkit-scrollbar {
             width: 6px;
         }
 
-        .sidebar .nav-main::-webkit-scrollbar-track {
+        .sidebar::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.1);
         }
 
-        .sidebar .nav-main::-webkit-scrollbar-thumb {
+        .sidebar::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.3);
             border-radius: 3px;
         }
 
-        .sidebar .nav-main::-webkit-scrollbar-thumb:hover {
+        .sidebar::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.5);
         }
 
@@ -93,19 +71,7 @@
 
         .sidebar hr {
             margin: 0.75rem 0 0.5rem 0;
-            flex-shrink: 0 !important;
-            flex-grow: 0 !important;
             border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .sidebar-footer {
-            flex-shrink: 0 !important;
-            flex-grow: 0 !important;
-            overflow: hidden !important;
-        }
-
-        .sidebar-footer .nav {
-            overflow: hidden !important;
         }
 
         .sidebar-footer .nav-link {
