@@ -32,6 +32,7 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+            min-height: 0;
             overflow: hidden;
         }
 
@@ -100,6 +101,7 @@
         }
 
         .sidebar-footer .nav {
+            flex: none;
             overflow: hidden;
         }
 
