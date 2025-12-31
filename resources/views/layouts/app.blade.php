@@ -129,10 +129,20 @@
                 position: fixed;
                 z-index: 1000;
                 transition: margin-left 0.3s ease;
+                max-height: 100vh;
+                overflow-y: auto;
             }
 
             .sidebar.show {
                 margin-left: 0;
+            }
+
+            .sidebar .p-3 {
+                height: auto;
+            }
+
+            .sidebar .nav {
+                overflow-y: visible;
             }
 
             .main-content {
