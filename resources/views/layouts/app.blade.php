@@ -40,7 +40,7 @@
             flex-shrink: 0;
         }
 
-        .sidebar .nav {
+        .sidebar .nav-main {
             flex: 1;
             min-height: 0;
             overflow-y: auto;
@@ -49,26 +49,26 @@
         }
 
         /* Firefox scrollbar styling */
-        .sidebar .nav {
+        .sidebar .nav-main {
             scrollbar-width: thin;
             scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
         }
 
         /* Webkit (Chrome, Safari, Edge) scrollbar styling */
-        .sidebar .nav::-webkit-scrollbar {
+        .sidebar .nav-main::-webkit-scrollbar {
             width: 6px;
         }
 
-        .sidebar .nav::-webkit-scrollbar-track {
+        .sidebar .nav-main::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.1);
         }
 
-        .sidebar .nav::-webkit-scrollbar-thumb {
+        .sidebar .nav-main::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.3);
             border-radius: 3px;
         }
 
-        .sidebar .nav::-webkit-scrollbar-thumb:hover {
+        .sidebar .nav-main::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.5);
         }
 
@@ -101,7 +101,6 @@
         }
 
         .sidebar-footer .nav {
-            flex: none;
             overflow: hidden;
         }
 
@@ -156,7 +155,7 @@
                     IT Support Panel
                 </h4>
 
-                <ul class="nav flex-column">
+                <ul class="nav flex-column nav-main">
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
                             <i class="bi bi-speedometer2 me-2"></i>
