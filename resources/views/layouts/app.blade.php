@@ -21,30 +21,32 @@
 
     <style>
         .sidebar {
-            height: 100vh;
+            height: 100vh !important;
+            max-height: 100vh !important;
             background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
         }
 
         .sidebar .p-3 {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            min-height: 0;
-            overflow: hidden;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 0 !important;
+            min-height: 0 !important;
+            max-height: 100% !important;
+            overflow: hidden !important;
         }
 
         .sidebar .p-3 > h4 {
-            flex-shrink: 0;
+            flex-shrink: 0 !important;
         }
 
         .sidebar .nav-main {
-            flex: 1;
-            min-height: 0;
-            overflow-y: auto;
-            overflow-x: hidden;
+            flex: 1 1 0 !important;
+            min-height: 0 !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
             padding-right: 0.5rem;
         }
 
@@ -91,17 +93,19 @@
 
         .sidebar hr {
             margin: 0.75rem 0 0.5rem 0;
-            flex-shrink: 0;
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
             border-color: rgba(255, 255, 255, 0.2);
         }
 
         .sidebar-footer {
-            flex-shrink: 0;
-            overflow: hidden;
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
+            overflow: hidden !important;
         }
 
         .sidebar-footer .nav {
-            overflow: hidden;
+            overflow: hidden !important;
         }
 
         .sidebar-footer .nav-link {
