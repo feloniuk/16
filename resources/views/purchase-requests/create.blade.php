@@ -160,6 +160,11 @@ const warehouseItems = {!! json_encode($warehouseItems->map(function($item) {
     ];
 })) !!};
 
+// Debug: log items that have full_name
+console.log('Warehouse items loaded:', warehouseItems);
+const itemsWithFullName = warehouseItems.filter(item => item.full_name);
+console.log('Items with full_name:', itemsWithFullName.length, 'out of', warehouseItems.length);
+
 function addItemRow(itemData = null) {
     const tbody = document.getElementById('itemsTableBody');
     const row = document.createElement('tr');
@@ -312,8 +317,22 @@ function selectItem(index, name, fullName, code, unit, price) {
     // Використовуємо повну назву якщо є та не порожня, інакше коротку
     const displayName = (fullName && fullName.trim() !== '') ? fullName : name;
 
+    console.log('selectItem called:', {
+        index: index,
+        name: name,
+        fullName: fullName,
+        displayName: displayName,
+        isFullNameEmpty: !fullName || fullName.trim() === ''
+    });
+
     row.querySelector('.item-name').textContent = displayName;
-    row.querySelector('.item-name-hidden').value = displayName;
+    const hiddenInput = row.querySelector('input[name="items[' + index + '][item_name]"]');
+    if (hiddenInput) {
+        hiddenInput.value = displayName;
+        console.log('Hidden input updated:', hiddenInput.value);
+    } else {
+        console.warn('Hidden input not found for index:', index);
+    }
     row.querySelector('.item-code').value = code;
     row.querySelector('input[name="items[' + index + '][item_code]"]').value = code;
     row.querySelector('input[name="items[' + index + '][unit]"]').value = unit;
