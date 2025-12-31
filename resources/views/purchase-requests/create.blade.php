@@ -160,6 +160,14 @@ const warehouseItems = {!! json_encode($warehouseItems->map(function($item) {
     ];
 })) !!};
 
+// Debug warehouse items
+console.log('Total warehouse items:', warehouseItems.length);
+warehouseItems.forEach((item, idx) => {
+    if (item.full_name && item.full_name.length > 0) {
+        console.log(`Item ${idx}: "${item.equipment_type}" -> full_name: "${item.full_name}"`);
+    }
+});
+
 function addItemRow(itemData = null) {
     const tbody = document.getElementById('itemsTableBody');
     const row = document.createElement('tr');
@@ -312,8 +320,22 @@ function selectItem(index, name, fullName, code, unit, price) {
     // Використовуємо повну назву якщо є та не порожня, інакше коротку
     const displayName = (fullName && fullName.trim() !== '') ? fullName : name;
 
+    console.log('DEBUG selectItem:', {
+        index: index,
+        name: name,
+        fullName: fullName,
+        fullNameLength: fullName ? fullName.length : 0,
+        displayName: displayName,
+        displayNameLength: displayName.length
+    });
+
     row.querySelector('.item-name').textContent = displayName;
-    row.querySelector('.item-name-hidden').value = displayName;
+    const hiddenInput = row.querySelector('.item-name-hidden');
+    console.log('Hidden input found:', hiddenInput ? 'YES' : 'NO');
+    if (hiddenInput) {
+        hiddenInput.value = displayName;
+        console.log('Hidden input value set to:', hiddenInput.value);
+    }
     row.querySelector('.item-code').value = code;
     row.querySelector('input[name="items[' + index + '][item_code]"]').value = code;
     row.querySelector('input[name="items[' + index + '][unit]"]').value = unit;
