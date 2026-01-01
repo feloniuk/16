@@ -4,15 +4,17 @@ namespace App\Services\Telegram\Handlers;
 
 use App\Models\Branch;
 use App\Models\RoomInventory;
-use App\Services\Telegram\TelegramService;
-use App\Services\Telegram\StateManager;
 use App\Services\Telegram\KeyboardService;
+use App\Services\Telegram\StateManager;
+use App\Services\Telegram\TelegramService;
 use Illuminate\Support\Facades\Log;
 
 class InventoryHandler
 {
     private TelegramService $telegram;
+
     private StateManager $stateManager;
+
     private KeyboardService $keyboard;
 
     public function __construct(
@@ -38,12 +40,13 @@ class InventoryHandler
         Log::info("Handling inventory callback: {$action}", ['user_id' => $userId]);
 
         // Проверяем права администратора для всех действий с инвентарем
-        if (!$this->telegram->isAdmin($userId)) {
+        if (! $this->telegram->isAdmin($userId)) {
             $this->telegram->editMessage(
-                $chatId, 
-                $messageId, 
-                "❌ У вас нет прав для управления инвентарем."
+                $chatId,
+                $messageId,
+                '❌ У вас немає прав для керування інвентарем.'
             );
+
             return;
         }
 
@@ -70,18 +73,19 @@ class InventoryHandler
     private function startInventoryManagement(int $chatId, int $userId, int $messageId): void
     {
         $branches = Branch::where('is_active', true)->get();
-        
+
         if ($branches->isEmpty()) {
-            $this->telegram->editMessage($chatId, $messageId, "К сожалению, филиалы недоступны. Обратитесь к администратору.");
+            $this->telegram->editMessage($chatId, $messageId, '❌ На жаль, філіали недоступні. Зв\'яжіться з адміністратором.');
+
             return;
         }
 
         $this->stateManager->setUserState($userId, 'inventory_branch_selection');
-        
+
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            "📋 <b>Управление инвентарем</b>\n\nВыберите филиал для инвентаризации:", 
+            $chatId,
+            $messageId,
+            "📋 <b>Керування інвентарем</b>\n\nОберіть філіал для інвентаризації:",
             $this->keyboard->getInventoryBranchesKeyboard($branches)
         );
     }
@@ -93,20 +97,21 @@ class InventoryHandler
         $messageId = $callbackQuery['message']['message_id'];
 
         $branch = Branch::find($branchId);
-        if (!$branch) {
-            $this->telegram->editMessage($chatId, $messageId, "Ошибка: филиал не найден.");
+        if (! $branch) {
+            $this->telegram->editMessage($chatId, $messageId, '❌ Помилка: філіал не знайдено.');
+
             return;
         }
 
         $this->stateManager->setUserState($userId, 'inventory_room_input', [
-            'branch_id' => $branchId, 
-            'branch_name' => $branch->name
+            'branch_id' => $branchId,
+            'branch_name' => $branch->name,
         ]);
-        
+
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            "📋 <b>Инвентаризация</b>\nФилиал: <b>{$branch->name}</b>\n\nВведите номер кабинета для инвентаризации:", 
+            $chatId,
+            $messageId,
+            "📋 <b>Інвентаризація</b>\nФіліал: <b>{$branch->name}</b>\n\nВведіть номер кабінету для інвентаризації:",
             $this->keyboard->getCancelKeyboard()
         );
     }
@@ -117,12 +122,13 @@ class InventoryHandler
         $tempData = $userState['temp_data'] ?? [];
 
         if (empty(trim($room)) || strlen($room) > 50) {
-            $this->telegram->sendMessage($chatId, "❌ Некорректный номер кабинета. Введите номер кабинета (до 50 символов):");
+            $this->telegram->sendMessage($chatId, '❌ Введіть номер кабінету (до 50 символів):');
+
             return;
         }
 
         $tempData['room_number'] = trim($room);
-        
+
         // Получаем существующий инвентарь в кабинете
         $existingInventory = RoomInventory::where('branch_id', $tempData['branch_id'])
             ->where('room_number', $tempData['room_number'])
@@ -130,12 +136,12 @@ class InventoryHandler
 
         $this->stateManager->setUserState($userId, 'inventory_menu', $tempData);
 
-        $message = "📋 <b>Инвентаризация кабинета</b>\n";
-        $message .= "Филиал: <b>{$tempData['branch_name']}</b>\n";
-        $message .= "Кабинет: <b>{$tempData['room_number']}</b>\n\n";
+        $message = "📋 <b>Інвентаризація кабінету</b>\n";
+        $message .= "Філіал: <b>{$tempData['branch_name']}</b>\n";
+        $message .= "Кабінет: <b>{$tempData['room_number']}</b>\n\n";
 
         if ($existingInventory->count() > 0) {
-            $message .= "🏷️ <b>Найденное оборудование ({$existingInventory->count()}):</b>\n";
+            $message .= "🏷️ <b>Знайдене обладнання ({$existingInventory->count()}):</b>\n";
             foreach ($existingInventory->take(5) as $item) {
                 $message .= "• {$item->equipment_type}";
                 if ($item->brand || $item->model) {
@@ -144,14 +150,14 @@ class InventoryHandler
                 $message .= " - {$item->inventory_number}\n";
             }
             if ($existingInventory->count() > 5) {
-                $message .= "... и еще " . ($existingInventory->count() - 5) . "\n";
+                $message .= '... та ще '.($existingInventory->count() - 5)."\n";
             }
             $message .= "\n";
         } else {
-            $message .= "ℹ️ В этом кабинете пока нет зарегистрированного оборудования.\n\n";
+            $message .= "ℹ️ У цьому кабінету поки немає зареєстрованого обладнання.\n\n";
         }
 
-        $message .= "Выберите действие:";
+        $message .= 'Оберіть дію:';
 
         $this->telegram->sendMessage($chatId, $message, $this->keyboard->getInventoryMenuKeyboard());
     }
@@ -159,9 +165,9 @@ class InventoryHandler
     private function startAddEquipment(int $chatId, int $userId, int $messageId): void
     {
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            "📋 <b>Добавление оборудования</b>\n\nВыберите способ добавления:", 
+            $chatId,
+            $messageId,
+            "📋 <b>Додавання обладнання</b>\n\nОберіть спосіб додавання:",
             $this->keyboard->getAddEquipmentKeyboard()
         );
     }
@@ -169,9 +175,9 @@ class InventoryHandler
     private function showQuickAddOptions(int $chatId, int $userId, int $messageId): void
     {
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            "⚡ <b>Быстрое добавление</b>\n\nВыберите тип оборудования:", 
+            $chatId,
+            $messageId,
+            "⚡ <b>Швидке додавання</b>\n\nОберіть тип обладнання:",
             $this->keyboard->getQuickAddKeyboard()
         );
     }
@@ -186,9 +192,9 @@ class InventoryHandler
         $this->stateManager->setUserState($userId, 'inventory_quick_brand', $tempData);
 
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            "📋 <b>Добавление: $type</b>\n\nВыберите бренд или введите вручную:", 
+            $chatId,
+            $messageId,
+            "📋 <b>Додавання: $type</b>\n\nОберіть бренд або введіть вручну:",
             $this->keyboard->getPopularBrandsKeyboard($type)
         );
     }
@@ -198,15 +204,15 @@ class InventoryHandler
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
         $tempData['brand'] = $brand;
-        
+
         $this->stateManager->setUserState($userId, 'inventory_quick_model', $tempData);
-        
-        $message = "📋 <b>Добавление: {$tempData['equipment_type']}</b>\n";
-        if (!empty($brand)) {
+
+        $message = "📋 <b>Додавання: {$tempData['equipment_type']}</b>\n";
+        if (! empty($brand)) {
             $message .= "Бренд: <b>$brand</b>\n";
         }
-        $message .= "\nВведите модель или нажмите /skip для пропуска:";
-        
+        $message .= "\nВведіть модель або натисніть /skip для пропуску:";
+
         $this->telegram->editMessage($chatId, $messageId, $message, $this->keyboard->getCancelKeyboard());
     }
 
@@ -215,8 +221,9 @@ class InventoryHandler
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
 
-        if (!isset($tempData['branch_id'], $tempData['room_number'])) {
-            $this->telegram->editMessage($chatId, $messageId, "❌ Ошибка: данные кабинета не найдены.");
+        if (! isset($tempData['branch_id'], $tempData['room_number'])) {
+            $this->telegram->editMessage($chatId, $messageId, '❌ Помилка: дані кабінету не знайдені.');
+
             return;
         }
 
@@ -227,46 +234,50 @@ class InventoryHandler
             ->get();
 
         $message = $this->buildInventoryMessage($tempData, $inventory);
-        
+
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            $message, 
+            $chatId,
+            $messageId,
+            $message,
             $this->keyboard->getRoomInventoryKeyboard($inventory->count() > 0)
         );
     }
 
     private function buildInventoryMessage(array $tempData, $inventory): string
     {
-        $message = "📋 <b>Инвентарь кабинета</b>\n";
-        $message .= "🏢 Филиал: <b>{$tempData['branch_name']}</b>\n";
-        $message .= "🚪 Кабинет: <b>{$tempData['room_number']}</b>\n\n";
+        $message = "📋 <b>Інвентар кабінету</b>\n";
+        $message .= "🏢 Філіал: <b>{$tempData['branch_name']}</b>\n";
+        $message .= "🚪 Кабінет: <b>{$tempData['room_number']}</b>\n\n";
 
         if ($inventory->count() > 0) {
             $grouped = $inventory->groupBy('equipment_type');
-            
+
             foreach ($grouped as $type => $items) {
                 $emoji = $this->getEquipmentEmoji($type);
                 $message .= "$emoji <b>$type ({$items->count()})</b>\n";
-                
+
                 foreach ($items->take(3) as $item) {
                     $info = [];
-                    if ($item->brand) $info[] = $item->brand;
-                    if ($item->model) $info[] = $item->model;
-                    $infoStr = $info ? " (" . implode(' ', $info) . ")" : "";
-                    
+                    if ($item->brand) {
+                        $info[] = $item->brand;
+                    }
+                    if ($item->model) {
+                        $info[] = $item->model;
+                    }
+                    $infoStr = $info ? ' ('.implode(' ', $info).')' : '';
+
                     $message .= "  • {$item->inventory_number}$infoStr\n";
                 }
-                
+
                 if ($items->count() > 3) {
-                    $message .= "  ... и еще " . ($items->count() - 3) . "\n";
+                    $message .= '  ... та ще '.($items->count() - 3)."\n";
                 }
                 $message .= "\n";
             }
-            
-            $message .= "📊 <b>Всего единиц: {$inventory->count()}</b>";
+
+            $message .= "📊 <b>Всього одиниць: {$inventory->count()}</b>";
         } else {
-            $message .= "ℹ️ В кабинете пока нет зарегистрированного оборудования.";
+            $message .= 'ℹ️ У кабінету поки немає зареєстрованого обладнання.';
         }
 
         return $message;
@@ -278,7 +289,8 @@ class InventoryHandler
             // Проверяем уникальность инвентарного номера
             $existing = RoomInventory::where('inventory_number', $inventoryNumber)->first();
             if ($existing) {
-                $this->telegram->sendMessage($chatId, "❌ Инвентарный номер уже существует. Введите другой номер:");
+                $this->telegram->sendMessage($chatId, '❌ Інвентарний номер уже існує. Введіть інший номер:');
+
                 return;
             }
 
@@ -291,32 +303,38 @@ class InventoryHandler
                 'model' => $tempData['model'] ?: null,
                 'serial_number' => $tempData['serial_number'] ?: null,
                 'inventory_number' => $inventoryNumber,
-                'notes' => null
+                'notes' => null,
             ]);
 
             $this->stateManager->clearUserState($userId);
 
-            $message = "✅ <b>Оборудование добавлено!</b>\n\n";
-            $message .= "📋 <b>Детали:</b>\n";
-            $message .= "🏢 Филиал: {$tempData['branch_name']}\n";
-            $message .= "🚪 Кабинет: {$tempData['room_number']}\n";
+            $message = "✅ <b>Обладнання додано!</b>\n\n";
+            $message .= "📋 <b>Деталі:</b>\n";
+            $message .= "🏢 Філіал: {$tempData['branch_name']}\n";
+            $message .= "🚪 Кабінет: {$tempData['room_number']}\n";
             $message .= "🖥️ Тип: {$tempData['equipment_type']}\n";
-            if ($tempData['brand']) $message .= "🏭 Бренд: {$tempData['brand']}\n";
-            if ($tempData['model']) $message .= "📱 Модель: {$tempData['model']}\n";
-            if ($tempData['serial_number']) $message .= "🔢 S/N: {$tempData['serial_number']}\n";
-            $message .= "🏷️ Инв. №: {$inventoryNumber}\n";
+            if ($tempData['brand']) {
+                $message .= "🏭 Бренд: {$tempData['brand']}\n";
+            }
+            if ($tempData['model']) {
+                $message .= "📱 Модель: {$tempData['model']}\n";
+            }
+            if ($tempData['serial_number']) {
+                $message .= "🔢 S/N: {$tempData['serial_number']}\n";
+            }
+            $message .= "🏷️ Інв. №: {$inventoryNumber}\n";
 
             $this->telegram->sendMessage($chatId, $message, $this->keyboard->getMainMenuKeyboard($userId));
 
             Log::info('Inventory item created via Telegram', [
                 'inventory_id' => $inventory->id,
                 'user_id' => $userId,
-                'branch_id' => $tempData['branch_id']
+                'branch_id' => $tempData['branch_id'],
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error creating inventory item: ' . $e->getMessage());
-            $this->telegram->sendMessage($chatId, "❌ Произошла ошибка. Попробуйте позже или обратитесь к администратору.");
+            Log::error('Error creating inventory item: '.$e->getMessage());
+            $this->telegram->sendMessage($chatId, '❌ Сталася помилка. Спробуйте пізніше або зв\'яжіться з адміністратором.');
             $this->stateManager->clearUserState($userId);
         }
     }
@@ -325,13 +343,13 @@ class InventoryHandler
     {
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
-        
+
         $this->stateManager->setUserState($userId, 'inventory_equipment_type', $tempData);
-        
+
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            "📋 <b>Ручное добавление оборудования</b>\n\nВведите тип оборудования (например: Компьютер, Принтер, Монитор):", 
+            $chatId,
+            $messageId,
+            "📋 <b>Ручне додавання обладнання</b>\n\nВведіть тип обладнання (наприклад: Компютер, Принтер, Монітор):",
             $this->keyboard->getCancelKeyboard()
         );
     }
@@ -340,13 +358,13 @@ class InventoryHandler
     {
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
-        
+
         $this->stateManager->setUserState($userId, 'inventory_brand', $tempData);
-        
+
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            "📋 <b>Добавление: {$tempData['equipment_type']}</b>\n\nВведите бренд (производителя) или нажмите /skip для пропуска:", 
+            $chatId,
+            $messageId,
+            "📋 <b>Додавання: {$tempData['equipment_type']}</b>\n\nВведіть бренд (виробника) або натисніть /skip для пропуску:",
             $this->keyboard->getCancelKeyboard()
         );
     }
@@ -356,8 +374,9 @@ class InventoryHandler
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
 
-        if (!isset($tempData['branch_id'], $tempData['room_number'])) {
-            $this->telegram->editMessage($chatId, $messageId, "❌ Ошибка: данные кабинета не найдены.");
+        if (! isset($tempData['branch_id'], $tempData['room_number'])) {
+            $this->telegram->editMessage($chatId, $messageId, '❌ Помилка: дані кабінету не знайдені.');
+
             return;
         }
 
@@ -369,22 +388,23 @@ class InventoryHandler
 
         if ($inventory->isEmpty()) {
             $this->telegram->editMessage(
-                $chatId, 
-                $messageId, 
-                "📝 <b>Редактирование инвентаря</b>\n\nВ кабинете нет оборудования для редактирования.", 
+                $chatId,
+                $messageId,
+                "📝 <b>Редагування інвентаря</b>\n\nУ кабінету немає обладнання для редагування.",
                 $this->keyboard->getBackToRoomKeyboard()
             );
+
             return;
         }
 
-        $message = "📝 <b>Выберите оборудование для редактирования:</b>\n\n";
-        $message .= "🏢 Филиал: <b>{$tempData['branch_name']}</b>\n";
-        $message .= "🚪 Кабинет: <b>{$tempData['room_number']}</b>\n\n";
+        $message = "📝 <b>Оберіть обладнання для редагування:</b>\n\n";
+        $message .= "🏢 Філіал: <b>{$tempData['branch_name']}</b>\n";
+        $message .= "🚪 Кабінет: <b>{$tempData['room_number']}</b>\n\n";
 
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            $message, 
+            $chatId,
+            $messageId,
+            $message,
             $this->keyboard->getEditListKeyboard($inventory)
         );
     }
@@ -394,8 +414,9 @@ class InventoryHandler
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
 
-        if (!isset($tempData['branch_id'], $tempData['room_number'])) {
-            $this->telegram->editMessage($chatId, $messageId, "❌ Ошибка: данные кабинета не найдены.");
+        if (! isset($tempData['branch_id'], $tempData['room_number'])) {
+            $this->telegram->editMessage($chatId, $messageId, '❌ Помилка: дані кабінету не знайдені.');
+
             return;
         }
 
@@ -407,23 +428,24 @@ class InventoryHandler
 
         if ($inventory->isEmpty()) {
             $this->telegram->editMessage(
-                $chatId, 
-                $messageId, 
-                "🗑️ <b>Удаление инвентаря</b>\n\nВ кабинете нет оборудования для удаления.", 
+                $chatId,
+                $messageId,
+                "🗑️ <b>Видалення інвентаря</b>\n\nУ кабінету немає обладнання для видалення.",
                 $this->keyboard->getBackToRoomKeyboard()
             );
+
             return;
         }
 
-        $message = "🗑️ <b>Выберите оборудование для удаления:</b>\n\n";
-        $message .= "🏢 Филиал: <b>{$tempData['branch_name']}</b>\n";
-        $message .= "🚪 Кабинет: <b>{$tempData['room_number']}</b>\n\n";
-        $message .= "⚠️ <b>Внимание:</b> удаление нельзя отменить!\n\n";
+        $message = "🗑️ <b>Оберіть обладнання для видалення:</b>\n\n";
+        $message .= "🏢 Філіал: <b>{$tempData['branch_name']}</b>\n";
+        $message .= "🚪 Кабінет: <b>{$tempData['room_number']}</b>\n\n";
+        $message .= "⚠️ <b>Увага:</b> видалення неможливо скасувати!\n\n";
 
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            $message, 
+            $chatId,
+            $messageId,
+            $message,
             $this->keyboard->getDeleteListKeyboard($inventory)
         );
     }
@@ -431,23 +453,24 @@ class InventoryHandler
     private function showEditItemOptions(int $chatId, int $messageId, int $itemId): void
     {
         $item = RoomInventory::find($itemId);
-        
-        if (!$item) {
-            $this->telegram->editMessage($chatId, $messageId, "❌ Оборудование не найдено.");
+
+        if (! $item) {
+            $this->telegram->editMessage($chatId, $messageId, '❌ Обладнання не знайдено.');
+
             return;
         }
 
-        $message = "✏️ <b>Редактирование оборудования</b>\n\n";
+        $message = "✏️ <b>Редагування обладнання</b>\n\n";
         $message .= "📦 <b>Тип:</b> {$item->equipment_type}\n";
-        $message .= "🏭 <b>Бренд:</b> " . ($item->brand ?: 'Не указан') . "\n";
-        $message .= "📱 <b>Модель:</b> " . ($item->model ?: 'Не указана') . "\n";
-        $message .= "🔢 <b>S/N:</b> " . ($item->serial_number ?: 'Не указан') . "\n";
-        $message .= "🏷️ <b>Инв. №:</b> {$item->inventory_number}\n";
+        $message .= '🏭 <b>Бренд:</b> '.($item->brand ?: 'Не вказано')."\n";
+        $message .= '📱 <b>Модель:</b> '.($item->model ?: 'Не вказана')."\n";
+        $message .= '🔢 <b>S/N:</b> '.($item->serial_number ?: 'Не вказано')."\n";
+        $message .= "🏷️ <b>Інв. №:</b> {$item->inventory_number}\n";
 
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            $message, 
+            $chatId,
+            $messageId,
+            $message,
             $this->keyboard->getEditItemKeyboard($itemId)
         );
     }
@@ -455,30 +478,35 @@ class InventoryHandler
     private function confirmDeleteItem(int $chatId, int $messageId, int $itemId): void
     {
         $item = RoomInventory::find($itemId);
-        
-        if (!$item) {
-            $this->telegram->editMessage($chatId, $messageId, "❌ Оборудование не найдено.");
+
+        if (! $item) {
+            $this->telegram->editMessage($chatId, $messageId, '❌ Обладнання не знайдено.');
+
             return;
         }
 
-        $message = "🗑️ <b>Удаление оборудования</b>\n\n";
-        $message .= "❗ Вы уверены, что хотите удалить:\n\n";
+        $message = "🗑️ <b>Видалення обладнання</b>\n\n";
+        $message .= "❗ Ви впевнені, що хочете видалити:\n\n";
         $message .= "📦 <b>{$item->equipment_type}</b>\n";
-        
+
         if ($item->brand || $item->model) {
             $info = [];
-            if ($item->brand) $info[] = $item->brand;
-            if ($item->model) $info[] = $item->model;
-            $message .= "🏭 " . implode(' ', $info) . "\n";
+            if ($item->brand) {
+                $info[] = $item->brand;
+            }
+            if ($item->model) {
+                $info[] = $item->model;
+            }
+            $message .= '🏭 '.implode(' ', $info)."\n";
         }
-        
+
         $message .= "🏷️ <b>{$item->inventory_number}</b>\n\n";
-        $message .= "⚠️ <b>Это действие нельзя отменить!</b>";
+        $message .= '⚠️ <b>Це дію неможливо скасувати!</b>';
 
         $this->telegram->editMessage(
-            $chatId, 
-            $messageId, 
-            $message, 
+            $chatId,
+            $messageId,
+            $message,
             $this->keyboard->getConfirmDeleteKeyboard($itemId)
         );
     }
@@ -487,30 +515,31 @@ class InventoryHandler
     {
         try {
             $item = RoomInventory::find($itemId);
-            
-            if (!$item) {
-                $this->telegram->editMessage($chatId, $messageId, "❌ Оборудование не найдено.");
+
+            if (! $item) {
+                $this->telegram->editMessage($chatId, $messageId, '❌ Обладнання не знайдено.');
+
                 return;
             }
 
-            $itemInfo = $item->equipment_type . " (" . $item->inventory_number . ")";
+            $itemInfo = $item->equipment_type.' ('.$item->inventory_number.')';
             $item->delete();
 
             Log::info('Inventory item deleted via Telegram', [
                 'item_id' => $itemId,
                 'item_info' => $itemInfo,
-                'deleted_by' => $chatId
+                'deleted_by' => $chatId,
             ]);
 
             $this->telegram->editMessage(
-                $chatId, 
-                $messageId, 
-                "✅ <b>Оборудование удалено</b>\n\n🗑️ Удалено: <b>$itemInfo</b>"
+                $chatId,
+                $messageId,
+                "✅ <b>Обладнання видалено</b>\n\n🗑️ Видалено: <b>$itemInfo</b>"
             );
 
         } catch (\Exception $e) {
-            Log::error('Error deleting inventory item: ' . $e->getMessage());
-            $this->telegram->editMessage($chatId, $messageId, "❌ Произошла ошибка при удалении. Попробуйте позже.");
+            Log::error('Error deleting inventory item: '.$e->getMessage());
+            $this->telegram->editMessage($chatId, $messageId, '❌ Сталася помилка при видаленні. Спробуйте пізніше.');
         }
     }
 
@@ -518,7 +547,7 @@ class InventoryHandler
     {
         $emojis = [
             'Компьютер' => '💻',
-            'Монитор' => '🖥️', 
+            'Монитор' => '🖥️',
             'Принтер' => '🖨️',
             'Клавиатура' => '⌨️',
             'Мышь' => '🖱️',
@@ -534,19 +563,20 @@ class InventoryHandler
     public function handleEquipmentType(int $chatId, int $userId, string $equipmentType): void
     {
         if (empty(trim($equipmentType)) || strlen($equipmentType) > 100) {
-            $this->telegram->sendMessage($chatId, "❌ Некорректный тип оборудования. Введите тип (до 100 символов):");
+            $this->telegram->sendMessage($chatId, '❌ Невірний тип обладнання. Введіть тип (до 100 символів):');
+
             return;
         }
 
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
         $tempData['equipment_type'] = trim($equipmentType);
-        
+
         $this->stateManager->setUserState($userId, 'inventory_brand', $tempData);
-        
+
         $this->telegram->sendMessage(
-            $chatId, 
-            "📋 <b>Добавление оборудования</b>\nТип: <b>{$tempData['equipment_type']}</b>\n\nВведите бренд (производителя) или нажмите /skip для пропуска:"
+            $chatId,
+            "📋 <b>Додавання обладнання</b>\nТип: <b>{$tempData['equipment_type']}</b>\n\nВведіть бренд (виробника) або натисніть /skip для пропуску:"
         );
     }
 
@@ -554,21 +584,21 @@ class InventoryHandler
     {
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
-        
+
         if ($brand === '/skip') {
             $tempData['brand'] = '';
         } else {
             $tempData['brand'] = trim($brand);
         }
-        
+
         $this->stateManager->setUserState($userId, 'inventory_model', $tempData);
-        
+
         $this->telegram->sendMessage(
-            $chatId, 
-            "📋 <b>Добавление оборудования</b>\n" .
-            "Тип: <b>{$tempData['equipment_type']}</b>\n" .
-            "Бренд: <b>" . ($tempData['brand'] ?: 'Не указан') . "</b>\n\n" .
-            "Введите модель или нажмите /skip для пропуска:"
+            $chatId,
+            "📋 <b>Додавання обладнання</b>\n".
+            "Тип: <b>{$tempData['equipment_type']}</b>\n".
+            'Бренд: <b>'.($tempData['brand'] ?: 'Не вказано')."</b>\n\n".
+            'Введіть модель або натисніть /skip для пропуску:'
         );
     }
 
@@ -576,22 +606,22 @@ class InventoryHandler
     {
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
-        
+
         if ($model === '/skip') {
             $tempData['model'] = '';
         } else {
             $tempData['model'] = trim($model);
         }
-        
+
         $this->stateManager->setUserState($userId, 'inventory_serial', $tempData);
-        
+
         $this->telegram->sendMessage(
-            $chatId, 
-            "📋 <b>Добавление оборудования</b>\n" .
-            "Тип: <b>{$tempData['equipment_type']}</b>\n" .
-            "Бренд: <b>" . ($tempData['brand'] ?: 'Не указан') . "</b>\n" .
-            "Модель: <b>" . ($tempData['model'] ?: 'Не указана') . "</b>\n\n" .
-            "Введите серийный номер или нажмите /skip для пропуска:"
+            $chatId,
+            "📋 <b>Додавання обладнання</b>\n".
+            "Тип: <b>{$tempData['equipment_type']}</b>\n".
+            'Бренд: <b>'.($tempData['brand'] ?: 'Не вказано')."</b>\n".
+            'Модель: <b>'.($tempData['model'] ?: 'Не вказана')."</b>\n\n".
+            'Введіть серійний номер або натисніть /skip для пропуску:'
         );
     }
 
@@ -599,36 +629,37 @@ class InventoryHandler
     {
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
-        
+
         if ($serial === '/skip') {
             $tempData['serial_number'] = '';
         } else {
             $tempData['serial_number'] = trim($serial);
         }
-        
+
         $this->stateManager->setUserState($userId, 'inventory_number', $tempData);
-        
+
         $this->telegram->sendMessage(
-            $chatId, 
-            "📋 <b>Добавление оборудования</b>\n" .
-            "Тип: <b>{$tempData['equipment_type']}</b>\n" .
-            "Серийный номер: <b>" . ($tempData['serial_number'] ?: 'Не указан') . "</b>\n\n" .
-            "Введите инвентарный номер:"
+            $chatId,
+            "📋 <b>Додавання обладнання</b>\n".
+            "Тип: <b>{$tempData['equipment_type']}</b>\n".
+            'Серійний номер: <b>'.($tempData['serial_number'] ?: 'Не вказано')."</b>\n\n".
+            'Введіть інвентарний номер:'
         );
     }
 
     public function handleInventoryNumber(int $chatId, int $userId, ?string $username, string $inventoryNumber): void
     {
         $inventoryNumber = trim($inventoryNumber);
-        
+
         if (empty($inventoryNumber)) {
-            $this->telegram->sendMessage($chatId, "❌ Инвентарный номер обязателен. Введите инвентарный номер:");
+            $this->telegram->sendMessage($chatId, '❌ Інвентарний номер обов\'язковий. Введіть інвентарний номер:');
+
             return;
         }
 
         $userState = $this->stateManager->getUserState($userId);
         $tempData = $userState['temp_data'] ?? [];
-        
+
         $this->createInventoryItem($chatId, $userId, $username, $inventoryNumber, $tempData);
     }
 }

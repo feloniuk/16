@@ -2,19 +2,21 @@
 
 namespace App\Services\Telegram\Handlers;
 
-use App\Models\RepairRequest;
-use App\Models\CartridgeReplacement;
-use App\Models\RoomInventory;
 use App\Models\Branch;
-use App\Services\Telegram\TelegramService;
-use App\Services\Telegram\StateManager;
+use App\Models\CartridgeReplacement;
+use App\Models\RepairRequest;
+use App\Models\RoomInventory;
 use App\Services\Telegram\KeyboardService;
+use App\Services\Telegram\StateManager;
+use App\Services\Telegram\TelegramService;
 use Illuminate\Support\Facades\Log;
 
 class AdminHandler
 {
     private TelegramService $telegram;
+
     private StateManager $stateManager;
+
     private KeyboardService $keyboard;
 
     public function __construct(
@@ -35,8 +37,9 @@ class AdminHandler
         $data = $callbackQuery['data'];
 
         // Проверяем права администратора
-        if (!$this->telegram->isAdmin($userId)) {
-            $this->telegram->editMessage($chatId, $messageId, "❌ У вас нет прав администратора.");
+        if (! $this->telegram->isAdmin($userId)) {
+            $this->telegram->editMessage($chatId, $messageId, '❌ У вас немає прав адміністратора.');
+
             return;
         }
 
@@ -57,9 +60,9 @@ class AdminHandler
 
     public function sendAdminMenu(int $chatId, ?int $messageId = null): void
     {
-        $text = "⚙️ <b>Админ-панель:</b>\n\nВыберите действие:";
+        $text = "⚙️ <b>Панель адміністратора:</b>\n\nОберіть дію:";
         $keyboard = $this->keyboard->getAdminMenuKeyboard();
-        
+
         if ($messageId) {
             $this->telegram->editMessage($chatId, $messageId, $text, $keyboard);
         } else {
@@ -71,17 +74,17 @@ class AdminHandler
     {
         try {
             $stats = $this->getSystemStats();
-            
-            $message = "📊 <b>Статистика системы:</b>\n\n";
+
+            $message = "📊 <b>Статистика системи:</b>\n\n";
             $message .= "🔧 Заявки на ремонт:\n";
-            $message .= "   • Всего: {$stats['repairs']['total']}\n";
-            $message .= "   • Новые: {$stats['repairs']['new']}\n";
-            $message .= "   • В работе: {$stats['repairs']['in_progress']}\n";
-            $message .= "   • Выполнено: {$stats['repairs']['completed']}\n\n";
+            $message .= "   • Всього: {$stats['repairs']['total']}\n";
+            $message .= "   • Нові: {$stats['repairs']['new']}\n";
+            $message .= "   • В роботі: {$stats['repairs']['in_progress']}\n";
+            $message .= "   • Виконано: {$stats['repairs']['completed']}\n\n";
             $message .= "🖨️ Картриджи: {$stats['cartridges']['total']}\n";
-            $message .= "🏢 Филиалы: {$stats['branches']}\n";
-            $message .= "📦 Инвентарь: {$stats['inventory']}\n";
-            $message .= "\n⏰ Обновлено: " . now()->format('d.m.Y H:i');
+            $message .= "🏢 Філіали: {$stats['branches']}\n";
+            $message .= "📦 Інвентар: {$stats['inventory']}\n";
+            $message .= "\n⏰ Оновлено: ".now()->format('d.m.Y H:i');
 
             $keyboard = $messageId ? $this->keyboard->getBackKeyboard('admin_menu') : null;
 
@@ -91,9 +94,9 @@ class AdminHandler
                 $this->telegram->sendMessage($chatId, $message, $keyboard);
             }
         } catch (\Exception $e) {
-            Log::error('Error getting system status: ' . $e->getMessage());
-            $errorMessage = "❌ Ошибка получения статистики системы";
-            
+            Log::error('Error getting system status: '.$e->getMessage());
+            $errorMessage = '❌ Помилка отримання статистики системи';
+
             if ($messageId) {
                 $this->telegram->editMessage($chatId, $messageId, $errorMessage);
             } else {
@@ -111,24 +114,25 @@ class AdminHandler
 
         if ($repairs->isEmpty()) {
             $this->telegram->editMessage(
-                $chatId, 
-                $messageId, 
-                "📋 <b>Заявки на ремонт</b>\n\nЗаявок не найдено.", 
+                $chatId,
+                $messageId,
+                "📋 <b>Заявки на ремонт</b>\n\nЗаявок не знайдено.",
                 $this->keyboard->getBackKeyboard('admin_menu')
             );
+
             return;
         }
 
-        $message = "📋 <b>Последние заявки на ремонт:</b>\n\n";
-        
+        $message = "📋 <b>Останні заявки на ремонт:</b>\n\n";
+
         foreach ($repairs as $repair) {
             $status = $this->getStatusEmoji($repair->status);
             $date = $repair->created_at->format('d.m.Y H:i');
             $username = $repair->username ? "@{$repair->username}" : "ID: {$repair->user_telegram_id}";
-            
+
             $message .= "🔧 <b>#{$repair->id}</b> $status\n";
             $message .= "📍 {$repair->branch->name} - каб. {$repair->room_number}\n";
-            $message .= "📝 " . $this->truncateText($repair->description, 50) . "\n";
+            $message .= '📝 '.$this->truncateText($repair->description, 50)."\n";
             $message .= "👤 $username | ⏰ $date\n\n";
         }
 
@@ -144,20 +148,21 @@ class AdminHandler
 
         if ($cartridges->isEmpty()) {
             $this->telegram->editMessage(
-                $chatId, 
-                $messageId, 
-                "🖨️ <b>История картриджей</b>\n\nЗаписей не найдено.", 
+                $chatId,
+                $messageId,
+                "🖨️ <b>Історія картриджів</b>\n\nЗаписів не знайдено.",
                 $this->keyboard->getBackKeyboard('admin_menu')
             );
+
             return;
         }
 
-        $message = "🖨️ <b>Последние замены картриджей:</b>\n\n";
-        
+        $message = "🖨️ <b>Останні заміни картриджів:</b>\n\n";
+
         foreach ($cartridges as $cartridge) {
             $date = $cartridge->replacement_date->format('d.m.Y');
             $username = $cartridge->username ? "@{$cartridge->username}" : "ID: {$cartridge->user_telegram_id}";
-            
+
             $message .= "🖨️ <b>#{$cartridge->id}</b>\n";
             $message .= "📍 {$cartridge->branch->name} - каб. {$cartridge->room_number}\n";
             $message .= "🛒 {$cartridge->cartridge_type}\n";
@@ -174,27 +179,27 @@ class AdminHandler
             ->orderBy('count', 'desc')
             ->get();
 
-        $message = "📦 <b>Управление инвентарем</b>\n\n";
-        $message .= "📊 <b>Статистика по типам:</b>\n";
-        
+        $message = "📦 <b>Керування інвентарем</b>\n\n";
+        $message .= "📊 <b>Статистика за типами:</b>\n";
+
         foreach ($stats->take(10) as $stat) {
             $message .= "• {$stat->equipment_type}: {$stat->count}\n";
         }
-        
-        $message .= "\nВсего единиц: " . RoomInventory::count();
+
+        $message .= "\nВсього одиниць: ".RoomInventory::count();
 
         $keyboard = [
             'inline_keyboard' => [
                 [
-                    ['text' => '📋 Добавить оборудование', 'callback_data' => 'inventory_management']
+                    ['text' => '📋 Додати обладнання', 'callback_data' => 'inventory_management'],
                 ],
                 [
-                    ['text' => '📊 Экспорт отчета', 'callback_data' => 'inventory_export']
+                    ['text' => '📊 Експорт звіту', 'callback_data' => 'inventory_export'],
                 ],
                 [
-                    ['text' => '◀️ Админ-панель', 'callback_data' => 'admin_menu']
-                ]
-            ]
+                    ['text' => '◀️ Панель адміністратора', 'callback_data' => 'admin_menu'],
+                ],
+            ],
         ];
 
         $this->telegram->editMessage($chatId, $messageId, $message, $keyboard);
@@ -203,29 +208,30 @@ class AdminHandler
     private function showRepairDetails(int $chatId, int $messageId, int $repairId): void
     {
         $repair = RepairRequest::with('branch')->find($repairId);
-        
-        if (!$repair) {
-            $this->telegram->editMessage($chatId, $messageId, "Заявка не найдена.");
+
+        if (! $repair) {
+            $this->telegram->editMessage($chatId, $messageId, '❌ Заявку не знайдено.');
+
             return;
         }
 
         $status = $this->getStatusEmoji($repair->status);
         $username = $repair->username ? "@{$repair->username}" : "ID: {$repair->user_telegram_id}";
-        
+
         $message = "🔧 <b>Заявка #{$repair->id}</b> $status\n\n";
-        $message .= "📍 <b>Филиал:</b> {$repair->branch->name}\n";
-        $message .= "🚪 <b>Кабинет:</b> {$repair->room_number}\n";
-        $message .= "📝 <b>Проблема:</b>\n" . htmlspecialchars($repair->description) . "\n\n";
-        $message .= "👤 <b>Пользователь:</b> $username\n";
-        
+        $message .= "📍 <b>Філіал:</b> {$repair->branch->name}\n";
+        $message .= "🚪 <b>Кабінет:</b> {$repair->room_number}\n";
+        $message .= "📝 <b>Проблема:</b>\n".htmlspecialchars($repair->description)."\n\n";
+        $message .= "👤 <b>Користувач:</b> $username\n";
+
         if ($repair->phone) {
             $message .= "📞 <b>Телефон:</b> {$repair->phone}\n";
         }
-        
-        $message .= "⏰ <b>Создана:</b> " . $repair->created_at->format('d.m.Y H:i');
-        
+
+        $message .= '⏰ <b>Створена:</b> '.$repair->created_at->format('d.m.Y H:i');
+
         if ($repair->updated_at != $repair->created_at) {
-            $message .= "\n🔄 <b>Обновлена:</b> " . $repair->updated_at->format('d.m.Y H:i');
+            $message .= "\n🔄 <b>Оновлена:</b> ".$repair->updated_at->format('d.m.Y H:i');
         }
 
         $this->telegram->editMessage($chatId, $messageId, $message, $this->keyboard->getRepairDetailsKeyboard($repair));
@@ -234,9 +240,10 @@ class AdminHandler
     private function updateRepairStatus(int $chatId, int $messageId, int $repairId, string $newStatus): void
     {
         $repair = RepairRequest::find($repairId);
-        
-        if (!$repair) {
-            $this->telegram->editMessage($chatId, $messageId, "Заявка не найдена.");
+
+        if (! $repair) {
+            $this->telegram->editMessage($chatId, $messageId, '❌ Заявку не знайдено.');
+
             return;
         }
 
@@ -244,12 +251,12 @@ class AdminHandler
         $repair->save();
 
         $statusText = [
-            'нова' => 'Новая',
-            'в_роботі' => 'В работе', 
-            'виконана' => 'Выполнена'
+            'нова' => 'Нова',
+            'в_роботі' => 'В роботі',
+            'виконана' => 'Виконана',
         ];
 
-        $this->telegram->answerCallbackQuery($messageId, "Статус изменен на: " . $statusText[$newStatus]);
+        $this->telegram->answerCallbackQuery($messageId, 'Статус змінено на: '.$statusText[$newStatus]);
         $this->showRepairDetails($chatId, $messageId, $repairId);
     }
 
@@ -260,20 +267,20 @@ class AdminHandler
                 'total' => RepairRequest::count(),
                 'new' => RepairRequest::where('status', 'нова')->count(),
                 'in_progress' => RepairRequest::where('status', 'в_роботі')->count(),
-                'completed' => RepairRequest::where('status', 'виконана')->count()
+                'completed' => RepairRequest::where('status', 'виконана')->count(),
             ],
             'cartridges' => [
                 'total' => CartridgeReplacement::count(),
-                'this_month' => CartridgeReplacement::whereMonth('created_at', now()->month)->count()
+                'this_month' => CartridgeReplacement::whereMonth('created_at', now()->month)->count(),
             ],
             'inventory' => RoomInventory::count(),
-            'branches' => Branch::where('is_active', true)->count()
+            'branches' => Branch::where('is_active', true)->count(),
         ];
     }
 
     private function getStatusEmoji(string $status): string
     {
-        return match($status) {
+        return match ($status) {
             'нова' => '🆕',
             'в_роботі' => '⚙️',
             'виконана' => '✅',
@@ -283,6 +290,6 @@ class AdminHandler
 
     private function truncateText(string $text, int $length): string
     {
-        return mb_strlen($text) > $length ? mb_substr($text, 0, $length) . '...' : $text;
+        return mb_strlen($text) > $length ? mb_substr($text, 0, $length).'...' : $text;
     }
 }

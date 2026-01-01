@@ -2,23 +2,26 @@
 
 namespace App\Services\Telegram;
 
-use App\Services\Telegram\TelegramService;
-use App\Services\Telegram\StateManager;
-use App\Services\Telegram\KeyboardService;
-use App\Services\Telegram\Handlers\RepairHandler;
+use App\Services\Telegram\Handlers\AdminHandler;
 use App\Services\Telegram\Handlers\CartridgeHandler;
 use App\Services\Telegram\Handlers\InventoryHandler;
-use App\Services\Telegram\Handlers\AdminHandler;
+use App\Services\Telegram\Handlers\RepairHandler;
 use Illuminate\Support\Facades\Log;
 
 class MessageHandler
 {
     private TelegramService $telegram;
+
     private StateManager $stateManager;
+
     private KeyboardService $keyboard;
+
     private RepairHandler $repairHandler;
+
     private CartridgeHandler $cartridgeHandler;
+
     private InventoryHandler $inventoryHandler;
+
     private AdminHandler $adminHandler;
 
     public function __construct(
@@ -51,12 +54,13 @@ class MessageHandler
         // Обработка команд
         if (str_starts_with($text, '/')) {
             $this->handleCommand($chatId, $userId, $username, $text);
+
             return;
         }
 
         // Обработка по состоянию пользователя
         $userState = $this->stateManager->getUserState($userId);
-        
+
         if ($userState && isset($userState['state'])) {
             $this->handleStateMessage($chatId, $userId, $username, $text, $userState);
         } else {
@@ -67,7 +71,7 @@ class MessageHandler
     private function handleCommand(int $chatId, int $userId, ?string $username, string $command): void
     {
         Log::info("Handling command: {$command} for user: {$userId}");
-        
+
         switch ($command) {
             case '/start':
                 $this->handleStartCommand($chatId, $userId, $username);
@@ -98,17 +102,17 @@ class MessageHandler
 
     private function handleHelpCommand(int $chatId, int $userId): void
     {
-        $text = "📋 <b>Справка по боту:</b>\n\n" .
-               "🔧 <b>Вызов IT мастера</b> - подать заявку на ремонт оборудования\n" .
-               "🖨️ <b>Замена картриджа</b> - запрос на замену картриджа\n\n" .
-               "📞 <b>Команды:</b>\n" .
-               "/start - Главное меню\n" .
-               "/help - Эта справка\n" .
-               "/cancel - Отменить текущее действие\n" .
-               "/admin - Админ-панель (только для администраторов)\n" .
-               "/status - Статистика системы\n\n" .
-               "❓ Если у вас возникли вопросы, обратитесь к администратору.";
-        
+        $text = "📋 <b>Довідка:</b>\n\n".
+               "🔧 <b>Виклик IT майстра</b> - подати заявку на ремонт обладнання\n".
+               "🖨️ <b>Заміна картриджа</b> - запит на заміну картриджа\n\n".
+               "📞 <b>Команди:</b>\n".
+               "/start - Головне меню\n".
+               "/help - Ця довідка\n".
+               "/cancel - Скасувати поточну дію\n".
+               "/admin - Панель адміністратора (тільки для адміністраторів)\n".
+               "/status - Статистика системи\n\n".
+               "❓ Якщо у вас виникли питання, зв\'яжіться з адміністратором.";
+
         $this->telegram->sendMessage($chatId, $text, $this->keyboard->getMainMenuKeyboard($userId));
     }
 
@@ -116,8 +120,8 @@ class MessageHandler
     {
         $this->stateManager->clearUserState($userId);
         $this->telegram->sendMessage(
-            $chatId, 
-            "Действие отменено. Выберите новое действие:", 
+            $chatId,
+            '✅ Дія скасована. Оберіть нову дію:',
             $this->keyboard->getMainMenuKeyboard($userId)
         );
     }
@@ -127,7 +131,7 @@ class MessageHandler
         if ($this->telegram->isAdmin($userId)) {
             $this->adminHandler->sendAdminMenu($chatId);
         } else {
-            $this->telegram->sendMessage($chatId, "У вас нет прав администратора.");
+            $this->telegram->sendMessage($chatId, '❌ У вас немає прав адміністратора.');
         }
     }
 
@@ -139,8 +143,8 @@ class MessageHandler
     private function handleUnknownCommand(int $chatId, int $userId, string $command): void
     {
         $this->telegram->sendMessage(
-            $chatId, 
-            "Неизвестная команда: {$command}. Используйте /help для справки.", 
+            $chatId,
+            "❓ Невідома команда: {$command}. Використовуйте /help для довідки.",
             $this->keyboard->getMainMenuKeyboard($userId)
         );
     }
@@ -150,7 +154,7 @@ class MessageHandler
         $state = $userState['state'];
         $tempData = $userState['temp_data'] ?? [];
 
-        Log::info("Handling state message", ['state' => $state, 'user_id' => $userId]);
+        Log::info('Handling state message', ['state' => $state, 'user_id' => $userId]);
 
         switch ($state) {
             // Repair states
@@ -164,7 +168,7 @@ class MessageHandler
                 $this->repairHandler->handlePhoneInput($chatId, $userId, $username, $text);
                 break;
 
-            // Cartridge states
+                // Cartridge states
             case 'cartridge_awaiting_room':
                 $this->cartridgeHandler->handleRoomInput($chatId, $userId, $text);
                 break;
@@ -175,7 +179,7 @@ class MessageHandler
                 $this->cartridgeHandler->handleTypeInput($chatId, $userId, $username, $text);
                 break;
 
-            // Inventory states
+                // Inventory states
             case 'inventory_room_input':
                 $this->inventoryHandler->handleRoomInput($chatId, $userId, $text);
                 break;
@@ -208,8 +212,8 @@ class MessageHandler
     {
         Log::warning("Unknown user state: {$state} for user: {$userId}");
         $this->telegram->sendMessage(
-            $chatId, 
-            "Неизвестное состояние. Возвращаемся в главное меню.", 
+            $chatId,
+            '❓ Невідомий стан. Повертаємося в головне меню.',
             $this->keyboard->getMainMenuKeyboard($userId)
         );
         $this->stateManager->clearUserState($userId);
@@ -217,19 +221,19 @@ class MessageHandler
 
     private function sendWelcomeMessage(int $chatId, int $userId, ?string $username): void
     {
-        $name = $username ? "@$username" : "Пользователь";
-        $text = "🤖 Добро пожаловать, $name!\n\n" .
-               "Я бот для подачи заявок на ремонт оборудования и замены картриджей.\n\n" .
-               "Что вы хотите сделать?";
-        
+        $name = $username ? "@$username" : 'Користувач';
+        $text = "🤖 Ласкаво просимо, $name!\n\n".
+               "Я бот для подачі заявок на ремонт обладнання та заміни картриджів.\n\n".
+               'Що ви хочете зробити?';
+
         $this->telegram->sendMessage($chatId, $text, $this->keyboard->getMainMenuKeyboard($userId));
     }
 
     private function sendMainMenu(int $chatId, int $userId): void
     {
         $this->telegram->sendMessage(
-            $chatId, 
-            "Выберите действие из главного меню:", 
+            $chatId,
+            'Оберіть дію з головного меню:',
             $this->keyboard->getMainMenuKeyboard($userId)
         );
     }

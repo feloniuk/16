@@ -2,17 +2,17 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use App\Services\Telegram\TelegramService;
-use App\Services\Telegram\StateManager;
-use App\Services\Telegram\KeyboardService;
 use App\Services\Telegram\CallbackHandler;
-use App\Services\Telegram\MessageHandler;
-use App\Services\Telegram\MessageCacheService;
-use App\Services\Telegram\Handlers\RepairHandler;
+use App\Services\Telegram\Handlers\AdminHandler;
 use App\Services\Telegram\Handlers\CartridgeHandler;
 use App\Services\Telegram\Handlers\InventoryHandler;
-use App\Services\Telegram\Handlers\AdminHandler;
+use App\Services\Telegram\Handlers\RepairHandler;
+use App\Services\Telegram\KeyboardService;
+use App\Services\Telegram\MessageCacheService;
+use App\Services\Telegram\MessageHandler;
+use App\Services\Telegram\StateManager;
+use App\Services\Telegram\TelegramService;
+use Illuminate\Support\ServiceProvider;
 
 class TelegramServiceProvider extends ServiceProvider
 {
@@ -23,13 +23,13 @@ class TelegramServiceProvider extends ServiceProvider
     {
         // Основные сервисы
         $this->app->singleton(MessageCacheService::class);
-        
+
         $this->app->singleton(TelegramService::class, function ($app) {
             return new TelegramService($app->make(MessageCacheService::class));
         });
-        
+
         $this->app->singleton(StateManager::class);
-        
+
         // Сервис клавиатур зависит от TelegramService
         $this->app->singleton(KeyboardService::class, function ($app) {
             return new KeyboardService($app->make(TelegramService::class));
