@@ -2,6 +2,7 @@
 
 namespace App\Services\Telegram;
 
+use App\Models\Branch;
 use App\Services\Telegram\Handlers\AdminHandler;
 use App\Services\Telegram\Handlers\CartridgeHandler;
 use App\Services\Telegram\Handlers\InventoryHandler;
@@ -16,6 +17,8 @@ class MessageHandler
 
     private KeyboardService $keyboard;
 
+    private ReplyKeyboardService $replyKeyboard;
+
     private RepairHandler $repairHandler;
 
     private CartridgeHandler $cartridgeHandler;
@@ -28,6 +31,7 @@ class MessageHandler
         TelegramService $telegram,
         StateManager $stateManager,
         KeyboardService $keyboard,
+        ReplyKeyboardService $replyKeyboard,
         RepairHandler $repairHandler,
         CartridgeHandler $cartridgeHandler,
         InventoryHandler $inventoryHandler,
@@ -36,6 +40,7 @@ class MessageHandler
         $this->telegram = $telegram;
         $this->stateManager = $stateManager;
         $this->keyboard = $keyboard;
+        $this->replyKeyboard = $replyKeyboard;
         $this->repairHandler = $repairHandler;
         $this->cartridgeHandler = $cartridgeHandler;
         $this->inventoryHandler = $inventoryHandler;
@@ -58,6 +63,11 @@ class MessageHandler
             return;
         }
 
+        // Обработка кнопок reply keyboard (главное меню)
+        if ($this->handleMenuButton($chatId, $userId, $username, $text)) {
+            return;
+        }
+
         // Обработка по состоянию пользователя
         $userState = $this->stateManager->getUserState($userId);
 
@@ -66,6 +76,86 @@ class MessageHandler
         } else {
             $this->sendMainMenu($chatId, $userId);
         }
+    }
+
+    private function handleMenuButton(int $chatId, int $userId, ?string $username, string $text): bool
+    {
+        Log::info("Checking menu button: {$text} for user: {$userId}");
+
+        match ($text) {
+            '🔧 Виклик IT майстра' => $this->handleRepairButton($chatId, $userId),
+            '🖨️ Заміна картриджа' => $this->handleCartridgeButton($chatId, $userId),
+            '📋 Керування інвентарем' => $this->handleInventoryButton($chatId, $userId),
+            '⚙️ Панель адміністратора' => $this->adminHandler->sendAdminMenu($chatId),
+            default => false,
+        };
+
+        return in_array($text, [
+            '🔧 Виклик IT майстра',
+            '🖨️ Заміна картриджа',
+            '📋 Керування інвентарем',
+            '⚙️ Панель адміністратора',
+        ]);
+    }
+
+    private function handleRepairButton(int $chatId, int $userId): void
+    {
+        $this->stateManager->clearUserState($userId);
+        $branches = Branch::where('is_active', true)->get();
+
+        if ($branches->isEmpty()) {
+            $this->telegram->sendMessage($chatId, '❌ На жаль, філіали недоступні. Зв\'яжіться з адміністратором.');
+
+            return;
+        }
+
+        $this->stateManager->setUserState($userId, 'repair_awaiting_branch');
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "🔧 <b>Виклик IT майстра</b>\n\nОберіть філіал:",
+            $this->keyboard->getBranchesKeyboard($branches, 'repair')
+        );
+    }
+
+    private function handleCartridgeButton(int $chatId, int $userId): void
+    {
+        $this->stateManager->clearUserState($userId);
+        $branches = Branch::where('is_active', true)->get();
+
+        if ($branches->isEmpty()) {
+            $this->telegram->sendMessage($chatId, '❌ На жаль, філіали недоступні. Зв\'яжіться з адміністратором.');
+
+            return;
+        }
+
+        $this->stateManager->setUserState($userId, 'cartridge_awaiting_branch');
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "🖨️ <b>Заміна картриджа</b>\n\nОберіть філіал:",
+            $this->keyboard->getBranchesKeyboard($branches, 'cartridge')
+        );
+    }
+
+    private function handleInventoryButton(int $chatId, int $userId): void
+    {
+        $this->stateManager->clearUserState($userId);
+        $branches = Branch::where('is_active', true)->get();
+
+        if ($branches->isEmpty()) {
+            $this->telegram->sendMessage($chatId, '❌ На жаль, філіали недоступні. Зв\'яжіться з адміністратором.');
+
+            return;
+        }
+
+        $this->stateManager->setUserState($userId, 'inventory_branch_selection');
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "📋 <b>Керування інвентарем</b>\n\nОберіть філіал:",
+            $this->keyboard->getInventoryBranchesKeyboard($branches)
+        );
     }
 
     private function handleCommand(int $chatId, int $userId, ?string $username, string $command): void
@@ -226,7 +316,7 @@ class MessageHandler
                "Я бот для подачі заявок на ремонт обладнання та заміни картриджів.\n\n".
                'Що ви хочете зробити?';
 
-        $this->telegram->sendMessage($chatId, $text, $this->keyboard->getMainMenuKeyboard($userId));
+        $this->telegram->sendMessage($chatId, $text, $this->replyKeyboard->getMainMenuKeyboard());
     }
 
     private function sendMainMenu(int $chatId, int $userId): void
@@ -234,7 +324,7 @@ class MessageHandler
         $this->telegram->sendMessage(
             $chatId,
             'Оберіть дію з головного меню:',
-            $this->keyboard->getMainMenuKeyboard($userId)
+            $this->replyKeyboard->getMainMenuKeyboard()
         );
     }
 }

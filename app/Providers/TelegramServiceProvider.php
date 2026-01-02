@@ -10,6 +10,7 @@ use App\Services\Telegram\Handlers\RepairHandler;
 use App\Services\Telegram\KeyboardService;
 use App\Services\Telegram\MessageCacheService;
 use App\Services\Telegram\MessageHandler;
+use App\Services\Telegram\ReplyKeyboardService;
 use App\Services\Telegram\StateManager;
 use App\Services\Telegram\TelegramService;
 use Illuminate\Support\ServiceProvider;
@@ -34,6 +35,9 @@ class TelegramServiceProvider extends ServiceProvider
         $this->app->singleton(KeyboardService::class, function ($app) {
             return new KeyboardService($app->make(TelegramService::class));
         });
+
+        // Сервис reply клавиатур
+        $this->app->singleton(ReplyKeyboardService::class);
 
         // Обработчики
         $this->app->singleton(RepairHandler::class, function ($app) {
@@ -86,6 +90,7 @@ class TelegramServiceProvider extends ServiceProvider
                 $app->make(TelegramService::class),
                 $app->make(StateManager::class),
                 $app->make(KeyboardService::class),
+                $app->make(ReplyKeyboardService::class),
                 $app->make(RepairHandler::class),
                 $app->make(CartridgeHandler::class),
                 $app->make(InventoryHandler::class),
