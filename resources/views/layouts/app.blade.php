@@ -249,6 +249,38 @@
                         </a>
                     </li>
                     @endif
+
+                    @if(Auth::user()->role === 'director')
+                    <hr class="text-white-50">
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('branch-analytics.*') ? 'active' : '' }}" href="{{ route('branch-analytics.index') }}">
+                            <i class="bi bi-graph-up me-2"></i>
+                            Аналітика філій
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('director-inventory.warehouse') ? 'active' : '' }}" href="{{ route('director-inventory.warehouse') }}">
+                            <i class="bi bi-box-seam me-2"></i>
+                            Інвентар складу
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('director-inventory.equipment') ? 'active' : '' }}" href="{{ route('director-inventory.equipment') }}">
+                            <i class="bi bi-pc-display me-2"></i>
+                            Інвентар кабінетів
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('director-inventory.forecasting') ? 'active' : '' }}" href="{{ route('director-inventory.forecasting') }}">
+                            <i class="bi bi-crystal-ball me-2"></i>
+                            Прогнозування витрат
+                        </a>
+                    </li>
+                    @endif
                 </ul>
 
                 <hr class="text-white-50">

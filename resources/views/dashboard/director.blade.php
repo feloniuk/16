@@ -9,7 +9,7 @@
         <div class="stats-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h6 class="text-muted mb-2">Филиалы</h6>
+                    <h6 class="text-muted mb-2">Філіали</h6>
                     <h3 class="mb-0">{{ $totalStats['branches'] }}</h3>
                 </div>
                 <div class="bg-primary bg-opacity-10 p-3 rounded">
@@ -18,16 +18,16 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-3">
         <div class="stats-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h6 class="text-muted mb-2">Всего заявок</h6>
+                    <h6 class="text-muted mb-2">Всього заявок</h6>
                     <h3 class="mb-0">{{ $totalStats['total_repairs'] }}</h3>
                     <small class="text-success">
                         <i class="bi bi-arrow-up"></i>
-                        +{{ $monthlyStats['repairs_this_month'] }} в этом месяце
+                        +{{ $monthlyStats['repairs_this_month'] }} в цьому місяці
                     </small>
                 </div>
                 <div class="bg-warning bg-opacity-10 p-3 rounded">
@@ -36,16 +36,16 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-3">
         <div class="stats-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h6 class="text-muted mb-2">Картриджи</h6>
+                    <h6 class="text-muted mb-2">Картриджі</h6>
                     <h3 class="mb-0">{{ $totalStats['total_cartridges'] }}</h3>
                     <small class="text-info">
                         <i class="bi bi-arrow-up"></i>
-                        +{{ $monthlyStats['cartridges_this_month'] }} в этом месяце
+                        +{{ $monthlyStats['cartridges_this_month'] }} в цьому місяці
                     </small>
                 </div>
                 <div class="bg-info bg-opacity-10 p-3 rounded">
@@ -54,16 +54,109 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-3">
         <div class="stats-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h6 class="text-muted mb-2">Инвентарь</h6>
+                    <h6 class="text-muted mb-2">Інвентар</h6>
                     <h3 class="mb-0">{{ $totalStats['total_inventory'] }}</h3>
                 </div>
                 <div class="bg-success bg-opacity-10 p-3 rounded">
                     <i class="bi bi-pc-display text-success fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SLA and Quality Metrics -->
+<div class="row g-4 mt-2">
+    <div class="col-md-3">
+        <div class="stats-card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="text-muted mb-2">SLA Дотримання</h6>
+                    <h3 class="mb-0">{{ $slaMetrics['sla_compliance'] }}%</h3>
+                    <small class="text-muted">
+                        {{ $slaMetrics['within_sla_count'] }} з {{ $slaMetrics['total_completed'] }}
+                    </small>
+                </div>
+                <div class="bg-success bg-opacity-10 p-3 rounded">
+                    <i class="bi bi-check-circle text-success fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stats-card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="text-muted mb-2">Середній час відгуку</h6>
+                    <h3 class="mb-0">{{ $slaMetrics['avg_response_days'] }} д</h3>
+                    <small class="text-muted">
+                        {{ $slaMetrics['avg_response_hours'] }} годин
+                    </small>
+                </div>
+                <div class="bg-info bg-opacity-10 p-3 rounded">
+                    <i class="bi bi-clock text-info fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stats-card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="text-muted mb-2">Коефіцієнт завершеності</h6>
+                    <h3 class="mb-0">{{ $qualityMetrics['completion_rate'] }}%</h3>
+                    <small class="text-muted">
+                        {{ $qualityMetrics['completed_repairs'] }} завершено
+                    </small>
+                </div>
+                <div class="bg-success bg-opacity-10 p-3 rounded">
+                    <i class="bi bi-percent text-success fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stats-card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="text-muted mb-2">Активні заявки</h6>
+                    <h3 class="mb-0">{{ $qualityMetrics['active_rate'] }}%</h3>
+                    <small class="text-muted">
+                        {{ $qualityMetrics['active_repairs'] }} в роботі
+                    </small>
+                </div>
+                <div class="bg-warning bg-opacity-10 p-3 rounded">
+                    <i class="bi bi-hourglass-split text-warning fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Section -->
+<div class="row g-4 mt-2">
+    <div class="col-12">
+        <div class="stats-card p-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">Експорт звітів</h5>
+                    <small class="text-muted">Завантажте дашборд у форматі PDF або Excel</small>
+                </div>
+                <div>
+                    <a href="{{ route('director.export.pdf') }}" class="btn btn-danger me-2" title="Експорт у PDF">
+                        <i class="bi bi-file-pdf"></i> PDF
+                    </a>
+                    <a href="{{ route('director.export.excel') }}" class="btn btn-success" title="Експорт у Excel">
+                        <i class="bi bi-file-excel"></i> Excel
+                    </a>
                 </div>
             </div>
         </div>

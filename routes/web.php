@@ -1,9 +1,12 @@
 <?php
 
 // routes/web.php
+use App\Http\Controllers\BranchAnalyticsController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CartridgeReplacementController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DirectorExportController;
+use App\Http\Controllers\DirectorInventoryController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\InventoryExportController;
 use App\Http\Controllers\ProfileController;
@@ -203,6 +206,26 @@ Route::middleware('role:admin,warehouse_keeper')->group(function () {
 
         return response()->json($items);
     })->name('api.warehouse-items.search');
+});
+
+// === МАРШРУТЫ ЭКСПОРТА ДЛЯ ДИРЕКТОРА ===
+Route::middleware('role:director')->group(function () {
+    Route::get('/director/export/pdf', [DirectorExportController::class, 'exportDashboardPdf'])->name('director.export.pdf');
+    Route::get('/director/export/excel', [DirectorExportController::class, 'exportDashboardExcel'])->name('director.export.excel');
+
+    // Аналітика філій
+    Route::prefix('branch-analytics')->name('branch-analytics.')->group(function () {
+        Route::get('/', [BranchAnalyticsController::class, 'index'])->name('index');
+        Route::get('/{branch}', [BranchAnalyticsController::class, 'show'])->name('show');
+        Route::get('/{branch}/export/{format}', [BranchAnalyticsController::class, 'export'])->name('export')->where('format', 'pdf|excel');
+    });
+
+    // Інвентар та прогнозування
+    Route::prefix('director-inventory')->name('director-inventory.')->group(function () {
+        Route::get('/warehouse', [DirectorInventoryController::class, 'warehouse'])->name('warehouse');
+        Route::get('/equipment', [DirectorInventoryController::class, 'equipment'])->name('equipment');
+        Route::get('/forecasting', [DirectorInventoryController::class, 'forecasting'])->name('forecasting');
+    });
 });
 
 // === МАРШРУТЫ ДЛЯ ОДОБРЕНИЯ ЗАЯВОК НА РЕМОНТ (только director и admin) ===

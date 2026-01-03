@@ -170,13 +170,71 @@ class DashboardController extends Controller
             ->orderBy('month', 'asc')
             ->get();
 
+        // SLA та якість метрики
+        $slaMetrics = $this->calculateSlaMetrics();
+        $qualityMetrics = $this->calculateQualityMetrics();
+
         return view('dashboard.director', compact(
             'totalStats',
             'monthlyStats',
             'statusStats',
             'topBranches',
-            'monthlyRepairs'
+            'monthlyRepairs',
+            'slaMetrics',
+            'qualityMetrics'
         ));
+    }
+
+    private function calculateSlaMetrics(): array
+    {
+        $slaHours = 72; // 3 дні
+
+        $completedRepairs = RepairRequest::where('status', 'виконана')->get();
+
+        if ($completedRepairs->isEmpty()) {
+            return [
+                'sla_compliance' => 0,
+                'within_sla_count' => 0,
+                'total_completed' => 0,
+                'avg_response_hours' => 0,
+                'avg_response_days' => 0,
+            ];
+        }
+
+        $withinSla = $completedRepairs->filter(function ($repair) use ($slaHours) {
+            return $repair->created_at->diffInHours($repair->updated_at) <= $slaHours;
+        })->count();
+
+        $avgResponseHours = $completedRepairs->avg(function ($repair) {
+            return $repair->created_at->diffInHours($repair->updated_at);
+        });
+
+        return [
+            'sla_compliance' => round(($withinSla / $completedRepairs->count()) * 100, 1),
+            'within_sla_count' => $withinSla,
+            'total_completed' => $completedRepairs->count(),
+            'avg_response_hours' => round($avgResponseHours, 1),
+            'avg_response_days' => round($avgResponseHours / 24, 1),
+        ];
+    }
+
+    private function calculateQualityMetrics(): array
+    {
+        $totalRepairs = RepairRequest::count();
+        $completedRepairs = RepairRequest::where('status', 'виконана')->count();
+        $activeRepairs = RepairRequest::whereIn('status', ['нова', 'в_роботі'])->count();
+        $activeBranches = Branch::where('is_active', true)->count();
+        $totalCartridges = CartridgeReplacement::count();
+
+        return [
+            'completion_rate' => $totalRepairs > 0 ? round(($completedRepairs / $totalRepairs) * 100, 1) : 0,
+            'active_rate' => $totalRepairs > 0 ? round(($activeRepairs / $totalRepairs) * 100, 1) : 0,
+            'avg_repairs_per_branch' => $activeBranches > 0 ? round($totalRepairs / $activeBranches, 1) : 0,
+            'cartridge_efficiency' => $totalRepairs > 0 ? round($totalCartridges / $totalRepairs, 2) : 0,
+            'total_repairs' => $totalRepairs,
+            'completed_repairs' => $completedRepairs,
+            'active_repairs' => $activeRepairs,
+        ];
     }
 
     private function getMonthlyStats()
