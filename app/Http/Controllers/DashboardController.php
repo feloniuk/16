@@ -37,6 +37,7 @@ class DashboardController extends Controller
 
         // Последние движения товаров
         $recentMovements = \App\Models\WarehouseMovement::with(['warehouseItem', 'user'])
+            ->whereHas('inventoryItem')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
@@ -79,6 +80,7 @@ class DashboardController extends Controller
             DB::raw('SUM(ABS(quantity)) as total_movements')
         )
             ->with('warehouseItem')
+            ->whereHas('inventoryItem')
             ->where('created_at', '>=', Carbon::now()->subMonth())
             ->groupBy('inventory_id')
             ->orderBy('total_movements', 'desc')
