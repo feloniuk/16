@@ -146,7 +146,7 @@
 @push('scripts')
 <script>
 let itemCounter = 0;
-let currentRowIndex = -1;
+let currentRow = null; // Зберігаємо посилання на поточний рядок
 
 const warehouseItems = {!! json_encode($warehouseItems->map(function($item) {
     return [
@@ -171,18 +171,20 @@ function escapeHtml(text) {
 function addItemRow(itemData = null) {
     const tbody = document.getElementById('itemsTableBody');
     const row = document.createElement('tr');
+    const rowId = 'row-' + itemCounter;
+    row.setAttribute('data-row-id', rowId);
+
     row.innerHTML = `
         <td>
-            <button type="button" class="btn btn-outline-primary btn-sm w-100 text-start item-select-btn"
-                    onclick="showItemSelect(${itemCounter})">
-                <span class="item-name">${itemData?.equipment_type || 'Вибрати товар...'}</span>
+            <button type="button" class="btn btn-outline-primary btn-sm w-100 text-start item-select-btn">
+                <span class="item-name">${itemData?.equipment_type ? escapeHtml(itemData.equipment_type) : 'Вибрати товар...'}</span>
             </button>
-            <input type="hidden" name="items[${itemCounter}][item_name]" class="item-name-hidden" value="${itemData?.equipment_type || ''}">
+            <input type="hidden" name="items[${itemCounter}][item_name]" class="item-name-hidden" value="${itemData?.equipment_type ? escapeHtml(itemData.equipment_type) : ''}">
         </td>
         <td>
             <input type="text" class="form-control form-control-sm item-code"
-                   value="${itemData?.inventory_number || ''}" readonly>
-            <input type="hidden" name="items[${itemCounter}][item_code]" value="${itemData?.inventory_number || ''}">
+                   value="${itemData?.inventory_number ? escapeHtml(itemData.inventory_number) : ''}" readonly>
+            <input type="hidden" name="items[${itemCounter}][item_code]" class="item-code-hidden" value="${itemData?.inventory_number ? escapeHtml(itemData.inventory_number) : ''}">
         </td>
         <td>
             <input type="number" name="items[${itemCounter}][quantity]"
@@ -193,8 +195,8 @@ function addItemRow(itemData = null) {
         </td>
         <td>
             <input type="text" name="items[${itemCounter}][unit]"
-                   class="form-control form-control-sm"
-                   value="${itemData?.unit || 'шт'}" required>
+                   class="form-control form-control-sm unit-input"
+                   value="${itemData?.unit ? escapeHtml(itemData.unit) : 'шт'}" required>
         </td>
         <td>
             <input type="number" name="items[${itemCounter}][estimated_price]"
@@ -213,72 +215,53 @@ function addItemRow(itemData = null) {
         </td>
     `;
 
+    // Додаємо обробник на кнопку вибору товару
+    row.querySelector('.item-select-btn').addEventListener('click', function() {
+        showItemSelect(row);
+    });
+
     tbody.appendChild(row);
     itemCounter++;
 
     if (itemData) {
         calculateRowTotal(row.querySelector('.price-input'));
     }
+
+    return row;
 }
 
-function showItemSelect(index) {
-    currentRowIndex = index;
-    const itemsList = document.getElementById('itemsList');
-    itemsList.innerHTML = warehouseItems.map((item, itemIndex) => `
-        <div class="card mb-2">
-            <div class="card-body p-2">
-                <button type="button" class="btn btn-light w-100 text-start select-item-btn"
-                        data-row-index="${index}"
-                        data-item-index="${itemIndex}">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <strong>${escapeHtml(item.equipment_type)}</strong>
-                            ${item.full_name ? '<br><small class="text-success">✓ Повна назва</small>' : ''}
-                            <br><small class="text-muted">Код: ${escapeHtml(item.inventory_number)}</small>
-                        </div>
-                        <div class="text-end">
-                            <small>На складі: <span class="badge bg-info">${item.total_quantity}</span></small>
-                            <br><small class="text-muted">Мін: ${item.min_quantity}</small>
-                        </div>
-                    </div>
-                </button>
-            </div>
-        </div>
-    `).join('');
-
-    // Додаємо обробники для всіх кнопок
-    document.querySelectorAll('.select-item-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const rowIndex = parseInt(this.dataset.rowIndex);
-            const itemIndex = parseInt(this.dataset.itemIndex);
-            const item = warehouseItems[itemIndex];
-            selectItem(rowIndex, item.equipment_type, item.full_name, item.inventory_number, item.unit, item.price);
-        });
-    });
+function showItemSelect(row) {
+    currentRow = row; // Зберігаємо посилання на рядок
+    renderItemsList();
 
     const modal = new bootstrap.Modal(document.getElementById('itemSelectModal'));
     modal.show();
 
-    // Фильтрация при вводе в поисковое поле
-    document.getElementById('itemSearch').onchange = () => filterItems();
-    document.getElementById('itemSearch').oninput = () => filterItems();
+    // Очищуємо пошук при відкритті
+    document.getElementById('itemSearch').value = '';
 }
 
-function filterItems() {
-    const searchValue = document.getElementById('itemSearch').value.toLowerCase();
-    const items = warehouseItems.filter(item =>
-        item.equipment_type.toLowerCase().includes(searchValue) ||
-        item.inventory_number.toLowerCase().includes(searchValue)
-    );
+function renderItemsList(searchValue = '') {
+    const items = searchValue
+        ? warehouseItems.filter(item =>
+            item.equipment_type.toLowerCase().includes(searchValue.toLowerCase()) ||
+            item.inventory_number.toLowerCase().includes(searchValue.toLowerCase())
+          )
+        : warehouseItems;
 
     const itemsList = document.getElementById('itemsList');
-    itemsList.innerHTML = items.map((item, itemIndex) => {
+
+    if (items.length === 0) {
+        itemsList.innerHTML = '<div class="text-center text-muted p-3">Товари не знайдені</div>';
+        return;
+    }
+
+    itemsList.innerHTML = items.map((item, idx) => {
         const originalIndex = warehouseItems.indexOf(item);
         return `
         <div class="card mb-2">
             <div class="card-body p-2">
                 <button type="button" class="btn btn-light w-100 text-start select-item-btn"
-                        data-row-index="${currentRowIndex}"
                         data-item-index="${originalIndex}">
                     <div class="d-flex justify-content-between">
                         <div>
@@ -297,39 +280,38 @@ function filterItems() {
     `;
     }).join('');
 
-    if (items.length === 0) {
-        itemsList.innerHTML = '<div class="text-center text-muted p-3">Товари не знайдені</div>';
-        return;
-    }
-
-    // Додаємо обробники для відфільтрованих кнопок
+    // Додаємо обробники для всіх кнопок
     document.querySelectorAll('.select-item-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            const rowIndex = parseInt(this.dataset.rowIndex);
             const itemIndex = parseInt(this.dataset.itemIndex);
             const item = warehouseItems[itemIndex];
-            selectItem(rowIndex, item.equipment_type, item.full_name, item.inventory_number, item.unit, item.price);
+            selectItem(item);
         });
     });
 }
 
-function selectItem(index, name, fullName, code, unit, price) {
-    const row = document.getElementById('itemsTableBody').children[index];
-    if (!row) return;
+function filterItems() {
+    const searchValue = document.getElementById('itemSearch').value;
+    renderItemsList(searchValue);
+}
+
+function selectItem(item) {
+    if (!currentRow) return;
 
     // Використовуємо повну назву якщо є та не порожня, інакше коротку
-    const displayName = (fullName && fullName.trim() !== '') ? fullName : name;
+    const displayName = (item.full_name && item.full_name.trim() !== '') ? item.full_name : item.equipment_type;
 
-    row.querySelector('.item-name').textContent = displayName;
-    row.querySelector('.item-name-hidden').value = displayName;
-    row.querySelector('.item-code').value = code;
-    row.querySelector('input[name="items[' + index + '][item_code]"]').value = code;
-    row.querySelector('input[name="items[' + index + '][unit]"]').value = unit;
-    row.querySelector('.price-input').value = price || '';
+    currentRow.querySelector('.item-name').textContent = displayName;
+    currentRow.querySelector('.item-name-hidden').value = displayName;
+    currentRow.querySelector('.item-code').value = item.inventory_number;
+    currentRow.querySelector('.item-code-hidden').value = item.inventory_number;
+    currentRow.querySelector('.unit-input').value = item.unit;
+    currentRow.querySelector('.price-input').value = item.price || '';
 
-    calculateRowTotal(row.querySelector('.price-input'));
+    calculateRowTotal(currentRow.querySelector('.price-input'));
 
     bootstrap.Modal.getInstance(document.getElementById('itemSelectModal')).hide();
+    currentRow = null;
 }
 
 function removeItemRow(button) {
@@ -375,6 +357,10 @@ function addLowStockItem(name, fullName, code, suggestedQty, unit, price) {
 // Додаємо першу строку при завантаженні
 document.addEventListener('DOMContentLoaded', function() {
     addItemRow();
+
+    // Обробник для пошуку товарів
+    const searchInput = document.getElementById('itemSearch');
+    searchInput.addEventListener('input', filterItems);
 
     // Обробник для кнопок товарів з низькими залишками
     document.querySelectorAll('.add-low-stock-btn').forEach(btn => {
