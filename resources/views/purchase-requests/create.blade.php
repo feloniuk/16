@@ -18,11 +18,11 @@
                     @foreach($lowStockItems as $item)
                     <div class="col-md-6 col-lg-4">
                         <button type="button" class="btn btn-sm btn-outline-warning w-100 text-start add-low-stock-btn"
-                                data-name="{{ e($item->equipment_type) }}"
-                                data-full-name="{{ e($item->full_name ?? '') }}"
-                                data-code="{{ e($item->inventory_number) }}"
+                                data-name="{{ $item->equipment_type }}"
+                                data-full-name="{{ $item->full_name ?? '' }}"
+                                data-code="{{ $item->inventory_number }}"
                                 data-qty="{{ $item->min_quantity - $item->total_quantity }}"
-                                data-unit="{{ e($item->unit) }}"
+                                data-unit="{{ $item->unit }}"
                                 data-price="{{ $item->price ?? 0 }}">
                             <strong>{{ $item->equipment_type }}</strong>
                             <br><small>Залишок: {{ $item->total_quantity }}/{{ $item->min_quantity }} | Недостає: {{ $item->min_quantity - $item->total_quantity }}</small>
