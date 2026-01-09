@@ -174,35 +174,33 @@ function addItemRow(itemData = null) {
     const rowId = 'row-' + itemCounter;
     row.setAttribute('data-row-id', rowId);
 
+    // Створюємо HTML без даних (щоб уникнути проблем з екрануванням)
     row.innerHTML = `
         <td>
             <button type="button" class="btn btn-outline-primary btn-sm w-100 text-start item-select-btn">
-                <span class="item-name">${itemData?.equipment_type ? escapeHtml(itemData.equipment_type) : 'Вибрати товар...'}</span>
+                <span class="item-name">Вибрати товар...</span>
             </button>
-            <input type="hidden" name="items[${itemCounter}][item_name]" class="item-name-hidden" value="${itemData?.equipment_type ? escapeHtml(itemData.equipment_type) : ''}">
+            <input type="hidden" name="items[${itemCounter}][item_name]" class="item-name-hidden" value="">
         </td>
         <td>
-            <input type="text" class="form-control form-control-sm item-code"
-                   value="${itemData?.inventory_number ? escapeHtml(itemData.inventory_number) : ''}" readonly>
-            <input type="hidden" name="items[${itemCounter}][item_code]" class="item-code-hidden" value="${itemData?.inventory_number ? escapeHtml(itemData.inventory_number) : ''}">
+            <input type="text" class="form-control form-control-sm item-code" value="" readonly>
+            <input type="hidden" name="items[${itemCounter}][item_code]" class="item-code-hidden" value="">
         </td>
         <td>
             <input type="number" name="items[${itemCounter}][quantity]"
                    class="form-control form-control-sm quantity-input"
-                   value="${itemData?.quantity || 1}"
-                   min="1" required
+                   value="1" min="1" required
                    onchange="calculateRowTotal(this)">
         </td>
         <td>
             <input type="text" name="items[${itemCounter}][unit]"
                    class="form-control form-control-sm unit-input"
-                   value="${itemData?.unit ? escapeHtml(itemData.unit) : 'шт'}" required>
+                   value="шт" required>
         </td>
         <td>
             <input type="number" name="items[${itemCounter}][estimated_price]"
                    class="form-control form-control-sm price-input"
-                   value="${itemData?.price || ''}"
-                   step="0.01" min="0" placeholder="0.00"
+                   value="" step="0.01" min="0" placeholder="0.00"
                    onchange="calculateRowTotal(this)">
         </td>
         <td>
@@ -221,12 +219,21 @@ function addItemRow(itemData = null) {
     });
 
     tbody.appendChild(row);
-    itemCounter++;
 
+    // Якщо є дані - заповнюємо через DOM властивості (безпечно для спецсимволів)
     if (itemData) {
+        const displayName = itemData.equipment_type || '';
+        row.querySelector('.item-name').textContent = displayName;
+        row.querySelector('.item-name-hidden').value = displayName;
+        row.querySelector('.item-code').value = itemData.inventory_number || '';
+        row.querySelector('.item-code-hidden').value = itemData.inventory_number || '';
+        row.querySelector('.quantity-input').value = itemData.quantity || 1;
+        row.querySelector('.unit-input').value = itemData.unit || 'шт';
+        row.querySelector('.price-input').value = itemData.price || '';
         calculateRowTotal(row.querySelector('.price-input'));
     }
 
+    itemCounter++;
     return row;
 }
 
