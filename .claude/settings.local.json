@@ -16,7 +16,8 @@
       "Bash(cmd /c \"dir D:\\\\16\\\\16\\\\*.docx\")",
       "Bash(python3:*)",
       "Bash(php:*)",
-      "Bash(composer install:*)"
+      "Bash(composer install:*)",
+      "Bash(tasklist:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
