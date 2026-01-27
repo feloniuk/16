@@ -3,97 +3,109 @@
 @section('title', 'Інвентар')
 
 @section('content')
-<!-- Фільтри -->
-<div class="row mb-4">
-    <div class="col">
-        <div class="stats-card p-4">
-            <form method="GET" action="{{ route('inventory.index') }}" class="row g-3 align-items-end">
-                <div class="col-md-2">
-                    <label for="branch_id" class="form-label">Філія</label>
-                    <select name="branch_id" id="branch_id" class="form-select">
-                        <option value="">Всі філії</option>
-                        @foreach($branches as $branch)
-                            <option value="{{ $branch->id }}" {{ request('branch_id') == $branch->id ? 'selected' : '' }}>
-                                {{ $branch->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="room_number" class="form-label">Кабінет</label>
-                    <input type="text" name="room_number" id="room_number" 
-                           class="form-control" placeholder="Номер кабінету"
-                           value="{{ request('room_number') }}">
-                </div>
+<!-- Кнопка показать/скрыть фильтры на мобильных -->
+<button class="btn btn-outline-secondary d-md-none w-100 mb-3" type="button"
+        data-bs-toggle="collapse" data-bs-target="#filtersCollapse">
+    <i class="bi bi-funnel"></i> Фільтри
+</button>
 
-                <div class="col-md-2">
-                    <label for="balance_code" class="form-label">Код балансу</label>
-                    <select name="balance_code" id="balance_code" class="form-select">
-                        <option value="">Всі коди</option>
-                        @foreach($balanceCodes as $code)
-                            <option value="{{ $code }}" {{ request('balance_code') === $code ? 'selected' : '' }}>
-                                {{ Str::limit($code, 30) }}
-                            </option>
-                        @endforeach
-                    </select>
+<!-- Форма фильтров -->
+<div class="collapse show" id="filtersCollapse">
+    <div class="stats-card p-4 mb-4">
+        <form method="GET" action="{{ route('inventory.index') }}" class="row g-3 align-items-end">
+            <div class="col-12 col-md-6 col-lg-2">
+                <label for="branch_id" class="form-label">Філія</label>
+                <select name="branch_id" id="branch_id" class="form-select">
+                    <option value="">Всі філії</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ request('branch_id') == $branch->id ? 'selected' : '' }}>
+                            {{ $branch->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-2">
+                <label for="room_number" class="form-label">Кабінет</label>
+                <input type="text" name="room_number" id="room_number"
+                       class="form-control" placeholder="Номер кабінету"
+                       value="{{ request('room_number') }}">
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-2">
+                <label for="balance_code" class="form-label">Код балансу</label>
+                <select name="balance_code" id="balance_code" class="form-select">
+                    <option value="">Всі коди</option>
+                    @foreach($balanceCodes as $code)
+                        <option value="{{ $code }}" {{ request('balance_code') === $code ? 'selected' : '' }}>
+                            {{ Str::limit($code, 30) }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-3">
+                <label for="equipment_type" class="form-label">Найменування</label>
+                <input type="text" name="equipment_type" id="equipment_type"
+                       class="form-control" placeholder="Пошук по найменуванню"
+                       value="{{ request('equipment_type') }}">
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-2">
+                <label for="search" class="form-label">Загальний пошук</label>
+                <input type="text" name="search" id="search" class="form-control"
+                       placeholder="Інв.номер, серійний номер..."
+                       value="{{ request('search') }}">
+            </div>
+
+            <div class="col-6 col-md-3 col-lg-1">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+
+            @if(request()->hasAny(['branch_id', 'room_number', 'balance_code', 'equipment_type', 'search', 'group_view']))
+            <div class="col-6 col-md-3">
+                <a href="{{ route('inventory.index') }}" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-x"></i>
+                </a>
+            </div>
+            @endif
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="group_view" value="1"
+                           id="group_view" {{ request('group_view') ? 'checked' : '' }}>
+                    <label class="form-check-label" for="group_view">
+                        Групувати за типом обладнання
+                    </label>
                 </div>
-                
-                <div class="col-md-2">
-                    <label for="equipment_type" class="form-label">Найменування</label>
-                    <input type="text" name="equipment_type" id="equipment_type" 
-                           class="form-control" placeholder="Пошук по найменуванню"
-                           value="{{ request('equipment_type') }}">
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="search" class="form-label">Загальний пошук</label>
-                    <input type="text" name="search" id="search" class="form-control" 
-                           placeholder="Інв.номер, серійний номер..." 
-                           value="{{ request('search') }}">
-                </div>
-                
-                <div class="col-md-1">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="group_view" value="1" 
-                               id="group_view" {{ request('group_view') ? 'checked' : '' }}>
-                        <label class="form-check-label" for="group_view">
-                            Групувати
-                        </label>
+            </div>
+
+            <div class="col-12">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleAdvancedSearch">
+                    <i class="bi bi-funnel-fill"></i> Розширений пошук
+                </button>
+            </div>
+
+            <!-- Розширений пошук (Advanced Search) -->
+            <div class="col-12" id="advancedSearchContainer" style="display: none;">
+                <div class="card mt-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">
+                            <i class="bi bi-funnel-fill"></i> Розширені фільтри
+                            <small class="text-muted">(дозволяє виключати/включати конкретні значення)</small>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="advancedFilters"></div>
+                        <button type="button" class="btn btn-sm btn-success mt-2" id="addAdvancedFilter">
+                            <i class="bi bi-plus-circle"></i> Додати фільтр
+                        </button>
                     </div>
                 </div>
-                
-                <div class="col-md-1">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Пошук
-                    </button>
-                </div>
-
-                <div class="col-12">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleAdvancedSearch">
-                        <i class="bi bi-funnel-fill"></i> Розширений пошук
-                    </button>
-                </div>
-
-                <!-- Розширений пошук (Advanced Search) -->
-                <div class="col-12" id="advancedSearchContainer" style="display: none;">
-                    <div class="card mt-3">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0">
-                                <i class="bi bi-funnel-fill"></i> Розширені фільтри
-                                <small class="text-muted">(дозволяє виключати/включати конкретні значення)</small>
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div id="advancedFilters"></div>
-                            <button type="button" class="btn btn-sm btn-success mt-2" id="addAdvancedFilter">
-                                <i class="bi bi-plus-circle"></i> Додати фільтр
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -159,60 +171,63 @@
     <div class="card-body p-0">
         @if($inventory->count() > 0)
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover table-sm mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th width="120">Інв. №</th>
-                            <th width="200">Код балансу</th>
+                            <th class="d-none d-md-table-cell" style="width: 100px;">Інв. №</th>
+                            <th class="d-none d-lg-table-cell">Код балансу</th>
                             <th>Найменування</th>
-                            <th width="120">Філія</th>
-                            <th width="100">Кабінет</th>
-                            <th width="80">Кількість</th>
-                            <th width="100">Од.виміру</th>
-                            <th width="150">Дії</th>
+                            <th class="d-none d-md-table-cell">Філія</th>
+                            <th class="d-none d-lg-table-cell">Кабінет</th>
+                            <th class="text-center" style="width: 80px;">К-сть</th>
+                            <th class="d-none d-md-table-cell">Од.</th>
+                            <th class="text-center" style="width: 90px;">Дії</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($inventory as $item)
                         <tr>
-                            <td>
-                                <code class="d-block">{{ $item->inventory_number }}</code>
+                            <td class="d-none d-md-table-cell">
+                                <code class="d-block" style="font-size: 0.75rem;">{{ $item->inventory_number }}</code>
                             </td>
-                            <td>
-                                <small class="text-muted">{{ Str::limit($item->balance_code, 35) }}</small>
+                            <td class="d-none d-lg-table-cell">
+                                <small class="text-muted">{{ Str::limit($item->balance_code, 20) }}</small>
                             </td>
                             <td>
                                 <div>
-                                    <strong>{{ $item->equipment_type }}</strong>
+                                    <strong class="d-block">{{ $item->equipment_type }}</strong>
                                     @if($item->brand || $item->model)
-                                        <br><small class="text-muted">
-                                            {{ $item->brand }} {{ $item->model }}
-                                        </small>
+                                        <small class="text-muted d-block">{{ $item->brand }} {{ $item->model }}</small>
                                     @endif
                                     @if($item->serial_number)
-                                        <br><small class="text-muted">S/N: {{ $item->serial_number }}</small>
+                                        <small class="text-muted d-block d-md-none">S/N: {{ Str::limit($item->serial_number, 15) }}</small>
                                     @endif
+                                    <small class="text-muted d-md-none">{{ $item->branch->name }}, каб. {{ $item->room_number }}</small>
                                 </div>
                             </td>
-                            <td>
-                                <span class="badge bg-light text-dark">{{ $item->branch->name }}</span>
+                            <td class="d-none d-md-table-cell">
+                                <small class="badge bg-light text-dark">{{ $item->branch->name }}</small>
                             </td>
-                            <td>{{ $item->room_number }}</td>
-                            <td>
+                            <td class="d-none d-lg-table-cell">
+                                <small>{{ $item->room_number }}</small>
+                            </td>
+                            <td class="text-center">
                                 <span class="badge bg-primary">{{ $item->quantity }}</span>
                             </td>
-                            <td>{{ $item->unit }}</td>
+                            <td class="d-none d-md-table-cell">
+                                <small>{{ $item->unit }}</small>
+                            </td>
                             <td>
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ route('inventory.show', $item) }}" 
+                                    <a href="{{ route('inventory.show', $item) }}"
                                        class="btn btn-outline-primary" title="Перегляд">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <a href="{{ route('inventory.edit', $item) }}" 
+                                    <a href="{{ route('inventory.edit', $item) }}"
                                        class="btn btn-outline-warning" title="Редагувати">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <a href="{{ route('inventory.transfer-form', $item) }}" 
+                                    <a href="{{ route('inventory.transfer-form', $item) }}"
                                        class="btn btn-outline-info" title="Переміщення">
                                         <i class="bi bi-arrow-left-right"></i>
                                     </a>

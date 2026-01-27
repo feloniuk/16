@@ -4,45 +4,61 @@
 @section('title', 'Склад')
 
 @section('content')
-<div class="row mb-4">
-    <div class="col">
-        <div class="stats-card p-4">
-            <form method="GET" action="{{ route('warehouse.index') }}" class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label for="category" class="form-label">Категорія</label>
-                    <select name="category" id="category" class="form-select">
-                        <option value="">Всі категорії</option>
-                        @foreach($categories as $category)
-                            <option value="{{ $category }}" {{ request('category') === $category ? 'selected' : '' }}>
-                                {{ $category }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+<!-- Кнопка показать/скрыть фильтры на мобильных -->
+<button class="btn btn-outline-secondary d-md-none w-100 mb-3" type="button"
+        data-bs-toggle="collapse" data-bs-target="#filtersCollapse">
+    <i class="bi bi-funnel"></i> Фільтри
+</button>
 
-                <div class="col-md-4">
-                    <label for="search" class="form-label">Пошук</label>
-                    <input type="text" name="search" id="search" class="form-control"
-                           placeholder="Назва товару..." value="{{ request('search') }}">
-                </div>
+<!-- Форма фильтров -->
+<div class="collapse show" id="filtersCollapse">
+    <div class="stats-card p-4 mb-4">
+        <form method="GET" action="{{ route('warehouse.index') }}" class="row g-3 align-items-end">
+            <div class="col-12 col-md-6 col-lg-3">
+                <label for="category" class="form-label">Категорія</label>
+                <select name="category" id="category" class="form-select">
+                    <option value="">Усі категорії</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category }}" {{ request('category') === $category ? 'selected' : '' }}>
+                            {{ $category }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
 
-                <div class="col-md-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="low_stock" value="1"
-                               id="low_stock" {{ request('low_stock') ? 'checked' : '' }}>
-                        <label class="form-check-label" for="low_stock">
-                            Мало на складі
-                        </label>
-                    </div>
-                </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <label for="search" class="form-label">Пошук</label>
+                <input type="text" name="search" id="search" class="form-control"
+                       placeholder="Назва товару або код..."
+                       value="{{ request('search') }}">
+            </div>
 
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Знайти
-                    </button>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="low_stock" id="low_stock"
+                           value="1" {{ request('low_stock') ? 'checked' : '' }}>
+                    <label class="form-check-label" for="low_stock">
+                        Мало на складі
+                    </label>
                 </div>
-            </form>
-        </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i>
+                    <span class="d-none d-lg-inline"> Пошук</span>
+                </button>
+            </div>
+
+            @if(request()->hasAny(['category', 'search', 'low_stock']))
+            <div class="col-12 col-md-4 col-lg-1">
+                <a href="{{ route('warehouse.index') }}" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-x"></i>
+                    <span class="d-none d-lg-inline"> Скинути</span>
+                </a>
+            </div>
+            @endif
+        </form>
     </div>
 </div>
 
@@ -95,16 +111,15 @@
     <div class="card-body p-0">
         @if($items->count() > 0)
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover table-sm mb-0">
                     <thead class="table-light">
                         <tr>
                             <th>Найменування</th>
-                            <th>Категорія</th>
-                            <th width="120">Загальний залишок</th>
-                            <th width="100">Одиниця</th>
-                            <th width="100">Позицій в БД</th>
-                            <th width="120">Сер. ціна</th>
-                            <th width="200">Дії</th>
+                            <th class="d-none d-md-table-cell">Категорія</th>
+                            <th class="text-center" style="width: 80px;">Залишок</th>
+                            <th class="d-none d-lg-table-cell text-center">Поз.</th>
+                            <th class="d-none d-lg-table-cell text-center">Ціна</th>
+                            <th class="text-center" style="width: 100px;">Дії</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -114,45 +129,51 @@
                         @endphp
                         <tr class="{{ $isLowStock ? 'table-warning' : '' }}">
                             <td>
-                                <strong>{{ $item->equipment_type }}</strong>
+                                <div>
+                                    <strong class="d-block">{{ $item->equipment_type }}</strong>
+                                    <small class="text-muted d-md-none">{{ $item->unit }}</small>
+                                </div>
                             </td>
-                            <td>{{ $item->category ?? '-' }}</td>
-                            <td>
-                                <span class="badge fs-6 {{ $isLowStock ? 'bg-warning text-dark' : 'bg-success' }}">
+                            <td class="d-none d-md-table-cell">
+                                <small>{{ $item->category ?? '-' }}</small>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge {{ $isLowStock ? 'bg-warning text-dark' : 'bg-success' }}">
                                     {{ $item->total_quantity }}
                                 </span>
                                 @if($isLowStock)
-                                    <i class="bi bi-exclamation-triangle text-warning" title="Низький залишок"></i>
+                                    <br><i class="bi bi-exclamation-triangle text-warning" title="Низький залишок"></i>
                                 @endif
                             </td>
-                            <td>{{ $item->unit }}</td>
-                            <td>
+                            <td class="d-none d-lg-table-cell text-center">
                                 <span class="badge bg-secondary">{{ $item->items_count }}</span>
                             </td>
-                            <td>
-                                @if($item->avg_price)
-                                    {{ number_format($item->avg_price, 2) }} грн
-                                @else
-                                    -
-                                @endif
+                            <td class="d-none d-lg-table-cell text-center">
+                                <small>
+                                    @if($item->avg_price)
+                                        {{ number_format($item->avg_price, 2) }} грн
+                                    @else
+                                        -
+                                    @endif
+                                </small>
                             </td>
                             <td>
-                                <div class="btn-group" role="group">
+                                <div class="btn-group btn-group-sm" role="group">
                                     <a href="{{ route('warehouse.show-by-name', ['name' => $item->equipment_type]) }}"
-                                       class="btn btn-sm btn-outline-primary" title="Детально">
+                                       class="btn btn-outline-primary" title="Детально">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     @if($item->total_quantity > 0)
-                                    <button type="button" class="btn btn-sm btn-outline-info"
+                                    <button type="button" class="btn btn-outline-info"
                                             onclick="showIssueModal('{{ addslashes($item->equipment_type) }}', {{ $item->total_quantity }}, '{{ addslashes($item->unit) }}')"
                                             title="Видати">
-                                        <i class="bi bi-box-arrow-right"></i> Видати
+                                        <i class="bi bi-box-arrow-right"></i>
                                     </button>
                                     @endif
-                                    <button type="button" class="btn btn-sm btn-outline-success"
+                                    <button type="button" class="btn btn-outline-success"
                                             onclick="showReceiptModal('{{ addslashes($item->equipment_type) }}')"
                                             title="Надходження">
-                                        <i class="bi bi-box-arrow-in-left"></i> Прихід
+                                        <i class="bi bi-box-arrow-in-left"></i>
                                     </button>
                                 </div>
                             </td>

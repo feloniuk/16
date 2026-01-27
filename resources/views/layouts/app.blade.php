@@ -96,6 +96,30 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
 
+        /* Backdrop для sidebar на мобильных */
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-backdrop.show {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Убрать прокрутку body когда sidebar открыт */
+        body.sidebar-open {
+            overflow: hidden;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 margin-left: -250px;
@@ -111,6 +135,74 @@
             .main-content {
                 margin-left: 0;
                 padding: 1rem;
+            }
+        }
+
+        /* Улучшение форм на мобильных */
+        @media (max-width: 576px) {
+            .form-label {
+                font-size: 0.875rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .form-control, .form-select {
+                font-size: 0.875rem;
+                padding: 0.5rem;
+            }
+
+            .btn {
+                padding: 0.5rem 0.75rem;
+            }
+        }
+
+        /* Кнопка фильтров */
+        .collapse.show {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Оптимізація таблиць для мобільних */
+        @media (max-width: 576px) {
+            .table-responsive {
+                border: none;
+            }
+
+            .table {
+                font-size: 0.85rem;
+            }
+
+            .table th,
+            .table td {
+                padding: 0.4rem 0.25rem;
+            }
+
+            .table thead th {
+                font-size: 0.75rem;
+            }
+
+            .btn-group-sm > .btn,
+            .btn-sm {
+                padding: 0.25rem 0.4rem;
+                font-size: 0.65rem;
+            }
+
+            .badge {
+                font-size: 0.65rem;
+                padding: 0.35rem 0.4rem;
+            }
+
+            code {
+                font-size: 0.7rem;
             }
         }
     </style>
@@ -322,26 +414,30 @@
             </div>
         </nav>
 
+        <!-- Sidebar Backdrop для мобильных -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+
         <!-- Main Content -->
         <main class="main-content flex-grow-1">
             <!-- Mobile Menu Button -->
             <button class="btn btn-primary d-md-none mb-3" type="button" onclick="toggleSidebar()">
-                <i class="bi bi-list"></i>
+                <i class="bi bi-list" id="menuIcon"></i>
             </button>
             
             <!-- Page Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3 mb-0">@yield('title', 'Головна')</h1>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-primary me-3">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 mb-sm-4 gap-2">
+                <h1 class="h4 h-sm-3 mb-0">@yield('title', 'Головна')</h1>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge bg-primary">
                         @switch(Auth::user()->role)
-                            @case('admin') Адміністратор @break
+                            @case('admin') Адмін @break
                             @case('director') Директор @break
-                            @case('warehouse_keeper') Складовщик @break
+                            @case('warehouse_keeper') Склад @break
                             @default Користувач
                         @endswitch
                     </span>
-                    <span class="text-muted">{{ Auth::user()->name }}</span>
+                    <span class="text-muted small d-none d-sm-inline">{{ Auth::user()->name }}</span>
+                    <span class="text-muted small d-sm-none">{{ Str::limit(Auth::user()->name, 20) }}</span>
                 </div>
             </div>
 
@@ -381,9 +477,40 @@
     
     <script>
         function toggleSidebar() {
-            document.querySelector('.sidebar').classList.toggle('show');
+            const sidebar = document.querySelector('.sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            const menuIcon = document.getElementById('menuIcon');
+            const body = document.body;
+
+            const isOpen = sidebar.classList.toggle('show');
+            backdrop.classList.toggle('show', isOpen);
+            body.classList.toggle('sidebar-open', isOpen);
+
+            // Изменить иконку кнопки
+            if (isOpen) {
+                menuIcon.classList.replace('bi-list', 'bi-x-lg');
+            } else {
+                menuIcon.classList.replace('bi-x-lg', 'bi-list');
+            }
         }
-        
+
+        // Закрыть sidebar при клике на пункт меню (только на мобильных)
+        (function() {
+            if (window.innerWidth < 768) {
+                document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        // Даем время на переход перед закрытием
+                        setTimeout(() => {
+                            const sidebar = document.querySelector('.sidebar');
+                            if (sidebar.classList.contains('show')) {
+                                toggleSidebar();
+                            }
+                        }, 100);
+                    });
+                });
+            }
+        })();
+
         // Auto-hide alerts after 5 seconds
         setTimeout(function() {
             const alerts = document.querySelectorAll('.alert');
