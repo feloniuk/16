@@ -273,7 +273,7 @@ class InventoryController extends Controller
                 }
 
                 // Записуємо в історію переміщень
-                InventoryTransfer::create([
+                $transfer = InventoryTransfer::create([
                     'inventory_id' => $transferredInventoryId,
                     'from_branch_id' => $fromBranchId,
                     'from_room_number' => $fromRoomNumber,
@@ -282,6 +282,19 @@ class InventoryController extends Controller
                     'quantity' => $quantityToTransfer,
                     'user_id' => Auth::id(),
                     'transfer_date' => $request->transfer_date,
+                    'notes' => $request->notes,
+                ]);
+
+                // Додаємо запис у журнал робіт
+                \App\Models\WorkLog::create([
+                    'work_type' => 'inventory_transfer',
+                    'description' => "Переміщення {$inventory->equipment_type}: {$fromRoomNumber} → {$request->to_room_number}",
+                    'branch_id' => $request->to_branch_id,
+                    'room_number' => $request->to_room_number,
+                    'performed_at' => $request->transfer_date,
+                    'user_id' => Auth::id(),
+                    'loggable_type' => \App\Models\InventoryTransfer::class,
+                    'loggable_id' => $transfer->id,
                     'notes' => $request->notes,
                 ]);
 

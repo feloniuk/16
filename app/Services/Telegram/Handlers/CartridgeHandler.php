@@ -162,6 +162,19 @@ class CartridgeHandler
                 'replacement_date' => now()->toDateString(),
             ]);
 
+            // Додаємо запис у журнал робіт
+            \App\Models\WorkLog::create([
+                'work_type' => 'cartridge_replacement',
+                'description' => "Заміна картриджа {$cartridgeType} на {$tempData['printer_info']}",
+                'branch_id' => $tempData['branch_id'],
+                'room_number' => $tempData['room_number'],
+                'performed_at' => now()->toDateString(),
+                'user_id' => \App\Models\User::where('telegram_id', $userId)->first()?->id ?? 1,
+                'loggable_type' => \App\Models\CartridgeReplacement::class,
+                'loggable_id' => $cartridge->id,
+                'notes' => 'Запит створено через Telegram',
+            ]);
+
             $this->stateManager->clearUserState($userId);
 
             $message = "✅ <b>Запит на заміну картриджа створено!</b>\n\n".

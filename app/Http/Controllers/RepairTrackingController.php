@@ -78,7 +78,21 @@ class RepairTrackingController extends Controller
             'cost' => 'nullable|numeric|min:0',
         ]);
 
-        RepairTracking::create($request->all());
+        $repairTracking = RepairTracking::create($request->all());
+        $repairTracking->load('equipment');
+
+        // Додаємо запис у журнал робіт
+        \App\Models\WorkLog::create([
+            'work_type' => 'repair_sent',
+            'description' => "Відправка на ремонт: {$repairTracking->equipment->equipment_type} - {$request->our_description}",
+            'branch_id' => $repairTracking->equipment->branch_id,
+            'room_number' => $repairTracking->equipment->room_number,
+            'performed_at' => $request->sent_date,
+            'user_id' => auth()->id(),
+            'loggable_type' => \App\Models\RepairTracking::class,
+            'loggable_id' => $repairTracking->id,
+            'notes' => $request->invoice_number ? "Накладна: {$request->invoice_number}" : null,
+        ]);
 
         return redirect()->route('repair-tracking.index')
             ->with('success', 'Запис про відправку на ремонт створено');
@@ -107,7 +121,25 @@ class RepairTrackingController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
+        $originalStatus = $repairTracking->status;
         $repairTracking->update($request->all());
+
+        // Додаємо запис у журнал робіт при повернені з ремонту
+        if ($request->status === 'completed' && $originalStatus !== 'completed' && $request->returned_date) {
+            $repairTracking->load('equipment');
+
+            \App\Models\WorkLog::create([
+                'work_type' => 'repair_returned',
+                'description' => "Повернення з ремонту: {$repairTracking->equipment->equipment_type}",
+                'branch_id' => $repairTracking->equipment->branch_id,
+                'room_number' => $repairTracking->equipment->room_number,
+                'performed_at' => $request->returned_date,
+                'user_id' => auth()->id(),
+                'loggable_type' => \App\Models\RepairTracking::class,
+                'loggable_id' => $repairTracking->id,
+                'notes' => $request->repair_description,
+            ]);
+        }
 
         return redirect()->route('repair-tracking.index')
             ->with('success', 'Запис оновлено');

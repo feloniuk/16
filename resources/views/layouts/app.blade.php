@@ -203,6 +203,13 @@
                             Експорт в Excel
                         </a>
                     </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('work-logs.*') ? 'active' : '' }}" href="{{ route('work-logs.index') }}">
+                            <i class="bi bi-journal-text me-2"></i>
+                            Журнал робіт
+                        </a>
+                    </li>
                     @endif
 
                     @if(Auth::user()->role === 'warehouse_keeper')
@@ -278,6 +285,13 @@
                         <a class="nav-link {{ request()->routeIs('director-inventory.forecasting') ? 'active' : '' }}" href="{{ route('director-inventory.forecasting') }}">
                             <i class="bi bi-crystal-ball me-2"></i>
                             Прогнозування витрат
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('work-logs.*') ? 'active' : '' }}" href="{{ route('work-logs.index') }}">
+                            <i class="bi bi-journal-text me-2"></i>
+                            Журнал робіт
                         </a>
                     </li>
                     @endif
