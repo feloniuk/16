@@ -10,10 +10,11 @@ use Illuminate\Http\Request;
 
 class WorkLogController extends Controller
 {
-    public function __construct()
+    private function authorizeAdmin()
     {
-        // Защита методов редактирования для admin только
-        $this->middleware('role:admin')->only(['create', 'store', 'edit', 'update', 'destroy']);
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'У вас нет доступа к цій операції');
+        }
     }
 
     public function index(Request $request)
@@ -49,6 +50,7 @@ class WorkLogController extends Controller
 
     public function create()
     {
+        $this->authorizeAdmin();
         $branches = Branch::where('is_active', true)->get();
 
         return view('work-logs.create', compact('branches'));
@@ -56,6 +58,7 @@ class WorkLogController extends Controller
 
     public function store(StoreWorkLogRequest $request)
     {
+        $this->authorizeAdmin();
         WorkLog::create($request->validated());
 
         return redirect()->route('work-logs.index')
@@ -71,6 +74,7 @@ class WorkLogController extends Controller
 
     public function edit(WorkLog $workLog)
     {
+        $this->authorizeAdmin();
         $branches = Branch::where('is_active', true)->get();
 
         return view('work-logs.edit', compact('workLog', 'branches'));
@@ -78,6 +82,7 @@ class WorkLogController extends Controller
 
     public function update(UpdateWorkLogRequest $request, WorkLog $workLog)
     {
+        $this->authorizeAdmin();
         $workLog->update($request->validated());
 
         return redirect()->route('work-logs.show', $workLog)
@@ -86,6 +91,7 @@ class WorkLogController extends Controller
 
     public function destroy(WorkLog $workLog)
     {
+        $this->authorizeAdmin();
         $workLog->delete();
 
         return redirect()->route('work-logs.index')
