@@ -27,7 +27,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
 
             // Polymorphic relationship
-            $table->string('loggable_type')->nullable();
+            $table->string('loggable_type', 100)->nullable();
             $table->unsignedBigInteger('loggable_id')->nullable();
 
             $table->text('notes')->nullable();
