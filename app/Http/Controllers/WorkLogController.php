@@ -59,7 +59,9 @@ class WorkLogController extends Controller
     public function store(StoreWorkLogRequest $request)
     {
         $this->authorizeAdmin();
-        WorkLog::create($request->validated());
+        $data = $request->validated();
+        $data['user_id'] = auth()->id();
+        WorkLog::create($data);
 
         return redirect()->route('work-logs.index')
             ->with('success', 'Запис про роботу створено');
@@ -83,7 +85,9 @@ class WorkLogController extends Controller
     public function update(UpdateWorkLogRequest $request, WorkLog $workLog)
     {
         $this->authorizeAdmin();
-        $workLog->update($request->validated());
+        $data = $request->validated();
+        $data['user_id'] = auth()->id();
+        $workLog->update($data);
 
         return redirect()->route('work-logs.show', $workLog)
             ->with('success', 'Запис про роботу оновлено');

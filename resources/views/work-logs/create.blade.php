@@ -5,13 +5,10 @@
 @section('content')
 <div class="row">
     <div class="col-md-8 offset-md-2">
-        <div class="stats-card">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">Додати запис про роботу</h5>
-            </div>
+        <div class="stats-card p-4">
+            <h4 class="mb-4">Додати запис про роботу</h4>
 
-            <div class="card-body">
-                <form method="POST" action="{{ route('work-logs.store') }}">
+            <form method="POST" action="{{ route('work-logs.store') }}">
                     @csrf
 
                     <div class="mb-3">
@@ -97,7 +94,6 @@
                         </button>
                     </div>
                 </form>
-            </div>
         </div>
     </div>
 </div>

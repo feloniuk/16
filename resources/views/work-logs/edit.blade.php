@@ -5,13 +5,10 @@
 @section('content')
 <div class="row">
     <div class="col-md-8 offset-md-2">
-        <div class="stats-card">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">Редагувати запис #{{ $workLog->id }}</h5>
-            </div>
+        <div class="stats-card p-4">
+            <h4 class="mb-4">Редагувати запис #{{ $workLog->id }}</h4>
 
-            <div class="card-body">
-                <form method="POST" action="{{ route('work-logs.update', $workLog) }}">
+            <form method="POST" action="{{ route('work-logs.update', $workLog) }}">
                     @csrf
                     @method('PUT')
 
@@ -98,7 +95,6 @@
                         </button>
                     </div>
                 </form>
-            </div>
         </div>
     </div>
 </div>
