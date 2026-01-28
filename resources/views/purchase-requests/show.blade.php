@@ -153,29 +153,46 @@
         
         <div class="stats-card p-4 mt-4">
             <h5 class="mb-3">Дії</h5>
-            
+
             <div class="d-grid gap-2">
-                @if(in_array($purchaseRequest->status, ['draft', 'submitted']) && $purchaseRequest->user_id === Auth::id())
+                @if($purchaseRequest->status === 'draft' && $purchaseRequest->user_id === Auth::id())
                     <a href="{{ route('purchase-requests.edit', $purchaseRequest) }}" class="btn btn-warning">
                         <i class="bi bi-pencil"></i> Редагувати заявку
                     </a>
                 @endif
-                
+
                 @if($purchaseRequest->status === 'draft' && $purchaseRequest->user_id === Auth::id())
                     <form method="POST" action="{{ route('purchase-requests.submit', $purchaseRequest) }}">
                         @csrf
-                        <button type="submit" class="btn btn-success w-100" 
+                        <button type="submit" class="btn btn-success w-100"
                                 onclick="return confirm('Подати заявку на розгляд?')">
                             <i class="bi bi-send"></i> Подати заявку
                         </button>
                     </form>
                 @endif
-                
-                <a href="{{ route('purchase-requests.print', $purchaseRequest) }}" 
+
+                @if($purchaseRequest->status === 'submitted' && in_array(Auth::user()->role, ['admin', 'director']))
+                    <form method="POST" action="{{ route('purchase-requests.approve', $purchaseRequest) }}" class="mb-2">
+                        @csrf
+                        <button type="submit" class="btn btn-success w-100"
+                                onclick="return confirm('Затвердити заявку?')">
+                            <i class="bi bi-check-circle"></i> Затвердити
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ route('purchase-requests.reject', $purchaseRequest) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-danger w-100"
+                                onclick="return confirm('Відхилити заявку?')">
+                            <i class="bi bi-x-circle"></i> Відхилити
+                        </button>
+                    </form>
+                @endif
+
+                <a href="{{ route('purchase-requests.print', $purchaseRequest) }}"
                    class="btn btn-outline-success" target="_blank">
                     <i class="bi bi-printer"></i> Друкувати заявку
                 </a>
-                
+
                 <a href="{{ route('purchase-requests.index') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Назад до списку
                 </a>

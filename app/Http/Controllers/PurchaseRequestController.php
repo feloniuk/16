@@ -114,7 +114,7 @@ class PurchaseRequestController extends Controller
 
     public function edit(PurchaseRequest $purchaseRequest)
     {
-        if (! in_array($purchaseRequest->status, ['draft', 'submitted'])) {
+        if ($purchaseRequest->status !== 'draft') {
             return redirect()->back()->withErrors(['Неможливо редагувати заявку в поточному статусі']);
         }
 
@@ -141,7 +141,7 @@ class PurchaseRequestController extends Controller
 
     public function update(Request $request, PurchaseRequest $purchaseRequest)
     {
-        if (! in_array($purchaseRequest->status, ['draft', 'submitted'])) {
+        if ($purchaseRequest->status !== 'draft') {
             return redirect()->back()->withErrors(['Неможливо редагувати заявку в поточному статусі']);
         }
 
@@ -184,6 +184,36 @@ class PurchaseRequestController extends Controller
         $purchaseRequest->update(['status' => 'submitted']);
 
         return redirect()->route('purchase-requests.show', $purchaseRequest)->with('success', 'Заявку подано на розгляд');
+    }
+
+    public function approve(PurchaseRequest $purchaseRequest)
+    {
+        if ($purchaseRequest->status !== 'submitted') {
+            return redirect()->back()->withErrors(['Заявка повинна мати статус "Подана" для підтвердження']);
+        }
+
+        if (! in_array(Auth::user()->role, ['admin', 'director'])) {
+            return redirect()->back()->withErrors(['Тільки адмін або директор можуть підтвердити заявку']);
+        }
+
+        $purchaseRequest->update(['status' => 'approved']);
+
+        return redirect()->route('purchase-requests.show', $purchaseRequest)->with('success', 'Заявку затверджено');
+    }
+
+    public function reject(PurchaseRequest $purchaseRequest)
+    {
+        if ($purchaseRequest->status !== 'submitted') {
+            return redirect()->back()->withErrors(['Заявка повинна мати статус "Подана" для відхилення']);
+        }
+
+        if (! in_array(Auth::user()->role, ['admin', 'director'])) {
+            return redirect()->back()->withErrors(['Тільки адмін або директор можуть відхилити заявку']);
+        }
+
+        $purchaseRequest->update(['status' => 'rejected']);
+
+        return redirect()->route('purchase-requests.show', $purchaseRequest)->with('success', 'Заявку відхилено');
     }
 
     public function print(PurchaseRequest $purchaseRequest)
