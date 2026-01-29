@@ -96,8 +96,8 @@
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     
-                                    @if(in_array($request->status, ['draft', 'submitted']) && $request->user_id === Auth::id())
-                                    <a href="{{ route('purchase-requests.edit', $request) }}" 
+                                    @if($request->status === 'draft' && $request->user_id === Auth::id())
+                                    <a href="{{ route('purchase-requests.edit', $request) }}"
                                        class="btn btn-sm btn-outline-warning" title="Редагувати">
                                         <i class="bi bi-pencil"></i>
                                     </a>

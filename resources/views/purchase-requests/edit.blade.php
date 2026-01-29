@@ -15,7 +15,7 @@
                 </p>
             </div>
 
-            @if(!in_array($purchaseRequest->status, ['draft', 'submitted']))
+            @if($purchaseRequest->status !== 'draft')
                 <div class="alert alert-warning">
                     <i class="bi bi-exclamation-triangle"></i>
                     <strong>Увага!</strong> Заявка в статусі "{{ $purchaseRequest->status }}" не може бути відредагована.
