@@ -149,10 +149,12 @@
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ route('work-logs.show', $log) }}"
-                                       class="btn btn-outline-primary" title="Перегляд">
+                                    <button type="button"
+                                       class="btn btn-outline-primary view-worklog-btn"
+                                       data-worklog-id="{{ $log->id }}"
+                                       title="Перегляд">
                                         <i class="bi bi-eye"></i>
-                                    </a>
+                                    </button>
                                     @if(auth()->user()->role === 'admin')
                                     <a href="{{ route('work-logs.edit', $log) }}"
                                        class="btn btn-outline-warning" title="Редагувати">
@@ -204,4 +206,230 @@
     </div>
 </div>
 @endif
+
+<!-- Modal for viewing work log details -->
+<div class="modal fade" id="viewWorkLogModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-bottom">
+                <div>
+                    <h5 class="modal-title mb-0" id="workLogModalTitle">Запис про роботу</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body" id="workLogModalContent" style="max-height: 65vh; overflow-y: auto;">
+                <!-- Content will be loaded here -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Завантаження...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer border-top" id="workLogModalFooter">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('.view-worklog-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const worklogId = this.getAttribute('data-worklog-id');
+        const modal = new bootstrap.Modal(document.getElementById('viewWorkLogModal'));
+
+        // Fetch work log data
+        fetch(`/work-logs/${worklogId}`, {
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Update modal title
+            document.getElementById('workLogModalTitle').textContent = `Запис #${data.id}`;
+
+            // Build badge based on work type
+            let badgeColor = 'secondary';
+            switch(data.work_type) {
+                case 'inventory_transfer': badgeColor = 'primary'; break;
+                case 'cartridge_replacement': badgeColor = 'info'; break;
+                case 'repair_sent': badgeColor = 'warning'; break;
+                case 'repair_returned': badgeColor = 'success'; break;
+            }
+
+            // Build modal content
+            let content = `
+                <div class="mb-4">
+                    <div class="d-flex align-items-center gap-2 mb-4">
+                        <span class="badge bg-${badgeColor}" style="font-size: 0.95rem; padding: 0.5rem 0.75rem;">
+                            ${data.work_type_label}
+                        </span>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2 fw-600">Опис роботи</h6>
+                                <p class="mb-0">${data.description}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2 fw-600">Тип роботи</h6>
+                                <p class="mb-0">${data.work_type_label}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2 fw-600">Філіал</h6>
+                                <p class="mb-0">
+                                    <span class="badge bg-light text-dark">${data.branch_name}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2 fw-600">Номер кабінету</h6>
+                                <p class="mb-0">${data.room_number}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2 fw-600">Дата виконання роботи</h6>
+                                <p class="mb-0">${data.performed_at}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2 fw-600">Користувач</h6>
+                                <p class="mb-0"><i class="bi bi-person"></i> ${data.user_name}</p>
+                            </div>
+                        </div>
+                    </div>
+            `;
+
+            if (data.notes) {
+                content += `
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2 fw-600">Примітки</h6>
+                                <p class="mb-0">${data.notes}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (data.has_loggable) {
+                content += `
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-info mb-0" role="alert">
+                                <h6 class="alert-heading mb-2">Пов'язаний об'єкт</h6>
+                                <p class="mb-0">
+                                    <strong>Тип:</strong> ${data.loggable_type} (#${data.loggable_id})
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            content += `
+                    <div class="border-top pt-3 mt-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-2 fw-600">Дата створення запису</h6>
+                                <small class="text-muted">${data.created_at}</small>
+                            </div>
+            `;
+
+            if (data.updated_differs) {
+                content += `
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-2 fw-600">Дата останнього оновлення</h6>
+                                <small class="text-muted">${data.updated_at}</small>
+                            </div>
+                `;
+            }
+
+            content += `
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('workLogModalContent').innerHTML = content;
+
+            // Update footer with action buttons
+            let footer = '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>';
+
+            if (data.is_admin) {
+                footer += `
+                    <a href="${data.edit_url}" class="btn btn-warning">
+                        <i class="bi bi-pencil"></i> Редагувати
+                    </a>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            data-bs-target="#deleteWorkLogModal"
+                            onclick="setDeleteUrl('${data.delete_url}')">
+                        <i class="bi bi-trash"></i> Видалити
+                    </button>
+                `;
+            }
+
+            document.getElementById('workLogModalFooter').innerHTML = footer;
+
+            // Show modal
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error loading work log:', error);
+            document.getElementById('workLogModalContent').innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    Помилка при завантаженні даних. Спробуйте ще раз.
+                </div>
+            `;
+        });
+    });
+});
+
+function setDeleteUrl(url) {
+    const deleteForm = document.getElementById('deleteWorkLogForm');
+    deleteForm.action = url;
+}
+</script>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteWorkLogModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Видалити запис?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ви впевнені, що бажаєте видалити цей запис про роботу?</p>
+                <p class="text-muted"><small>Цю дію неможливо скасувати.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <form method="POST" id="deleteWorkLogForm" style="display: inline;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">Видалити</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

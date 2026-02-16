@@ -71,7 +71,35 @@ class WorkLogController extends Controller
     {
         $workLog->load(['branch', 'user', 'loggable']);
 
+        if (request()->expectsJson()) {
+            return response()->json($this->formatWorkLogData($workLog));
+        }
+
         return view('work-logs.show', compact('workLog'));
+    }
+
+    private function formatWorkLogData(WorkLog $workLog): array
+    {
+        return [
+            'id' => $workLog->id,
+            'work_type' => $workLog->work_type,
+            'work_type_label' => $workLog->getWorkTypeLabel(),
+            'description' => $workLog->description,
+            'branch_name' => $workLog->branch?->name ?? '-',
+            'room_number' => $workLog->room_number ?? '-',
+            'performed_at' => $workLog->performed_at->format('d.m.Y'),
+            'user_name' => $workLog->user?->name ?? '-',
+            'notes' => $workLog->notes,
+            'has_loggable' => (bool) $workLog->loggable,
+            'loggable_type' => $workLog->loggable ? class_basename($workLog->loggable_type) : null,
+            'loggable_id' => $workLog->loggable_id,
+            'created_at' => $workLog->created_at->format('d.m.Y H:i:s'),
+            'updated_at' => $workLog->updated_at->format('d.m.Y H:i:s'),
+            'updated_differs' => $workLog->updated_at != $workLog->created_at,
+            'is_admin' => auth()->user()->role === 'admin',
+            'edit_url' => route('work-logs.edit', $workLog),
+            'delete_url' => route('work-logs.destroy', $workLog),
+        ];
     }
 
     public function edit(WorkLog $workLog)
