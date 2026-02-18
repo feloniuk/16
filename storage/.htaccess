@@ -1,7 +1,8 @@
+
+RewriteOptions inherit
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule ^(.*)$ public/$1 [L]
-
     # ------------------------------
     # Блокируем доступ к системным файлам и папкам Laravel
     # ------------------------------
@@ -9,16 +10,10 @@
     RewriteRule ^(app|bootstrap|config|database|resources|routes|vendor|storage)/ - [F,L]
     RewriteRule ^\.git - [F,L]
     RewriteRule ^storage/logs/ - [F,L]
-
     # ------------------------------
     # Если файл или папка реально существует — отдаем напрямую
     # ------------------------------
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
-
-    # Примечание: редирект с корневого URL на панель управления / логин
-    # обрабатывается через маршруты Laravel в routes/web.php
-    # Route::get('/') проверяет авторизацию и редиректит на dashboard или login
-
 </IfModule>

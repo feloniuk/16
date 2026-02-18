@@ -15,13 +15,7 @@
                 </p>
             </div>
 
-            @if($purchaseRequest->status !== 'draft')
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    <strong>Увага!</strong> Заявка в статусі "{{ $purchaseRequest->status }}" не може бути відредагована.
-                </div>
-            @else
-                <form method="POST" action="{{ route('purchase-requests.update', $purchaseRequest) }}" id="purchaseForm">
+            <form method="POST" action="{{ route('purchase-requests.update', $purchaseRequest) }}" id="purchaseForm">
                     @csrf
                     @method('PATCH')
 
@@ -75,11 +69,16 @@
                                     @foreach($purchaseRequest->items as $index => $item)
                                         <tr>
                                             <td>
-                                                <button type="button" class="btn btn-outline-primary btn-sm w-100 text-start item-select-btn"
-                                                        onclick="showItemSelect({{ $index }})">
-                                                    <span class="item-name">{{ $item->item_name }}</span>
-                                                </button>
-                                                <input type="hidden" name="items[{{ $index }}][item_name]" class="item-name-hidden" value="{{ $item->item_name }}">
+                                                <div class="input-group input-group-sm">
+                                                    <input type="text" name="items[{{ $index }}][item_name]"
+                                                           class="form-control form-control-sm item-name-input"
+                                                           value="{{ $item->item_name }}"
+                                                           placeholder="Назва товару" required>
+                                                    <button type="button" class="btn btn-outline-secondary item-select-btn"
+                                                            onclick="showItemSelect({{ $index }})" title="Вибрати зі складу">
+                                                        <i class="bi bi-box-seam"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                             <td>
                                                 <input type="text" class="form-control form-control-sm item-code"
@@ -144,8 +143,7 @@
                             <i class="bi bi-save"></i> Зберегти зміни
                         </button>
                     </div>
-                </form>
-            @endif
+            </form>
         </div>
     </div>
 </div>
@@ -202,11 +200,16 @@ function addItemRow(itemData = null) {
     const row = document.createElement('tr');
     row.innerHTML = `
         <td>
-            <button type="button" class="btn btn-outline-primary btn-sm w-100 text-start item-select-btn"
-                    onclick="showItemSelect(${itemCounter})">
-                <span class="item-name">${itemData?.equipment_type || 'Вибрати товар...'}</span>
-            </button>
-            <input type="hidden" name="items[${itemCounter}][item_name]" class="item-name-hidden" value="${itemData?.equipment_type || ''}">
+            <div class="input-group input-group-sm">
+                <input type="text" name="items[${itemCounter}][item_name]"
+                       class="form-control form-control-sm item-name-input"
+                       value="${escapeHtml(itemData?.equipment_type || '')}"
+                       placeholder="Назва товару" required>
+                <button type="button" class="btn btn-outline-secondary item-select-btn"
+                        onclick="showItemSelect(${itemCounter})" title="Вибрати зі складу">
+                    <i class="bi bi-box-seam"></i>
+                </button>
+            </div>
         </td>
         <td>
             <input type="text" class="form-control form-control-sm item-code"
@@ -347,11 +350,7 @@ function selectItem(index, name, fullName, code, unit, price) {
     // Використовуємо повну назву якщо є та не порожня, інакше коротку
     const displayName = (fullName && fullName.trim() !== '') ? fullName : name;
 
-    row.querySelector('.item-name').textContent = displayName;
-    const hiddenInput = row.querySelector('.item-name-hidden');
-    if (hiddenInput) {
-        hiddenInput.value = displayName;
-    }
+    row.querySelector('.item-name-input').value = displayName;
     row.querySelector('.item-code').value = code;
     row.querySelector('input[name="items[' + index + '][item_code]"]').value = code;
     row.querySelector('input[name="items[' + index + '][unit]"]').value = unit;

@@ -148,9 +148,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/repair-orders/{repairOrder}/approve', [RepairOrderController::class, 'approve'])->name('repair-orders.approve');
         Route::post('/repair-orders/{repairOrder}/reject', [RepairOrderController::class, 'reject'])->name('repair-orders.reject');
 
-        // Заявки на закупку - подтверждение и отклонение
+        // Заявки на закупку - подтверждение, отклонение, архивирование
         Route::post('/purchase-requests/{purchaseRequest}/approve', [PurchaseRequestController::class, 'approve'])->name('purchase-requests.approve');
         Route::post('/purchase-requests/{purchaseRequest}/reject', [PurchaseRequestController::class, 'reject'])->name('purchase-requests.reject');
+        Route::post('/purchase-requests/{purchaseRequest}/archive', [PurchaseRequestController::class, 'archive'])->name('purchase-requests.archive');
     });
 
     // === МАРШРУТЫ СКЛАДА ДЛЯ АДМИН И WAREHOUSE_KEEPER ===

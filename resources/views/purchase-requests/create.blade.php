@@ -13,10 +13,13 @@
 
             @if($lowStockItems->count() > 0)
             <div class="alert alert-warning mb-4">
-                <h6 class="mb-3"><i class="bi bi-exclamation-triangle"></i> Товари з низькими залишками:</h6>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Товари з низькими залишками: <small class="text-muted fw-normal">({{ $lowStockItems->count() }} поз.)</small></h6>
+                    <small class="text-muted" id="lowStockPageInfo"></small>
+                </div>
                 <div class="row g-2" id="lowStockContainer">
                     @foreach($lowStockItems as $item)
-                    <div class="col-md-6 col-lg-4">
+                    <div class="col-md-6 col-lg-4 low-stock-item">
                         <button type="button" class="btn btn-sm btn-outline-warning w-100 text-start add-low-stock-btn"
                                 data-name="{{ $item->equipment_type }}"
                                 data-full-name="{{ $item->full_name ?? '' }}"
@@ -29,6 +32,15 @@
                         </button>
                     </div>
                     @endforeach
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2" id="lowStockPagination" style="display:none!important;">
+                    <button type="button" class="btn btn-sm btn-outline-warning" id="lowStockPrev" disabled>
+                        <i class="bi bi-chevron-left"></i> Назад
+                    </button>
+                    <span id="lowStockPageInfo2" class="small text-muted"></span>
+                    <button type="button" class="btn btn-sm btn-outline-warning" id="lowStockNext">
+                        Вперед <i class="bi bi-chevron-right"></i>
+                    </button>
                 </div>
             </div>
             @endif
@@ -177,10 +189,14 @@ function addItemRow(itemData = null) {
     // Створюємо HTML без даних (щоб уникнути проблем з екрануванням)
     row.innerHTML = `
         <td>
-            <button type="button" class="btn btn-outline-primary btn-sm w-100 text-start item-select-btn">
-                <span class="item-name">Вибрати товар...</span>
-            </button>
-            <input type="hidden" name="items[${itemCounter}][item_name]" class="item-name-hidden" value="">
+            <div class="input-group input-group-sm">
+                <input type="text" name="items[${itemCounter}][item_name]"
+                       class="form-control form-control-sm item-name-input"
+                       value="" placeholder="Назва товару" required>
+                <button type="button" class="btn btn-outline-secondary item-select-btn" title="Вибрати зі складу">
+                    <i class="bi bi-box-seam"></i>
+                </button>
+            </div>
         </td>
         <td>
             <input type="text" class="form-control form-control-sm item-code" value="" readonly>
@@ -223,8 +239,7 @@ function addItemRow(itemData = null) {
     // Якщо є дані - заповнюємо через DOM властивості (безпечно для спецсимволів)
     if (itemData) {
         const displayName = itemData.equipment_type || '';
-        row.querySelector('.item-name').textContent = displayName;
-        row.querySelector('.item-name-hidden').value = displayName;
+        row.querySelector('.item-name-input').value = displayName;
         row.querySelector('.item-code').value = itemData.inventory_number || '';
         row.querySelector('.item-code-hidden').value = itemData.inventory_number || '';
         row.querySelector('.quantity-input').value = itemData.quantity || 1;
@@ -308,8 +323,7 @@ function selectItem(item) {
     // Використовуємо повну назву якщо є та не порожня, інакше коротку
     const displayName = (item.full_name && item.full_name.trim() !== '') ? item.full_name : item.equipment_type;
 
-    currentRow.querySelector('.item-name').textContent = displayName;
-    currentRow.querySelector('.item-name-hidden').value = displayName;
+    currentRow.querySelector('.item-name-input').value = displayName;
     currentRow.querySelector('.item-code').value = item.inventory_number;
     currentRow.querySelector('.item-code-hidden').value = item.inventory_number;
     currentRow.querySelector('.unit-input').value = item.unit;
@@ -368,6 +382,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // Обробник для пошуку товарів
     const searchInput = document.getElementById('itemSearch');
     searchInput.addEventListener('input', filterItems);
+
+    // Пагінація товарів з низькими залишками
+    const lowStockItems = document.querySelectorAll('.low-stock-item');
+    const perPage = 6;
+    let currentPage = 0;
+    const totalPages = Math.ceil(lowStockItems.length / perPage);
+    const pagination = document.getElementById('lowStockPagination');
+    const prevBtn = document.getElementById('lowStockPrev');
+    const nextBtn = document.getElementById('lowStockNext');
+    const pageInfo = document.getElementById('lowStockPageInfo');
+    const pageInfo2 = document.getElementById('lowStockPageInfo2');
+
+    function showPage(page) {
+        lowStockItems.forEach((el, i) => {
+            el.style.display = (i >= page * perPage && i < (page + 1) * perPage) ? '' : 'none';
+        });
+        const info = `Сторінка ${page + 1} з ${totalPages}`;
+        if (pageInfo) { pageInfo.textContent = info; }
+        if (pageInfo2) { pageInfo2.textContent = info; }
+        if (prevBtn) { prevBtn.disabled = page === 0; }
+        if (nextBtn) { nextBtn.disabled = page >= totalPages - 1; }
+    }
+
+    if (lowStockItems.length > perPage) {
+        if (pagination) { pagination.style.setProperty('display', 'flex', 'important'); }
+        showPage(0);
+        prevBtn?.addEventListener('click', () => { if (currentPage > 0) { showPage(--currentPage); } });
+        nextBtn?.addEventListener('click', () => { if (currentPage < totalPages - 1) { showPage(++currentPage); } });
+    } else {
+        showPage(0);
+    }
 
     // Обробник для кнопок товарів з низькими залишками
     document.querySelectorAll('.add-low-stock-btn').forEach(btn => {

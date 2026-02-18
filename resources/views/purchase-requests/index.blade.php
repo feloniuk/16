@@ -71,7 +71,25 @@
                     <tbody>
                         @foreach($requests as $request)
                         <tr>
-                            <td><strong>{{ $request->request_number }}</strong></td>
+                            <td>
+                                <strong>{{ $request->request_number }}</strong>
+                                @if($request->items->count() > 0)
+                                    @php
+                                        $itemsHtml = '<ul class="mb-0 ps-3">' . $request->items->map(fn($item) => '<li>' . e($item->item_name) . ' — <strong>' . $item->quantity . '</strong> ' . e($item->unit) . '</li>')->implode('') . '</ul>';
+                                    @endphp
+                                    <button type="button"
+                                            class="btn btn-link p-0 ms-1 align-baseline text-info"
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="hover focus"
+                                            data-bs-placement="right"
+                                            data-bs-html="true"
+                                            data-bs-title="Товари заявки"
+                                            data-bs-content="{{ $itemsHtml }}"
+                                            style="font-size:0.85rem;">
+                                        <i class="bi bi-list-ul"></i>
+                                    </button>
+                                @endif
+                            </td>
                             <td>{{ $request->user->name }}</td>
                             <td>
                                 <span class="badge bg-info">{{ $request->items_count }} поз.</span>
@@ -96,26 +114,36 @@
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     
-                                    @if($request->status === 'draft' && $request->user_id === Auth::id())
                                     <a href="{{ route('purchase-requests.edit', $request) }}"
                                        class="btn btn-sm btn-outline-warning" title="Редагувати">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    @endif
                                     
-                                    <a href="{{ route('purchase-requests.print', $request) }}" 
+                                    <a href="{{ route('purchase-requests.print', $request) }}"
                                        class="btn btn-sm btn-outline-success" title="Друк" target="_blank">
                                         <i class="bi bi-printer"></i>
                                     </a>
-                                    
+
                                     @if($request->status === 'draft' && $request->user_id === Auth::id())
-                                    <form method="POST" action="{{ route('purchase-requests.submit', $request) }}" 
+                                    <form method="POST" action="{{ route('purchase-requests.submit', $request) }}"
                                           class="d-inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-sm btn-success" 
+                                        <button type="submit" class="btn btn-sm btn-success"
                                                 title="Подати заявку"
                                                 onclick="return confirm('Подати заявку на розгляд?')">
                                             <i class="bi bi-send"></i>
+                                        </button>
+                                    </form>
+                                    @endif
+
+                                    @if(in_array(Auth::user()->role, ['admin', 'director']))
+                                    <form method="POST" action="{{ route('purchase-requests.archive', $request) }}"
+                                          class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                title="Архівувати"
+                                                onclick="return confirm('Архівувати заявку {{ $request->request_number }}?')">
+                                            <i class="bi bi-archive"></i>
                                         </button>
                                     </form>
                                     @endif
@@ -165,4 +193,15 @@
 }
 </style>
 @endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function (el) {
+        new bootstrap.Popover(el);
+    });
+});
+</script>
+@endpush
+
 @endsection

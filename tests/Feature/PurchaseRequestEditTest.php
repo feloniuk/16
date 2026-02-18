@@ -3,80 +3,59 @@
 namespace Tests\Feature;
 
 use App\Models\PurchaseRequestItem;
-use App\Models\User;
 use Tests\TestCase;
 
 class PurchaseRequestEditTest extends TestCase
 {
     /**
-     * Test that a user cannot edit a purchase request when status is not 'draft'
-     * This tests the authorization logic in the controller
+     * Test that the edit method no longer restricts by status
      */
-    public function test_edit_method_checks_draft_status_only(): void
+    public function test_edit_method_allows_any_status(): void
     {
-        // This test verifies the code change from:
-        // in_array($purchaseRequest->status, ['draft', 'submitted'])
-        // to: $purchaseRequest->status !== 'draft'
-
-        $controller = app(\App\Http\Controllers\PurchaseRequestController::class);
-        $reflectionMethod = new \ReflectionMethod($controller, 'edit');
-
-        // Read the source code to verify the change was made
         $sourceFile = file_get_contents(app_path('Http/Controllers/PurchaseRequestController.php'));
 
-        // Assert that the new condition exists
-        $this->assertStringContainsString(
-            "\$purchaseRequest->status !== 'draft'",
-            $sourceFile,
-            'The edit method should check for draft status only'
-        );
-
-        // Assert that the old condition does NOT exist in the edit method
+        // Assert no status restriction in edit method
         $this->assertStringNotContainsString(
-            "in_array(\$purchaseRequest->status, ['draft', 'submitted'])",
+            'Неможливо редагувати заявку в поточному статусі',
             $sourceFile,
-            'The old condition should be replaced'
+            'The edit method should not restrict editing by status'
         );
     }
 
     /**
-     * Test that the update method checks draft status only
+     * Test that the update method no longer restricts by status
      */
-    public function test_update_method_checks_draft_status_only(): void
+    public function test_update_method_allows_any_status(): void
     {
         $sourceFile = file_get_contents(app_path('Http/Controllers/PurchaseRequestController.php'));
 
-        // Count occurrences of the new condition in update method
-        $matches = preg_match_all(
-            "/public function update.*?\{.*?\\\$purchaseRequest->status !== 'draft'/s",
-            $sourceFile
-        );
-
-        $this->assertTrue(
-            $matches > 0,
-            'The update method should check for draft status only'
+        // Assert no status restriction in update method
+        $this->assertStringNotContainsString(
+            'Неможливо редагувати заявку в поточному статусі',
+            $sourceFile,
+            'The update method should not restrict editing by status'
         );
     }
 
     /**
-     * Test that the view files were updated correctly
+     * Test that the index view shows edit button for all statuses
      */
-    public function test_index_view_shows_edit_button_only_for_draft(): void
+    public function test_index_view_shows_edit_button_for_all_statuses(): void
     {
         $sourceFile = file_get_contents(resource_path('views/purchase-requests/index.blade.php'));
 
-        // Assert the new condition exists
+        // Assert edit button is always rendered (no status condition wrapping it)
         $this->assertStringContainsString(
-            "\$request->status === 'draft'",
+            'purchase-requests.edit',
             $sourceFile,
-            'Index view should check for draft status only'
+            'Index view should have edit button'
         );
 
-        // Assert the old condition does NOT exist
+        // Assert no status gate for edit button
         $this->assertStringNotContainsString(
             "in_array(\$request->status, ['draft', 'submitted'])",
             $sourceFile,
-            'Index view should not have the old condition'
+            'Index view should not have old status condition'
         );
     }
 
@@ -103,24 +82,24 @@ class PurchaseRequestEditTest extends TestCase
     }
 
     /**
-     * Test that the edit view was updated correctly
+     * Test that the edit view no longer blocks non-draft statuses
      */
-    public function test_edit_view_shows_warning_for_non_draft(): void
+    public function test_edit_view_allows_any_status(): void
     {
         $sourceFile = file_get_contents(resource_path('views/purchase-requests/edit.blade.php'));
 
-        // Assert the new condition exists
-        $this->assertStringContainsString(
-            "\$purchaseRequest->status !== 'draft'",
+        // Assert the blocking condition is removed
+        $this->assertStringNotContainsString(
+            'не може бути відредагована',
             $sourceFile,
-            'Edit view should check for non-draft status'
+            'Edit view should not block editing for non-draft statuses'
         );
 
-        // Assert the old condition does NOT exist
-        $this->assertStringNotContainsString(
-            "!in_array(\$purchaseRequest->status, ['draft', 'submitted'])",
+        // Assert the form is always present
+        $this->assertStringContainsString(
+            'purchase-requests.update',
             $sourceFile,
-            'Edit view should not have the old condition'
+            'Edit view should always show the form'
         );
     }
 

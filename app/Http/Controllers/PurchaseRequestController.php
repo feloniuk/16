@@ -16,7 +16,7 @@ class PurchaseRequestController extends Controller
 
     public function index(Request $request)
     {
-        $query = PurchaseRequest::with('user')->withCount('items');
+        $query = PurchaseRequest::with(['user', 'items'])->withCount('items')->notArchived();
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -114,10 +114,6 @@ class PurchaseRequestController extends Controller
 
     public function edit(PurchaseRequest $purchaseRequest)
     {
-        if ($purchaseRequest->status !== 'draft') {
-            return redirect()->back()->withErrors(['Неможливо редагувати заявку в поточному статусі']);
-        }
-
         $purchaseRequest->load('items');
 
         // Товари складу з room_inventory, згруповані по найменуванню
@@ -141,10 +137,6 @@ class PurchaseRequestController extends Controller
 
     public function update(Request $request, PurchaseRequest $purchaseRequest)
     {
-        if ($purchaseRequest->status !== 'draft') {
-            return redirect()->back()->withErrors(['Неможливо редагувати заявку в поточному статусі']);
-        }
-
         $request->validate([
             'description' => 'nullable|string',
             'requested_date' => 'required|date|after_or_equal:today',
@@ -221,5 +213,12 @@ class PurchaseRequestController extends Controller
         $purchaseRequest->load(['items.inventoryItem', 'user']);
 
         return view('purchase-requests.print', compact('purchaseRequest'));
+    }
+
+    public function archive(PurchaseRequest $purchaseRequest): \Illuminate\Http\RedirectResponse
+    {
+        $purchaseRequest->update(['archived_at' => now()]);
+
+        return redirect()->route('purchase-requests.index')->with('success', 'Заявку архівовано');
     }
 }

@@ -1,4 +1,5 @@
-<?php 
+<?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,22 +11,28 @@ class PurchaseRequest extends Model
     use HasFactory;
 
     protected $fillable = [
-        'request_number', 'user_id', 'status', 'description', 
-        'total_amount', 'requested_date', 'notes'
+        'request_number', 'user_id', 'status', 'description',
+        'total_amount', 'requested_date', 'notes', 'archived_at',
     ];
 
     protected $casts = [
         'total_amount' => 'decimal:2',
         'requested_date' => 'date',
+        'archived_at' => 'datetime',
     ];
+
+    public function scopeNotArchived($query)
+    {
+        return $query->whereNull('archived_at');
+    }
 
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($model) {
             if (empty($model->request_number)) {
-                $model->request_number = 'ZAY-' . date('Y') . '-' . str_pad(static::count() + 1, 6, '0', STR_PAD_LEFT);
+                $model->request_number = 'ZAY-'.date('Y').'-'.str_pad(static::count() + 1, 6, '0', STR_PAD_LEFT);
             }
         });
     }
@@ -42,13 +49,13 @@ class PurchaseRequest extends Model
 
     public function getStatusBadgeAttribute()
     {
-        return match($this->status) {
+        return match ($this->status) {
             'draft' => '<span class="badge bg-secondary">Чернетка</span>',
             'submitted' => '<span class="badge bg-warning">Подана</span>',
             'approved' => '<span class="badge bg-success">Затверджена</span>',
             'rejected' => '<span class="badge bg-danger">Відхилена</span>',
             'completed' => '<span class="badge bg-primary">Виконана</span>',
-            default => '<span class="badge bg-light text-dark">' . ucfirst($this->status) . '</span>'
+            default => '<span class="badge bg-light text-dark">'.ucfirst($this->status).'</span>'
         };
     }
 
@@ -56,6 +63,7 @@ class PurchaseRequest extends Model
     {
         $total = $this->items()->sum(DB::raw('quantity * COALESCE(estimated_price, 0)'));
         $this->update(['total_amount' => $total]);
+
         return $total;
     }
 }
