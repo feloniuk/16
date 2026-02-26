@@ -221,4 +221,77 @@ class PurchaseRequestController extends Controller
 
         return redirect()->route('purchase-requests.index')->with('success', 'Заявку архівовано');
     }
+
+    public function split(Request $request, PurchaseRequest $purchaseRequest)
+    {
+        $request->validate([
+            'selected_indices' => 'required|array|min:1',
+            'new_description' => 'nullable|string|max:255',
+            'new_requested_date' => 'required|date|after_or_equal:today',
+            'selected_items' => 'required|array|min:1',
+        ]);
+
+        try {
+            DB::transaction(function () use ($request, $purchaseRequest) {
+                // Одержуємо індекси вибраних товарів
+                $selectedIndices = $request->selected_indices;
+                $selectedItems = $request->selected_items;
+
+                // Створюємо нову заявку
+                $newRequest = PurchaseRequest::create([
+                    'user_id' => Auth::id(),
+                    'description' => $request->new_description ?? 'Розділена заявка від '.$purchaseRequest->request_number,
+                    'requested_date' => $request->new_requested_date,
+                    'notes' => 'Розділена з заявки: '.$purchaseRequest->request_number,
+                ]);
+
+                // Копіюємо вибрані товари до нової заявки
+                foreach ($selectedItems as $itemData) {
+                    $newRequest->items()->create([
+                        'item_name' => $itemData['item_name'],
+                        'item_code' => $itemData['item_code'],
+                        'quantity' => $itemData['quantity'],
+                        'unit' => $itemData['unit'],
+                        'estimated_price' => $itemData['estimated_price'] ?? null,
+                    ]);
+                }
+
+                // Видаляємо вибрані товари з поточної заявки за індексами
+                $itemsToDelete = $purchaseRequest->items()
+                    ->orderBy('id')
+                    ->take(PHP_INT_MAX)
+                    ->get()
+                    ->filter(function ($item, $index) use ($selectedIndices) {
+                        return in_array($index, $selectedIndices);
+                    });
+
+                foreach ($itemsToDelete as $item) {
+                    $item->delete();
+                }
+
+                // Перераховуємо суми обох заявок
+                $newRequest->recalculateTotal();
+                $purchaseRequest->recalculateTotal();
+
+                // Якщо в поточній заявці не залишилося товарів, видаляємо її
+                if ($purchaseRequest->items()->count() === 0) {
+                    $purchaseRequest->delete();
+                }
+            });
+
+            $newRequest = PurchaseRequest::latest()->first();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Заявку успішно розділено',
+                'new_request_number' => $newRequest->request_number,
+                'new_request_id' => $newRequest->id,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Помилка при розділенні: '.$e->getMessage(),
+            ], 500);
+        }
+    }
 }

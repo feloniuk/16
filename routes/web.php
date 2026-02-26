@@ -212,6 +212,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Дополнительные действия с заявками
         Route::post('/purchase-requests/{purchaseRequest}/submit', [PurchaseRequestController::class, 'submit'])->name('purchase-requests.submit');
+        Route::post('/purchase-requests/{purchaseRequest}/split', [PurchaseRequestController::class, 'split'])->name('purchase-requests.split');
         Route::get('/purchase-requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('purchase-requests.print');
 
         // Заявки на ремонт (новая система)

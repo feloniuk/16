@@ -104,6 +104,12 @@
                             </tfoot>
                         </table>
                     </div>
+
+                    <div class="d-flex justify-content-end mt-3">
+                        <button type="button" class="btn btn-success btn-sm" onclick="addItemRow()">
+                            <i class="bi bi-plus"></i> Додати товар
+                        </button>
+                    </div>
                 </div>
 
                 <div class="mb-4">

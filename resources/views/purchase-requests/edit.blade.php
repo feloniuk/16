@@ -47,16 +47,22 @@
                     <div class="mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5>Товари для закупівлі</h5>
-                            <button type="button" class="btn btn-success btn-sm" onclick="addItemRow()">
-                                <i class="bi bi-plus"></i> Додати товар
-                            </button>
+                            <div>
+                                <button type="button" class="btn btn-success btn-sm" onclick="addItemRow()">
+                                    <i class="bi bi-plus"></i> Додати товар
+                                </button>
+                                <button type="button" class="btn btn-warning btn-sm ms-2" id="splitBtn" onclick="showSplitModal()" style="display:none;">
+                                    <i class="bi bi-diagram-3"></i> Розділити вибрані
+                                </button>
+                            </div>
                         </div>
 
                         <div class="table-responsive">
                             <table class="table table-bordered" id="itemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th width="35%">Назва товару *</th>
+                                        <th width="4%"><input type="checkbox" id="selectAllCheckbox" onchange="toggleAllCheckboxes()"></th>
+                                        <th width="31%">Назва товару *</th>
                                         <th width="12%">Код</th>
                                         <th width="10%">Кількість *</th>
                                         <th width="10%">Одиниця *</th>
@@ -68,6 +74,9 @@
                                 <tbody id="itemsTableBody">
                                     @foreach($purchaseRequest->items as $index => $item)
                                         <tr>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="item-checkbox" data-item-index="{{ $index }}" onchange="updateSplitButtonVisibility()">
+                                            </td>
                                             <td>
                                                 <div class="input-group input-group-sm">
                                                     <input type="text" name="items[{{ $index }}][item_name]"
@@ -117,12 +126,18 @@
                                 </tbody>
                                 <tfoot>
                                     <tr class="table-light">
-                                        <th colspan="5" class="text-end">Загальна сума:</th>
+                                        <th colspan="6" class="text-end">Загальна сума:</th>
                                         <th id="totalAmount">{{ number_format($purchaseRequest->total_amount, 2) }} грн</th>
                                         <th></th>
                                     </tr>
                                 </tfoot>
                             </table>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="button" class="btn btn-success btn-sm" onclick="addItemRow()">
+                                <i class="bi bi-plus"></i> Додати товар
+                            </button>
                         </div>
                     </div>
 
@@ -163,6 +178,42 @@
                 <div id="itemsList" style="max-height: 400px; overflow-y: auto;">
                     <!-- Items будут добавляться здесь -->
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal для розділення заявки -->
+<div class="modal fade" id="splitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Розділити заявку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="splitForm">
+                    <div class="mb-3">
+                        <label for="newDescription" class="form-label">Опис нової заявки</label>
+                        <input type="text" id="newDescription" class="form-control" placeholder="Наприклад: Друга партія" value="">
+                    </div>
+                    <div class="mb-3">
+                        <label for="newRequestedDate" class="form-label">Дата потреби для нової заявки</label>
+                        <input type="date" id="newRequestedDate" class="form-control" value="">
+                    </div>
+                </form>
+                <div class="alert alert-info">
+                    <p class="mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        Вибрані товари буде перенесено в нову заявку. Вони будуть видалені з поточної заявки.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-warning" onclick="executeSplit()">
+                    <i class="bi bi-diagram-3"></i> Розділити
+                </button>
             </div>
         </div>
     </div>
@@ -389,6 +440,108 @@ function calculateTotal() {
     });
 
     document.getElementById('totalAmount').textContent = total.toFixed(2) + ' грн';
+}
+
+// Функції для розділення заявки
+function getSelectedItemIndices() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    return Array.from(checkboxes).map(cb => parseInt(cb.dataset.itemIndex));
+}
+
+function updateSplitButtonVisibility() {
+    const selected = getSelectedItemIndices();
+    const splitBtn = document.getElementById('splitBtn');
+    const totalItems = document.querySelectorAll('.item-checkbox').length;
+
+    if (selected.length > 0 && selected.length < totalItems) {
+        splitBtn.style.display = 'inline-block';
+    } else {
+        splitBtn.style.display = 'none';
+    }
+}
+
+function toggleAllCheckboxes() {
+    const allCheckbox = document.getElementById('selectAllCheckbox');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+    itemCheckboxes.forEach(cb => cb.checked = allCheckbox.checked);
+    updateSplitButtonVisibility();
+}
+
+function showSplitModal() {
+    const selected = getSelectedItemIndices();
+    if (selected.length === 0) {
+        alert('Будь ласка, виберіть хоча б один товар');
+        return;
+    }
+
+    const totalItems = document.querySelectorAll('.item-checkbox').length;
+    if (selected.length === totalItems) {
+        alert('Будь ласка, залиште хоча б один товар у поточній заявці');
+        return;
+    }
+
+    // Встановлюємо дату за замовчуванням
+    const dateInput = document.getElementById('newRequestedDate');
+    dateInput.value = document.getElementById('requested_date').value;
+
+    const modal = new bootstrap.Modal(document.getElementById('splitModal'));
+    modal.show();
+}
+
+function executeSplit() {
+    const selected = getSelectedItemIndices();
+    if (selected.length === 0) {
+        alert('Будь ласка, виберіть товари для розділення');
+        return;
+    }
+
+    const newDescription = document.getElementById('newDescription').value;
+    const newRequestedDate = document.getElementById('newRequestedDate').value;
+
+    if (!newRequestedDate) {
+        alert('Будь ласка, вкажіть дату потреби для нової заявки');
+        return;
+    }
+
+    // Збираємо дані вибраних товарів
+    const selectedItems = [];
+    selected.forEach(index => {
+        const row = document.querySelector(`input[name="items[${index}][item_name]"]`).closest('tr');
+        selectedItems.push({
+            item_name: row.querySelector('.item-name-input').value,
+            item_code: row.querySelector('input[name="items[' + index + '][item_code]"]').value,
+            quantity: row.querySelector('.quantity-input').value,
+            unit: row.querySelector('input[name="items[' + index + '][unit]"]').value,
+            estimated_price: row.querySelector('.price-input').value,
+        });
+    });
+
+    // Відправляємо запит на сервер
+    fetch(`{{ route('purchase-requests.split', $purchaseRequest) }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+            selected_indices: selected,
+            new_description: newDescription,
+            new_requested_date: newRequestedDate,
+            selected_items: selectedItems
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = `{{ route('purchase-requests.index') }}?success=Заявка розділена. Створено нову заявку: ${data.new_request_number}`;
+        } else {
+            alert('Помилка: ' + (data.message || 'Не вдалося розділити заявку'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Помилка при розділенні заявки');
+    });
 }
 
 // Ініціалізація калькуляцій при завантаженні
