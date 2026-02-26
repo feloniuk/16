@@ -265,9 +265,9 @@
         </div>
     </div>
 
-    <div class="footer">
+    <!-- <div class="footer">
         Створено автоматизованою системою
-    </div>
+    </div> -->
 
     <script>
         window.addEventListener('afterprint', function() {
