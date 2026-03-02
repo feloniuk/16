@@ -25,7 +25,9 @@
       "mcp__laravel-boost__list-routes",
       "mcp__laravel-boost__browser-logs",
       "mcp__laravel-boost__read-log-entries",
-      "Bash(Select-String:*)"
+      "Bash(Select-String:*)",
+      "Bash(cmd /c:*)",
+      "Bash(git -C \"D:/16/16\" ls-files \"resources/views\")"
     ]
   },
   "enableAllProjectMcpServers": true,

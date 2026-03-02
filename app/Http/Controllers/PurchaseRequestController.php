@@ -4,8 +4,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ReceivePurchaseRequestRequest;
 use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestItem;
 use App\Models\RoomInventory; // ЗМІНЕНО: замість WarehouseItem
+use App\Models\WarehouseMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -291,6 +294,103 @@ class PurchaseRequestController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Помилка при розділенні: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function receive(ReceivePurchaseRequestRequest $request, PurchaseRequest $purchaseRequest)
+    {
+        if (! in_array($purchaseRequest->status, ['submitted', 'approved', 'completed'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Неможливо оприходувати товари з заявки в статусі '.$purchaseRequest->status,
+            ], 422);
+        }
+
+        try {
+            DB::transaction(function () use ($request, $purchaseRequest) {
+                foreach ($request->items as $itemData) {
+                    $purchaseRequestItem = PurchaseRequestItem::findOrFail($itemData['purchase_request_item_id']);
+
+                    // Перевірити що товар належить цій заявці
+                    if ($purchaseRequestItem->purchase_request_id !== $purchaseRequest->id) {
+                        throw new \Exception('Товар не належить до цієї заявки');
+                    }
+
+                    $actualQuantity = $itemData['actual_quantity'];
+                    $action = $itemData['action'];
+
+                    // Визначити запис RoomInventory
+                    $inventory = null;
+
+                    if ($action === 'update_existing') {
+                        // Спробуємо взяти через warehouse_item_id або пошукаємо по item_name
+                        if ($purchaseRequestItem->warehouse_item_id) {
+                            $inventory = RoomInventory::find($purchaseRequestItem->warehouse_item_id);
+                        }
+
+                        if (! $inventory) {
+                            $inventory = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
+                                ->where('equipment_type', $purchaseRequestItem->item_name)
+                                ->first();
+                        }
+
+                        if (! $inventory) {
+                            throw new \Exception("Товар '{$purchaseRequestItem->item_name}' не знайдено на складі");
+                        }
+                    } elseif ($action === 'create_new') {
+                        // Створити новий запис в room_inventory
+                        $inventory = RoomInventory::create([
+                            'branch_id' => self::WAREHOUSE_BRANCH_ID,
+                            'room_number' => 'Загальний',
+                            'equipment_type' => $purchaseRequestItem->item_name,
+                            'inventory_number' => 'WH-'.now()->format('YmdHis'),
+                            'quantity' => 0,
+                            'unit' => $purchaseRequestItem->unit,
+                            'price' => $purchaseRequestItem->estimated_price ?? 0,
+                            'admin_telegram_id' => Auth::user()->telegram_id ?? 0,
+                        ]);
+                    } elseif ($action === 'link_to_existing') {
+                        // Взяти по existing_inventory_id
+                        $inventory = RoomInventory::findOrFail($itemData['existing_inventory_id']);
+                        // Оновити warehouse_item_id на PurchaseRequestItem
+                        $purchaseRequestItem->update(['warehouse_item_id' => $inventory->id]);
+                    }
+
+                    // Збільшити quantity
+                    $newBalance = $inventory->quantity + $actualQuantity;
+                    $inventory->update(['quantity' => $newBalance]);
+
+                    // Створити WarehouseMovement
+                    WarehouseMovement::create([
+                        'user_id' => Auth::id(),
+                        'inventory_id' => $inventory->id,
+                        'type' => 'receipt',
+                        'quantity' => $actualQuantity,
+                        'balance_after' => $newBalance,
+                        'note' => "Оприходовано з заявки {$purchaseRequest->request_number}",
+                        'document_number' => $purchaseRequest->request_number,
+                        'operation_date' => now()->toDateString(),
+                    ]);
+
+                    // Оновити warehouse_item_id на PurchaseRequestItem (якщо не оновлено раніше)
+                    if (! $purchaseRequestItem->warehouse_item_id) {
+                        $purchaseRequestItem->update(['warehouse_item_id' => $inventory->id]);
+                    }
+                }
+
+                // Оновити статус заявки на completed
+                $purchaseRequest->update(['status' => 'completed']);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Товари успішно оприходовані на склад',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Помилка при оприходуванні: '.$e->getMessage(),
             ], 500);
         }
     }

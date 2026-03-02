@@ -54,6 +54,11 @@
                                 <button type="button" class="btn btn-warning btn-sm ms-2" id="splitBtn" onclick="showSplitModal()" style="display:none;">
                                     <i class="bi bi-diagram-3"></i> Розділити вибрані
                                 </button>
+                                @if(in_array(Auth::user()->role, ['admin', 'warehouse_keeper']))
+                                    <button type="button" class="btn btn-success btn-sm ms-2" id="receiveEditBtn" onclick="showReceiveModal()" style="display:none;">
+                                        <i class="bi bi-inbox"></i> Прийняти на склад
+                                    </button>
+                                @endif
                             </div>
                         </div>
 
@@ -75,7 +80,7 @@
                                     @foreach($purchaseRequest->items as $index => $item)
                                         <tr>
                                             <td class="text-center">
-                                                <input type="checkbox" class="item-checkbox" data-item-index="{{ $index }}" onchange="updateSplitButtonVisibility()">
+                                                <input type="checkbox" class="item-checkbox" data-item-index="{{ $index }}" data-item-id="{{ $item->id }}" data-item-name="{{ $item->item_name }}" onchange="updateSplitButtonVisibility()">
                                             </td>
                                             <td>
                                                 <div class="input-group input-group-sm">
@@ -213,6 +218,41 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
                 <button type="button" class="btn btn-warning" onclick="executeSplit()">
                     <i class="bi bi-diagram-3"></i> Розділити
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal для оприходування товарів -->
+<div class="modal fade" id="receiveModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Прийняти товари на склад</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Позиція</th>
+                                <th>Замовлено</th>
+                                <th>Факт (шт)</th>
+                                <th>Склад</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receiveTableBody">
+                            <!-- Items будуть добавляться здесь -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-success" onclick="executeReceive()">
+                    <i class="bi bi-check-lg"></i> Прийняти на склад
                 </button>
             </div>
         </div>
@@ -451,12 +491,19 @@ function getSelectedItemIndices() {
 function updateSplitButtonVisibility() {
     const selected = getSelectedItemIndices();
     const splitBtn = document.getElementById('splitBtn');
+    const receiveBtn = document.getElementById('receiveEditBtn');
     const totalItems = document.querySelectorAll('.item-checkbox').length;
 
     if (selected.length > 0 && selected.length < totalItems) {
         splitBtn.style.display = 'inline-block';
     } else {
         splitBtn.style.display = 'none';
+    }
+
+    if (receiveBtn && selected.length > 0) {
+        receiveBtn.style.display = 'inline-block';
+    } else if (receiveBtn) {
+        receiveBtn.style.display = 'none';
     }
 }
 
@@ -547,7 +594,245 @@ function executeSplit() {
 // Ініціалізація калькуляцій при завантаженні
 document.addEventListener('DOMContentLoaded', function() {
     calculateTotal();
+    updateSplitButtonVisibility();
 });
+
+// ===== ФУНКЦІЇ ДЛЯ ОПРИХОДУВАННЯ ТОВАРІВ =====
+const warehouseItemsDataEdit = {!! json_encode($purchaseRequest->items->map(function($item) {
+    return [
+        'id' => $item->id,
+        'item_name' => $item->item_name,
+        'quantity' => $item->quantity,
+        'unit' => $item->unit,
+    ];
+})) !!};
+
+function getSelectedItemIdsForReceive() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    return Array.from(checkboxes).map(cb => ({
+        index: parseInt(cb.dataset.itemIndex),
+        id: parseInt(cb.dataset.itemId),
+        name: cb.dataset.itemName
+    }));
+}
+
+function getItemNameAtIndex(index) {
+    const input = document.querySelector(`input[name="items[${index}][item_name]"]`);
+    return input ? input.value : '';
+}
+
+function showReceiveModal() {
+    const selected = getSelectedItemIdsForReceive();
+    if (selected.length === 0) {
+        alert('Будь ласка, виберіть хоча б один товар');
+        return;
+    }
+
+    const tableBody = document.getElementById('receiveTableBody');
+    tableBody.innerHTML = '';
+
+    // Запит для пошуку товарів на складі
+    const searchPromises = selected.map(itemSelected => {
+        // Знаходимо дані товару з warehouseItemsDataEdit
+        const itemData = warehouseItemsDataEdit.find(item => item.id === itemSelected.id);
+
+        return fetch(`{{ route('api.warehouse-items.search') }}?q=${encodeURIComponent(itemSelected.name)}`)
+            .then(r => r.json())
+            .then(results => ({
+                ...itemSelected,
+                quantity: itemData ? itemData.quantity : 1,
+                unit: itemData ? itemData.unit : 'шт',
+                foundItems: results
+            }))
+    });
+
+    Promise.all(searchPromises).then(itemsWithResults => {
+        itemsWithResults.forEach((itemData, idx) => {
+            const foundItem = itemData.foundItems.length > 0 ? itemData.foundItems[0] : null;
+
+            const row = document.createElement('tr');
+            let warehouseHTML = '';
+
+            if (foundItem) {
+                warehouseHTML = `
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-success text-white">✓ Знайдено</span>
+                        <input type="text" class="form-control form-control-sm" value="${foundItem.name} (${foundItem.code})" readonly>
+                        <input type="hidden" class="receive-action" value="update_existing">
+                        <input type="hidden" class="receive-inventory-id" value="${foundItem.id}">
+                    </div>
+                `;
+            } else {
+                warehouseHTML = `
+                    <select class="form-select form-select-sm receive-action-select" onchange="updateReceiveActionSelect(this)">
+                        <option value="">Виберіть дію</option>
+                        <option value="create_new">+ Створити новий</option>
+                        <option value="link_to_existing">Прив'язати до існуючого</option>
+                    </select>
+                    <div class="receive-existing-select" style="display:none; margin-top: 5px;">
+                        <input type="text" class="form-control form-control-sm receive-search" placeholder="Пошук товару..." onkeyup="searchWarehouseItems(this)">
+                        <div class="receive-search-results" style="max-height: 150px; overflow-y: auto; margin-top: 5px;"></div>
+                    </div>
+                    <input type="hidden" class="receive-inventory-id" value="">
+                    <input type="hidden" class="receive-action" value="">
+                `;
+            }
+
+            row.innerHTML = `
+                <td>
+                    <strong>${itemData.name}</strong>
+                </td>
+                <td>
+                    <span class="badge bg-info">${itemData.quantity} ${itemData.unit}</span>
+                </td>
+                <td>
+                    <input type="number" class="form-control form-control-sm receive-quantity" value="${itemData.quantity}" min="1" data-item-index="${itemData.index}">
+                </td>
+                <td>
+                    ${warehouseHTML}
+                </td>
+            `;
+
+            tableBody.appendChild(row);
+        });
+
+        const modal = new bootstrap.Modal(document.getElementById('receiveModal'));
+        modal.show();
+    });
+}
+
+function updateReceiveActionSelect(selectElement) {
+    const action = selectElement.value;
+    const row = selectElement.closest('td');
+    const existingSelect = row.querySelector('.receive-existing-select');
+    const actionInput = row.querySelector('.receive-action');
+
+    actionInput.value = action;
+
+    if (action === 'link_to_existing') {
+        existingSelect.style.display = 'block';
+    } else if (action === 'create_new') {
+        existingSelect.style.display = 'none';
+    }
+}
+
+function searchWarehouseItems(inputElement) {
+    const query = inputElement.value;
+    const row = inputElement.closest('td');
+    const resultsDiv = row.querySelector('.receive-search-results');
+
+    if (query.length < 2) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+
+    fetch(`{{ route('api.warehouse-items.search') }}?q=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(items => {
+            resultsDiv.innerHTML = items.map(item => `
+                <div class="card mb-1" style="cursor: pointer;" onclick="selectWarehouseItem(this, ${item.id}, '${item.name}')">
+                    <div class="card-body p-2">
+                        <div><strong>${item.name}</strong></div>
+                        <small class="text-muted">Код: ${item.code || 'N/A'}</small>
+                    </div>
+                </div>
+            `).join('');
+        });
+}
+
+function selectWarehouseItem(element, itemId, itemName) {
+    const row = element.closest('td');
+    const actionInput = row.querySelector('.receive-action');
+    const inventoryInput = row.querySelector('.receive-inventory-id');
+    const existingSelect = row.querySelector('.receive-existing-select');
+
+    actionInput.value = 'link_to_existing';
+    inventoryInput.value = itemId;
+    existingSelect.innerHTML = `
+        <div class="input-group input-group-sm">
+            <span class="input-group-text">Обрано:</span>
+            <input type="text" class="form-control form-control-sm" value="${itemName}" readonly>
+        </div>
+    `;
+}
+
+function executeReceive() {
+    const selected = getSelectedItemIdsForReceive();
+    if (selected.length === 0) {
+        alert('Будь ласка, виберіть товари');
+        return;
+    }
+
+    const items = [];
+    const rows = document.querySelectorAll('#receiveTableBody tr');
+
+    let rowIndex = 0;
+    rows.forEach((row, idx) => {
+        const quantityInput = row.querySelector('.receive-quantity');
+        const actionInput = row.querySelector('.receive-action');
+        const inventoryInput = row.querySelector('.receive-inventory-id');
+
+        const actualQuantity = parseInt(quantityInput.value);
+        const action = actionInput.value;
+        const existingInventoryId = inventoryInput.value;
+
+        if (!actualQuantity || actualQuantity < 1) {
+            alert('Вкажіть коректну кількість для всіх товарів');
+            throw new Error('Invalid quantity');
+        }
+
+        if (!action) {
+            alert('Оберіть дію для всіх товарів');
+            throw new Error('No action selected');
+        }
+
+        if (action === 'link_to_existing' && !existingInventoryId) {
+            alert('Оберіть товар на складі для прив\'язання');
+            throw new Error('No inventory selected');
+        }
+
+        // Отримуємо ID товару з обраних
+        const itemId = selected[rowIndex] ? selected[rowIndex].id : null;
+
+        if (itemId) {
+            items.push({
+                purchase_request_item_id: itemId,
+                actual_quantity: actualQuantity,
+                action: action,
+                existing_inventory_id: existingInventoryId || null
+            });
+        }
+
+        rowIndex++;
+    });
+
+    if (items.length === 0) {
+        alert('Помилка: не вдалося отримати ID товарів');
+        return;
+    }
+
+    // Відправляємо запит на сервер
+    fetch(`{{ route('purchase-requests.receive', $purchaseRequest) }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ items })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Помилка: ' + (data.message || 'Не вдалося оприходувати товари'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Помилка при оприходуванні товарів');
+    });
+}
 </script>
 @endpush
 

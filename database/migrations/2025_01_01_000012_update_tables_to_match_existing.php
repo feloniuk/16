@@ -1,4 +1,5 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -8,31 +9,41 @@ return new class extends Migration
     public function up()
     {
         // Обновляем таблицу admins для соответствия существующей структуре
-        Schema::table('admins', function (Blueprint $table) {
-            $table->dropColumn('updated_at');
-        });
+        if (Schema::hasTable('admins')) {
+            Schema::table('admins', function (Blueprint $table) {
+                $table->dropColumn('updated_at');
+            });
+        }
 
         // Обновляем таблицу branches
-        Schema::table('branches', function (Blueprint $table) {
-            $table->dropColumn('updated_at');
-        });
+        if (Schema::hasTable('branches')) {
+            Schema::table('branches', function (Blueprint $table) {
+                $table->dropColumn('updated_at');
+            });
+        }
 
         // Обновляем таблицу cartridge_replacements
-        Schema::table('cartridge_replacements', function (Blueprint $table) {
-            $table->dropColumn('updated_at');
-            $table->string('printer_info', 500)->change();
-        });
+        if (Schema::hasTable('cartridge_replacements')) {
+            Schema::table('cartridge_replacements', function (Blueprint $table) {
+                $table->dropColumn('updated_at');
+                $table->string('printer_info', 500)->change();
+            });
+        }
 
         // Обновляем таблицу room_inventory
-        Schema::table('room_inventory', function (Blueprint $table) {
-            $table->dropColumn('updated_at');
-            $table->bigInteger('admin_telegram_id')->change();
-        });
+        if (Schema::hasTable('room_inventory')) {
+            Schema::table('room_inventory', function (Blueprint $table) {
+                $table->dropColumn('updated_at');
+                $table->bigInteger('admin_telegram_id')->change();
+            });
+        }
 
         // Обновляем таблицу inventory_templates
-        Schema::table('inventory_templates', function (Blueprint $table) {
-            $table->dropColumn('updated_at');
-        });
+        if (Schema::hasTable('inventory_templates')) {
+            Schema::table('inventory_templates', function (Blueprint $table) {
+                $table->dropColumn('updated_at');
+            });
+        }
     }
 
     public function down()
