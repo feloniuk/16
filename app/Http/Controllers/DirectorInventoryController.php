@@ -12,6 +12,14 @@ class DirectorInventoryController extends Controller
     public function warehouse(Request $request)
     {
         $query = RoomInventory::warehouse();
+        $categories = config('warehouse-categories');
+
+        // По умолчанию фільтруємо по першій категорії (Господарчі Товари)
+        $activeCategory = $request->get('category', $categories[0] ?? null);
+
+        if ($activeCategory) {
+            $query->where('category', $activeCategory);
+        }
 
         if ($request->filled('search')) {
             $search = $request->get('search');
@@ -20,10 +28,6 @@ class DirectorInventoryController extends Controller
                     ->orWhere('inventory_number', 'like', "%{$search}%")
                     ->orWhere('brand', 'like', "%{$search}%");
             });
-        }
-
-        if ($request->filled('category')) {
-            $query->where('category', $request->get('category'));
         }
 
         if ($request->filled('low_stock')) {
@@ -36,9 +40,9 @@ class DirectorInventoryController extends Controller
             return $item->quantity * ($item->price ?? 0);
         });
 
-        $lowStockItems = RoomInventory::warehouse()->lowStock()->count();
+        $lowStockItems = RoomInventory::warehouse()->where('category', $activeCategory)->lowStock()->count();
 
-        return view('director-inventory.warehouse', compact('items', 'totalValue', 'lowStockItems'));
+        return view('director-inventory.warehouse', compact('items', 'totalValue', 'lowStockItems', 'categories', 'activeCategory'));
     }
 
     public function equipment(Request $request)
