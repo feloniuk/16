@@ -17,6 +17,12 @@ class WarehouseController extends Controller
 
     public function index(Request $request)
     {
+        // Категорії товарів складу
+        $categories = config('warehouse-categories');
+
+        // По умолчанию фільтруємо по першій категорії (Господарчі Товари)
+        $activeCategory = $request->get('category', $categories[0] ?? null);
+
         // Згрупований вигляд по найменуванню (за замовчуванням)
         $query = RoomInventory::select(
             'equipment_type',
@@ -31,8 +37,9 @@ class WarehouseController extends Controller
             ->where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->groupBy('equipment_type');
 
-        if ($request->filled('category')) {
-            $query->having('category', $request->category);
+        // Фільтруємо по категорії, але не якщо вибрано "Всі"
+        if ($activeCategory && $activeCategory !== 'all') {
+            $query->having('category', $activeCategory);
         }
 
         if ($request->filled('search')) {
@@ -50,18 +57,21 @@ class WarehouseController extends Controller
         $items = $query->orderBy('equipment_type')->paginate(20);
         $items->appends($request->query());
 
-        // Категорії товарів складу
-        $categories = config('warehouse-categories');
-
         // Кількість найменувань з низьким залишком
-        $lowStockCount = RoomInventory::select('equipment_type')
+        $lowStockQuery = RoomInventory::select('equipment_type')
             ->where('branch_id', self::WAREHOUSE_BRANCH_ID)
-            ->groupBy('equipment_type')
+            ->groupBy('equipment_type');
+
+        if ($activeCategory && $activeCategory !== 'all') {
+            $lowStockQuery->where('category', $activeCategory);
+        }
+
+        $lowStockCount = $lowStockQuery
             ->havingRaw('SUM(quantity) <= MIN(min_quantity)')
             ->get()
             ->count();
 
-        return view('warehouse.index', compact('items', 'categories', 'lowStockCount'));
+        return view('warehouse.index', compact('items', 'categories', 'lowStockCount', 'activeCategory'));
     }
 
     public function show(RoomInventory $item)

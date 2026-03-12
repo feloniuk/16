@@ -13,17 +13,25 @@
     </div>
 </div>
 
-<!-- Фільтри -->
+<!-- Фільтр категорій -->
 <div class="stats-card p-4 mb-4">
-    <h5 class="card-title mb-3">Фільтри</h5>
+    <h5 class="card-title mb-3">Категорії</h5>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        @foreach($categories as $category)
+            <a href="{{ request()->fullUrlWithQuery(['category' => $category, 'page' => 1]) }}"
+               class="btn {{ $activeCategory === $category ? 'btn-primary' : 'btn-outline-primary' }} btn-sm">
+                {{ ucfirst($category) }}
+            </a>
+        @endforeach
+    </div>
+
+    <!-- Фільтри -->
+    <h5 class="card-title mb-3">Додаткові фільтри</h5>
     <form method="GET" class="row g-3">
+        <input type="hidden" name="category" value="{{ $activeCategory }}">
         <div class="col-md-4">
             <input type="text" class="form-control" name="search" placeholder="Пошук по назві, коду, марці..."
                    value="{{ request('search') }}">
-        </div>
-        <div class="col-md-2">
-            <input type="text" class="form-control" name="category" placeholder="Категорія"
-                   value="{{ request('category') }}">
         </div>
         <div class="col-md-2">
             <div class="form-check mt-2">

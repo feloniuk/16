@@ -10,21 +10,27 @@
     <i class="bi bi-funnel"></i> Фільтри
 </button>
 
-<!-- Форма фильтров -->
+<!-- Фільтр категорій -->
 <div class="collapse show" id="filtersCollapse">
     <div class="stats-card p-4 mb-4">
+        <h5 class="card-title mb-3">Категорії</h5>
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <a href="{{ request()->fullUrlWithQuery(['category' => 'all', 'page' => 1]) }}"
+               class="btn {{ $activeCategory === 'all' ? 'btn-primary' : 'btn-outline-primary' }} btn-sm">
+                Все категорії
+            </a>
+            @foreach($categories as $category)
+                <a href="{{ request()->fullUrlWithQuery(['category' => $category, 'page' => 1]) }}"
+                   class="btn {{ $activeCategory === $category ? 'btn-primary' : 'btn-outline-primary' }} btn-sm">
+                    {{ ucfirst($category) }}
+                </a>
+            @endforeach
+        </div>
+
+        <!-- Додаткові фільтри -->
+        <h5 class="card-title mb-3">Додаткові фільтри</h5>
         <form method="GET" action="{{ route('warehouse.index') }}" class="row g-3 align-items-end">
-            <div class="col-12 col-md-6 col-lg-3">
-                <label for="category" class="form-label">Категорія</label>
-                <select name="category" id="category" class="form-select">
-                    <option value="">Усі категорії</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category }}" {{ request('category') === $category ? 'selected' : '' }}>
-                            {{ $category }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+            <input type="hidden" name="category" value="{{ $activeCategory }}">
 
             <div class="col-12 col-md-6 col-lg-4">
                 <label for="search" class="form-label">Пошук</label>
@@ -50,9 +56,9 @@
                 </button>
             </div>
 
-            @if(request()->hasAny(['category', 'search', 'low_stock']))
+            @if(request()->hasAny(['search', 'low_stock']))
             <div class="col-12 col-md-4 col-lg-1">
-                <a href="{{ route('warehouse.index') }}" class="btn btn-outline-secondary w-100">
+                <a href="{{ route('warehouse.index', ['category' => $activeCategory]) }}" class="btn btn-outline-secondary w-100">
                     <i class="bi bi-x"></i>
                     <span class="d-none d-lg-inline"> Скинути</span>
                 </a>
