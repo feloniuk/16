@@ -44,9 +44,14 @@
     <div class="col">
         <div class="d-flex justify-content-between align-items-center">
             <h2>Заявки на закупівлю ({{ $requests->total() }})</h2>
-            <a href="{{ route('purchase-requests.create') }}" class="btn btn-primary">
-                <i class="bi bi-plus"></i> Створити заявку
-            </a>
+            <div>
+                <a href="{{ route('purchase-requests.archiveIndex') }}" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-archive"></i> Архів
+                </a>
+                <a href="{{ route('purchase-requests.create') }}" class="btn btn-primary">
+                    <i class="bi bi-plus"></i> Створити заявку
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -133,7 +138,7 @@
                                     </button>
                                     @endif
 
-                                    @if($request->status === 'draft' && $request->user_id === Auth::id())
+                                    @if($request->status === 'draft' && ($request->user_id === Auth::id() || in_array(Auth::user()->role, ['admin'])))
                                     <form method="POST" action="{{ route('purchase-requests.submit', $request) }}"
                                           class="d-inline">
                                         @csrf

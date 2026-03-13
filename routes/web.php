@@ -216,6 +216,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/purchase-requests/{purchaseRequest}/receive', [PurchaseRequestController::class, 'receive'])->name('purchase-requests.receive');
         Route::get('/purchase-requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('purchase-requests.print');
 
+        // Архив заявок
+        Route::get('/purchase-requests-archive', [PurchaseRequestController::class, 'archiveIndex'])->name('purchase-requests.archiveIndex');
+        Route::post('/purchase-requests/{purchaseRequest}/restore', [PurchaseRequestController::class, 'restore'])->name('purchase-requests.restore');
+
         // Заявки на ремонт (новая система)
         Route::resource('repair-orders', RepairOrderController::class)->names([
             'index' => 'repair-orders.index',

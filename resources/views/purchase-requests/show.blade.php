@@ -163,13 +163,13 @@
             <h5 class="mb-3">Дії</h5>
 
             <div class="d-grid gap-2">
-                @if($purchaseRequest->status === 'draft' && $purchaseRequest->user_id === Auth::id())
+                @if($purchaseRequest->status === 'draft' && ($purchaseRequest->user_id === Auth::id() || in_array(Auth::user()->role, ['admin'])))
                     <a href="{{ route('purchase-requests.edit', $purchaseRequest) }}" class="btn btn-warning">
                         <i class="bi bi-pencil"></i> Редагувати заявку
                     </a>
                 @endif
 
-                @if($purchaseRequest->status === 'draft' && $purchaseRequest->user_id === Auth::id())
+                @if($purchaseRequest->status === 'draft' && ($purchaseRequest->user_id === Auth::id() || in_array(Auth::user()->role, ['admin'])))
                     <form method="POST" action="{{ route('purchase-requests.submit', $purchaseRequest) }}">
                         @csrf
                         <button type="submit" class="btn btn-success w-100"

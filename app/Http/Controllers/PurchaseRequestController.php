@@ -100,6 +100,7 @@ class PurchaseRequestController extends Controller
         DB::transaction(function () use ($request) {
             $purchaseRequest = PurchaseRequest::create([
                 'user_id' => Auth::id(),
+                'status' => 'draft',
                 'description' => $request->description,
                 'requested_date' => $request->requested_date,
                 'notes' => $request->notes,
@@ -176,6 +177,11 @@ class PurchaseRequestController extends Controller
             return redirect()->back()->withErrors(['Неможливо подати заявку в поточному статусі']);
         }
 
+        // Дозволити автору та адміну
+        if ($purchaseRequest->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
+            return redirect()->back()->withErrors(['Дозволено лише автору або адміну']);
+        }
+
         $purchaseRequest->update(['status' => 'submitted']);
 
         return redirect()->route('purchase-requests.show', $purchaseRequest)->with('success', 'Заявку подано на розгляд');
@@ -223,6 +229,35 @@ class PurchaseRequestController extends Controller
         $purchaseRequest->update(['archived_at' => now()]);
 
         return redirect()->route('purchase-requests.index')->with('success', 'Заявку архівовано');
+    }
+
+    public function archiveIndex(Request $request)
+    {
+        $query = PurchaseRequest::with(['user', 'items'])->withCount('items')->whereNotNull('archived_at');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->where('requested_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->where('requested_date', '<=', $request->date_to);
+        }
+
+        $requests = $query->orderBy('archived_at', 'desc')->paginate(20);
+        $requests->appends($request->query());
+
+        return view('purchase-requests.archive', compact('requests'));
+    }
+
+    public function restore(PurchaseRequest $purchaseRequest): \Illuminate\Http\RedirectResponse
+    {
+        $purchaseRequest->update(['archived_at' => null]);
+
+        return redirect()->route('purchase-requests.archiveIndex')->with('success', 'Заявку відновлено');
     }
 
     public function split(Request $request, PurchaseRequest $purchaseRequest)
@@ -300,7 +335,7 @@ class PurchaseRequestController extends Controller
 
     public function receive(ReceivePurchaseRequestRequest $request, PurchaseRequest $purchaseRequest)
     {
-        if (! in_array($purchaseRequest->status, ['submitted', 'approved', 'completed'])) {
+        if (! in_array($purchaseRequest->status, ['draft', 'submitted', 'approved', 'completed'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Неможливо оприходувати товари з заявки в статусі '.$purchaseRequest->status,
