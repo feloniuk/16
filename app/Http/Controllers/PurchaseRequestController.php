@@ -344,13 +344,24 @@ class PurchaseRequestController extends Controller
 
         try {
             DB::transaction(function () use ($request, $purchaseRequest) {
-                foreach ($request->items as $itemData) {
-                    $purchaseRequestItem = PurchaseRequestItem::findOrFail($itemData['purchase_request_item_id']);
+                // Отримуємо всі items з заявки для перевірки
+                $requestItemIds = $purchaseRequest->items()->pluck('id')->toArray();
 
-                    // Перевірити що товар належить цій заявці
-                    if ($purchaseRequestItem->purchase_request_id !== $purchaseRequest->id) {
-                        throw new \Exception('Товар не належить до цієї заявки');
+                foreach ($request->items as $itemData) {
+                    $itemId = $itemData['purchase_request_item_id'];
+
+                    // Перевіряємо чи item входить до цієї заявки
+                    if (! in_array($itemId, $requestItemIds)) {
+                        $purchaseRequestItem = PurchaseRequestItem::find($itemId);
+                        throw new \Exception(
+                            "Товар #{$itemId} не належить до цієї заявки #{$purchaseRequest->request_number}. ".
+                            ($purchaseRequestItem
+                                ? "Цей товар входить до заявки #{$purchaseRequestItem->purchase_request_id}"
+                                : 'Цей товар не існує в системі')
+                        );
                     }
+
+                    $purchaseRequestItem = PurchaseRequestItem::findOrFail($itemId);
 
                     $actualQuantity = $itemData['actual_quantity'];
                     $action = $itemData['action'];
