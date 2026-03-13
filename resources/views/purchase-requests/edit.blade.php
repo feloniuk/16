@@ -67,12 +67,13 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th width="4%"><input type="checkbox" id="selectAllCheckbox" onchange="toggleAllCheckboxes()"></th>
-                                        <th width="31%">Назва товару *</th>
-                                        <th width="12%">Код</th>
-                                        <th width="10%">Кількість *</th>
-                                        <th width="10%">Одиниця *</th>
-                                        <th width="15%">Очікувана ціна</th>
-                                        <th width="12%">Сума</th>
+                                        <th width="28%">Назва товару *</th>
+                                        <th width="10%">Код</th>
+                                        <th width="8%">Кількість *</th>
+                                        <th width="8%">Одиниця *</th>
+                                        <th width="12%">Очікувана ціна</th>
+                                        <th width="14%">Категорія</th>
+                                        <th width="10%">Сума</th>
                                         <th width="6%"></th>
                                     </tr>
                                 </thead>
@@ -118,6 +119,14 @@
                                                        value="{{ $item->estimated_price }}"
                                                        step="0.01" min="0" placeholder="0.00"
                                                        onchange="calculateRowTotal(this)">
+                                            </td>
+                                            <td>
+                                                <select name="items[{{ $index }}][category]" class="form-select form-select-sm category-select">
+                                                    <option value="">Без категорії</option>
+                                                    @foreach($categories as $category)
+                                                        <option value="{{ $category }}" {{ $item->category === $category ? 'selected' : '' }}>{{ $category }}</option>
+                                                    @endforeach
+                                                </select>
                                             </td>
                                             <td>
                                                 <span class="row-total fw-bold">{{ number_format($item->total, 2) }} грн</span>
@@ -274,10 +283,13 @@ const warehouseItems = {!! json_encode($warehouseItems->map(function($item) {
         'inventory_number' => $item->inventory_number,
         'unit' => $item->unit,
         'price' => $item->price,
+        'category' => $item->category,
         'total_quantity' => $item->total_quantity,
         'min_quantity' => $item->min_quantity
     ];
 })) !!};
+
+const availableCategories = {!! json_encode($categories ?? []) !!};
 
 // Функція для екранування HTML спецсимволів
 function escapeHtml(text) {
@@ -326,6 +338,12 @@ function addItemRow(itemData = null) {
                    value="${itemData?.price || ''}"
                    step="0.01" min="0" placeholder="0.00"
                    onchange="calculateRowTotal(this)">
+        </td>
+        <td>
+            <select name="items[${itemCounter}][category]" class="form-select form-select-sm category-select">
+                <option value="">Без категорії</option>
+                ${availableCategories.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('')}
+            </select>
         </td>
         <td>
             <span class="row-total fw-bold">0.00 грн</span>
@@ -426,7 +444,7 @@ function filterItems() {
             const rowIndex = parseInt(this.dataset.rowIndex);
             const itemIndex = parseInt(this.dataset.itemIndex);
             const item = warehouseItems[itemIndex];
-            selectItem(rowIndex, item.equipment_type, item.full_name, item.inventory_number, item.unit, item.price);
+            selectItem(rowIndex, item.equipment_type, item.full_name, item.inventory_number, item.unit, item.price, item.category);
         });
     });
 
@@ -435,7 +453,7 @@ function filterItems() {
     }
 }
 
-function selectItem(index, name, fullName, code, unit, price) {
+function selectItem(index, name, fullName, code, unit, price, category = null) {
     const row = document.getElementById('itemsTableBody').children[index];
     if (!row) return;
 
@@ -447,6 +465,12 @@ function selectItem(index, name, fullName, code, unit, price) {
     row.querySelector('input[name="items[' + index + '][item_code]"]').value = code;
     row.querySelector('input[name="items[' + index + '][unit]"]').value = unit;
     row.querySelector('.price-input').value = price || '';
+
+    // Встановлюємо категорію якщо вона є
+    const categorySelect = row.querySelector('.category-select');
+    if (categorySelect && category) {
+        categorySelect.value = category;
+    }
 
     calculateRowTotal(row.querySelector('.price-input'));
 

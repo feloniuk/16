@@ -56,6 +56,7 @@ class PurchaseRequestController extends Controller
                 DB::raw('MAX(id) as id'),
                 DB::raw('MAX(unit) as unit'),
                 DB::raw('MAX(price) as price'),
+                DB::raw('MAX(category) as category'),
                 DB::raw('SUM(quantity) as total_quantity'),
                 DB::raw('MAX(min_quantity) as min_quantity'),
                 DB::raw('MAX(inventory_number) as inventory_number')
@@ -81,7 +82,14 @@ class PurchaseRequestController extends Controller
             ->orderBy('equipment_type')
             ->get();
 
-        return view('purchase-requests.create', compact('warehouseItems', 'lowStockItems'));
+        // Категорії для dropdown
+        $categories = RoomInventory::whereNotNull('category')
+            ->distinct()
+            ->pluck('category')
+            ->sort()
+            ->values();
+
+        return view('purchase-requests.create', compact('warehouseItems', 'lowStockItems', 'categories'));
     }
 
     public function store(Request $request)
@@ -95,6 +103,7 @@ class PurchaseRequestController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit' => 'required|string|max:20',
             'items.*.estimated_price' => 'nullable|numeric|min:0',
+            'items.*.category' => 'nullable|string|max:100',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -128,6 +137,7 @@ class PurchaseRequestController extends Controller
                 DB::raw('MAX(id) as id'),
                 DB::raw('MAX(unit) as unit'),
                 DB::raw('MAX(price) as price'),
+                DB::raw('MAX(category) as category'),
                 DB::raw('SUM(quantity) as total_quantity'),
                 DB::raw('MAX(min_quantity) as min_quantity'),
                 DB::raw('MAX(inventory_number) as inventory_number')
@@ -136,7 +146,14 @@ class PurchaseRequestController extends Controller
             ->orderBy('equipment_type')
             ->get();
 
-        return view('purchase-requests.edit', compact('purchaseRequest', 'warehouseItems'));
+        // Категорії для dropdown
+        $categories = RoomInventory::whereNotNull('category')
+            ->distinct()
+            ->pluck('category')
+            ->sort()
+            ->values();
+
+        return view('purchase-requests.edit', compact('purchaseRequest', 'warehouseItems', 'categories'));
     }
 
     public function update(Request $request, PurchaseRequest $purchaseRequest)
@@ -411,6 +428,7 @@ class PurchaseRequestController extends Controller
                             'quantity' => 0,
                             'unit' => $purchaseRequestItem->unit,
                             'price' => $purchaseRequestItem->estimated_price ?? 0,
+                            'category' => $purchaseRequestItem->category,
                             'admin_telegram_id' => Auth::user()->telegram_id ?? 0,
                         ]);
                     } elseif ($action === 'link_to_existing') {

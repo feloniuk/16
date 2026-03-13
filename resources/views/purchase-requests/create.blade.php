@@ -83,12 +83,13 @@
                         <table class="table table-bordered" id="itemsTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th width="35%">Назва товару *</th>
-                                    <th width="12%">Код</th>
-                                    <th width="10%">Кількість *</th>
-                                    <th width="10%">Одиниця *</th>
-                                    <th width="15%">Очікувана ціна</th>
-                                    <th width="12%">Сума</th>
+                                    <th width="28%">Назва товару *</th>
+                                    <th width="10%">Код</th>
+                                    <th width="8%">Кількість *</th>
+                                    <th width="8%">Одиниця *</th>
+                                    <th width="12%">Очікувана ціна</th>
+                                    <th width="18%">Категорія</th>
+                                    <th width="10%">Сума</th>
                                     <th width="6%"></th>
                                 </tr>
                             </thead>
@@ -97,7 +98,7 @@
                             </tbody>
                             <tfoot>
                                 <tr class="table-light">
-                                    <th colspan="5" class="text-end">Загальна сума:</th>
+                                    <th colspan="6" class="text-end">Загальна сума:</th>
                                     <th id="totalAmount">0.00 грн</th>
                                     <th></th>
                                 </tr>
@@ -174,9 +175,12 @@ const warehouseItems = {!! json_encode($warehouseItems->map(function($item) {
         'unit' => $item->unit,
         'price' => $item->price,
         'total_quantity' => $item->total_quantity,
-        'min_quantity' => $item->min_quantity
+        'min_quantity' => $item->min_quantity,
+        'category' => $item->category
     ];
 })) !!};
+
+const availableCategories = {!! json_encode($categories ?? []) !!};
 
 // Функція для екранування HTML спецсимволів
 function escapeHtml(text) {
@@ -224,6 +228,12 @@ function addItemRow(itemData = null) {
                    class="form-control form-control-sm price-input"
                    value="" step="0.01" min="0" placeholder="0.00"
                    onchange="calculateRowTotal(this)">
+        </td>
+        <td>
+            <select name="items[${itemCounter}][category]" class="form-select form-select-sm category-select">
+                <option value="">Без категорії</option>
+                ${availableCategories.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('')}
+            </select>
         </td>
         <td>
             <span class="row-total fw-bold">0.00 грн</span>
@@ -334,6 +344,12 @@ function selectItem(item) {
     currentRow.querySelector('.item-code-hidden').value = item.inventory_number;
     currentRow.querySelector('.unit-input').value = item.unit;
     currentRow.querySelector('.price-input').value = item.price || '';
+
+    // Встановлюємо категорію якщо вона є
+    const categorySelect = currentRow.querySelector('.category-select');
+    if (categorySelect && item.category) {
+        categorySelect.value = item.category;
+    }
 
     calculateRowTotal(currentRow.querySelector('.price-input'));
 
