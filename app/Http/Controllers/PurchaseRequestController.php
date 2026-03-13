@@ -146,6 +146,7 @@ class PurchaseRequestController extends Controller
             'requested_date' => 'required|date|after_or_equal:today',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
+            'items.*.id' => 'nullable|integer',
             'items.*.item_name' => 'required|string',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit' => 'required|string|max:20',
@@ -159,10 +160,26 @@ class PurchaseRequestController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            $purchaseRequest->items()->delete();
+            // Отримуємо IDs товарів які потрібно зберегти
+            $submitteItemIds = collect($request->items)
+                ->filter(fn ($item) => isset($item['id']))
+                ->pluck('id')
+                ->toArray();
 
+            // Видаляємо товари які більше не в списку
+            $purchaseRequest->items()
+                ->whereNotIn('id', $submitteItemIds)
+                ->delete();
+
+            // Оновлюємо або створюємо товари
             foreach ($request->items as $itemData) {
-                $purchaseRequest->items()->create($itemData);
+                if (isset($itemData['id']) && ! empty($itemData['id'])) {
+                    // Оновлюємо існуючий товар
+                    PurchaseRequestItem::where('id', $itemData['id'])->update($itemData);
+                } else {
+                    // Створюємо новий товар
+                    $purchaseRequest->items()->create($itemData);
+                }
             }
 
             $purchaseRequest->recalculateTotal();

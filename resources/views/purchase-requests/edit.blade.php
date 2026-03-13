@@ -84,6 +84,7 @@
                                             </td>
                                             <td>
                                                 <div class="input-group input-group-sm">
+                                                    <input type="hidden" name="items[{{ $index }}][id]" value="{{ $item->id }}">
                                                     <input type="text" name="items[{{ $index }}][item_name]"
                                                            class="form-control form-control-sm item-name-input"
                                                            value="{{ $item->item_name }}"
