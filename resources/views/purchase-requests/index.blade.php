@@ -138,7 +138,7 @@
                                     </button>
                                     @endif
 
-                                    @if($request->status === 'draft' && ($request->user_id === Auth::id() || in_array(Auth::user()->role, ['admin'])))
+                                    @if($request->status === 'draft' && ($request->user_id === Auth::id() || in_array(Auth::user()->role, ['admin', 'warehouse_keeper'])))
                                     <form method="POST" action="{{ route('purchase-requests.submit', $request) }}"
                                           class="d-inline">
                                         @csrf

@@ -211,9 +211,13 @@ class PurchaseRequestController extends Controller
             return redirect()->back()->withErrors(['Неможливо подати заявку в поточному статусі']);
         }
 
-        // Дозволити автору та адміну
-        if ($purchaseRequest->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
-            return redirect()->back()->withErrors(['Дозволено лише автору або адміну']);
+        // Дозволити автору, адміну та складовщику
+        $isCreator = $purchaseRequest->user_id === Auth::id();
+        $isAdmin = Auth::user()->role === 'admin';
+        $isWarehouseKeeper = Auth::user()->role === 'warehouse_keeper';
+
+        if (! ($isCreator || $isAdmin || $isWarehouseKeeper)) {
+            return redirect()->back()->withErrors(['Дозволено лише автору, адміну або складовщику']);
         }
 
         $purchaseRequest->update(['status' => 'submitted']);
