@@ -11,7 +11,7 @@ class PurchaseRequestItem extends Model
 
     protected $fillable = [
         'purchase_request_id', 'warehouse_item_id', 'item_name',
-        'item_code', 'quantity', 'unit', 'estimated_price', 'specifications',
+        'item_code', 'quantity', 'unit', 'estimated_price', 'specifications', 'category',
     ];
 
     protected $casts = [

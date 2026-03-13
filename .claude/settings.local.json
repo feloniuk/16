@@ -27,7 +27,8 @@
       "mcp__laravel-boost__read-log-entries",
       "Bash(Select-String:*)",
       "Bash(cmd /c:*)",
-      "Bash(git -C \"D:/16/16\" ls-files \"resources/views\")"
+      "Bash(git -C \"D:/16/16\" ls-files \"resources/views\")",
+      "Bash(cd \"D:\\\\\\\\16\\\\\\\\16\" && php artisan db \"SELECT * FROM room_inventory WHERE category = 'миючі засоби'\" 2>&1 | head -30)"
     ]
   },
   "enableAllProjectMcpServers": true,

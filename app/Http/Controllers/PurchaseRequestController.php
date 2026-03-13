@@ -83,7 +83,8 @@ class PurchaseRequestController extends Controller
             ->get();
 
         // Категорії для dropdown
-        $categories = RoomInventory::whereNotNull('category')
+        $categories = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
+            ->whereNotNull('category')
             ->distinct()
             ->pluck('category')
             ->sort()
@@ -168,6 +169,7 @@ class PurchaseRequestController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit' => 'required|string|max:20',
             'items.*.estimated_price' => 'nullable|numeric|min:0',
+            'items.*.category' => 'nullable|string|max:100',
         ]);
 
         DB::transaction(function () use ($request, $purchaseRequest) {
