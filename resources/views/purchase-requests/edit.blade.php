@@ -141,7 +141,7 @@
                                 </tbody>
                                 <tfoot>
                                     <tr class="table-light">
-                                        <th colspan="6" class="text-end">Загальна сума:</th>
+                                        <th colspan="7" class="text-end">Загальна сума:</th>
                                         <th id="totalAmount">{{ number_format($purchaseRequest->total_amount, 2) }} грн</th>
                                         <th></th>
                                     </tr>
@@ -303,6 +303,9 @@ function addItemRow(itemData = null) {
     const tbody = document.getElementById('itemsTableBody');
     const row = document.createElement('tr');
     row.innerHTML = `
+        <td class="text-center">
+            <input type="checkbox" class="item-checkbox" data-item-index="${itemCounter}" onchange="updateSplitButtonVisibility()">
+        </td>
         <td>
             <div class="input-group input-group-sm">
                 <input type="text" name="items[${itemCounter}][item_name]"
