@@ -28,7 +28,8 @@
       "Bash(Select-String:*)",
       "Bash(cmd /c:*)",
       "Bash(git -C \"D:/16/16\" ls-files \"resources/views\")",
-      "Bash(cd \"D:\\\\\\\\16\\\\\\\\16\" && php artisan db \"SELECT * FROM room_inventory WHERE category = 'миючі засоби'\" 2>&1 | head -30)"
+      "Bash(cd \"D:\\\\\\\\16\\\\\\\\16\" && php artisan db \"SELECT * FROM room_inventory WHERE category = 'миючі засоби'\" 2>&1 | head -30)",
+      "Bash(cd \"D:\\\\\\\\16\\\\\\\\16\" && php -r \"\nrequire 'vendor/autoload.php';\n\\\\$app = require_once 'bootstrap/app.php';\n\\\\$kernel = \\\\$app->make\\(Illuminate\\\\Contracts\\\\Http\\\\Kernel::class\\);\n\n// Simulate request\n\\\\$request = Illuminate\\\\Http\\\\Request::create\\('/purchase-requests/37/edit', 'GET'\\);\n\\\\$request->setRouteResolver\\(function \\(\\) {\n    return null;\n}\\);\n\n// Get view data\n\\\\$controller = new App\\\\Http\\\\Controllers\\\\PurchaseRequestController\\(\\);\n\\\\$reflection = new ReflectionClass\\(\\\\$controller\\);\n\n// Just check the query that would be executed\n\\\\$purchaseRequest = App\\\\Models\\\\PurchaseRequest::find\\(37\\);\n\\\\$categories = App\\\\Models\\\\RoomInventory::whereNotNull\\('category'\\)\n    ->distinct\\(\\)\n    ->pluck\\('category'\\)\n    ->sort\\(\\)\n    ->values\\(\\);\n\necho 'Категорії для dropdown:' . PHP_EOL;\nforeach \\(\\\\$categories as \\\\$cat\\) {\n    echo '  - ' . \\\\$cat . PHP_EOL;\n}\necho PHP_EOL . 'Кількість категорій: ' . \\\\$categories->count\\(\\) . PHP_EOL;\necho 'Новая категорія є?: ' . \\(\\\\$categories->contains\\('миючі засоби'\\) ? 'ТАК' : 'НІ'\\) . PHP_EOL;\n\")"
     ]
   },
   "enableAllProjectMcpServers": true,

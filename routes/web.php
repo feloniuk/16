@@ -242,10 +242,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             $items = \App\Models\RoomInventory::where('branch_id', 6) // Тільки склад
                 ->where(function ($q) use ($query) {
                     $q->where('equipment_type', 'like', "%{$query}%") // назва товару
-                        ->orWhere('inventory_number', 'like', "%{$query}%"); // код товару
+                        ->orWhere('inventory_number', 'like', "%{$query}%") // код товару
+                        ->orWhere('full_name', 'like', "%{$query}%"); // повна назва товару
                 })
                 ->limit(10)
-                ->get(['id', 'equipment_type as name', 'inventory_number as code', 'unit', 'price']);
+                ->get(['id', 'equipment_type as name', 'inventory_number as code', 'unit', 'price', 'full_name']);
 
             return response()->json($items);
         })->name('api.warehouse-items.search');

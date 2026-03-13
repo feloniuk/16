@@ -417,10 +417,12 @@ function showReceiveModal() {
             let warehouseHTML = '';
 
             if (foundItem) {
+                // Використовуємо повну назву якщо є та не порожня, інакше коротку
+                const displayName = (foundItem.full_name && foundItem.full_name.trim() !== '') ? foundItem.full_name : foundItem.name;
                 warehouseHTML = `
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-success text-white">✓ Знайдено</span>
-                        <input type="text" class="form-control form-control-sm" value="${foundItem.name} (${foundItem.code})" readonly>
+                        <input type="text" class="form-control form-control-sm" value="${displayName} (${foundItem.code})" readonly>
                         <input type="hidden" class="receive-action" value="update_existing">
                         <input type="hidden" class="receive-inventory-id" value="${foundItem.id}">
                     </div>
@@ -429,7 +431,7 @@ function showReceiveModal() {
                 warehouseHTML = `
                     <select class="form-select form-select-sm receive-action-select" onchange="updateReceiveActionSelect(this)">
                         <option value="">Виберіть дію</option>
-                        <option value="create_new">+ Створити новий</option>
+                        <option value="create_new" selected>+ Створити новий</option>
                         <option value="link_to_existing">Прив'язати до існуючого</option>
                     </select>
                     <div class="receive-existing-select" style="display:none; margin-top: 5px;">
@@ -437,7 +439,7 @@ function showReceiveModal() {
                         <div class="receive-search-results" style="max-height: 150px; overflow-y: auto; margin-top: 5px;"></div>
                     </div>
                     <input type="hidden" class="receive-inventory-id" value="">
-                    <input type="hidden" class="receive-action" value="">
+                    <input type="hidden" class="receive-action" value="create_new">
                 `;
             }
 
@@ -492,14 +494,20 @@ function searchWarehouseItems(inputElement) {
     fetch(`{{ route('api.warehouse-items.search') }}?q=${encodeURIComponent(query)}`)
         .then(r => r.json())
         .then(items => {
-            resultsDiv.innerHTML = items.map(item => `
-                <div class="card mb-1" style="cursor: pointer;" onclick="selectWarehouseItem(this, ${item.id}, '${item.name}')">
-                    <div class="card-body p-2">
-                        <div><strong>${item.name}</strong></div>
-                        <small class="text-muted">Код: ${item.code || 'N/A'}</small>
+            resultsDiv.innerHTML = items.map(item => {
+                // Використовуємо повну назву якщо є та не порожня, інакше коротку
+                const displayName = (item.full_name && item.full_name.trim() !== '') ? item.full_name : item.name;
+                const shortName = item.name;
+                return `
+                    <div class="card mb-1" style="cursor: pointer;" onclick="selectWarehouseItem(this, ${item.id}, '${displayName}')">
+                        <div class="card-body p-2">
+                            <div><strong>${displayName}</strong></div>
+                            <small class="text-muted">Назва товару: ${shortName}</small>
+                            <br><small class="text-muted">Код: ${item.code || 'N/A'}</small>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         });
 }
 
