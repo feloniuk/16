@@ -72,11 +72,12 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th width="5%">#</th>
-                                        <th width="20%">Тип обладнання *</th>
-                                        <th width="15%">Бренд</th>
-                                        <th width="15%">Модель</th>
-                                        <th width="15%">Серійний номер</th>
-                                        <th width="20%">Інвентарний номер *</th>
+                                        <th width="18%">Тип обладнання *</th>
+                                        <th width="12%">Бренд</th>
+                                        <th width="12%">Модель</th>
+                                        <th width="12%">Серійний номер</th>
+                                        <th width="15%">Категорія</th>
+                                        <th width="18%">Інвентарний номер *</th>
                                         <th width="5%">Дії</th>
                                     </tr>
                                 </thead>
@@ -139,6 +140,11 @@
 @push('scripts')
 <script>
 let itemCounter = 0;
+const categories = @json($categories);
+
+function getCategories() {
+    return [''].concat(categories);
+}
 
 // Додавання комп'ютерного набору
 function addComputerSet() {
@@ -168,10 +174,10 @@ function addItemRow(templateData = null) {
     row.innerHTML = `
         <td class="text-center">${itemCounter + 1}</td>
         <td>
-            <input type="text" name="items[${itemCounter}][equipment_type]" 
-                   class="form-control form-control-sm" 
+            <input type="text" name="items[${itemCounter}][equipment_type]"
+                   class="form-control form-control-sm"
                    value="${templateData?.equipment_type || ''}"
-                   placeholder="Комп'ютер, Принтер..." 
+                   placeholder="Комп'ютер, Принтер..."
                    required list="equipmentTypeList">
             <datalist id="equipmentTypeList">
                 <option value="Комп'ютер">
@@ -189,8 +195,8 @@ function addItemRow(templateData = null) {
             </datalist>
         </td>
         <td>
-            <input type="text" name="items[${itemCounter}][brand]" 
-                   class="form-control form-control-sm" 
+            <input type="text" name="items[${itemCounter}][brand]"
+                   class="form-control form-control-sm"
                    value="${templateData?.brand || ''}"
                    placeholder="HP, Dell..." list="brandList">
             <datalist id="brandList">
@@ -206,19 +212,24 @@ function addItemRow(templateData = null) {
             </datalist>
         </td>
         <td>
-            <input type="text" name="items[${itemCounter}][model]" 
-                   class="form-control form-control-sm" 
+            <input type="text" name="items[${itemCounter}][model]"
+                   class="form-control form-control-sm"
                    value="${templateData?.model || ''}"
                    placeholder="Model">
         </td>
         <td>
-            <input type="text" name="items[${itemCounter}][serial_number]" 
-                   class="form-control form-control-sm" 
+            <input type="text" name="items[${itemCounter}][serial_number]"
+                   class="form-control form-control-sm"
                    placeholder="S/N">
         </td>
         <td>
-            <input type="text" name="items[${itemCounter}][inventory_number]" 
-                   class="form-control form-control-sm" 
+            <select name="items[${itemCounter}][category]"
+                    class="form-select form-select-sm" data-categories-select>
+            </select>
+        </td>
+        <td>
+            <input type="text" name="items[${itemCounter}][inventory_number]"
+                   class="form-control form-control-sm"
                    placeholder="INV-00${itemCounter + 1}">
         </td>
         <td class="text-center">
@@ -231,12 +242,30 @@ function addItemRow(templateData = null) {
     
     tbody.appendChild(row);
     itemCounter++;
-    
+
+    // Заповнюємо select категорій
+    populateCategorySelect(row);
+
     updateUI();
     hideEmptyState();
-    
+
     // Фокус на перше поле нового рядка
     row.querySelector('input').focus();
+}
+
+function populateCategorySelect(row) {
+    const select = row.querySelector('[data-categories-select]');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Без категорії</option>';
+    getCategories().forEach(category => {
+        if (category) {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+            select.appendChild(option);
+        }
+    });
 }
 
 function removeItemRow(button) {

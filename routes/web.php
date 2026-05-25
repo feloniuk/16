@@ -250,6 +250,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             return response()->json($items);
         })->name('api.warehouse-items.search');
+
+        Route::post('/api/warehouse-items/search-batch', function (Request $request) {
+            $queries = $request->get('queries', []);
+
+            if (empty($queries)) {
+                return response()->json([]);
+            }
+
+            $results = [];
+            foreach ($queries as $itemName) {
+                $items = \App\Models\RoomInventory::where('branch_id', 6) // Тільки склад
+                    ->where(function ($q) use ($itemName) {
+                        $q->where('equipment_type', 'like', "%{$itemName}%") // назва товару
+                            ->orWhere('inventory_number', 'like', "%{$itemName}%") // код товару
+                            ->orWhere('full_name', 'like', "%{$itemName}%"); // повна назва товару
+                    })
+                    ->limit(1)
+                    ->get(['id', 'equipment_type as name', 'inventory_number as code', 'unit', 'price', 'full_name'])
+                    ->first();
+
+                $results[$itemName] = $items ? [$items->toArray()] : [];
+            }
+
+            return response()->json($results);
+        })->name('api.warehouse-items.search-batch');
     });
 
     // === МАРШРУТЫ ДЛЯ ВСЕХ (включая складовщика) ===

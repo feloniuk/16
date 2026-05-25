@@ -343,10 +343,12 @@ class InventoryController extends Controller
             ->pluck('balance_code')
             ->sort();
 
+        $categories = config('warehouse-categories');
+
         // Додаємо шаблони
         $templates = \App\Models\InventoryTemplate::orderBy('equipment_type')->get();
 
-        return view('inventory.create', compact('branches', 'balanceCodes', 'templates'));
+        return view('inventory.create', compact('branches', 'balanceCodes', 'templates', 'categories'));
     }
 
     /**
@@ -354,6 +356,8 @@ class InventoryController extends Controller
      */
     public function storeBulk(Request $request)
     {
+        $categories = config('warehouse-categories');
+
         $request->validate([
             'branch_id' => 'required|exists:branches,id',
             'room_number' => 'required|string|max:50',
@@ -365,6 +369,7 @@ class InventoryController extends Controller
             'items.*.serial_number' => 'nullable|string|max:255',
             'items.*.inventory_number' => 'required|string|max:255',
             'items.*.quantity' => 'nullable|integer|min:1',
+            'items.*.category' => 'nullable|in:'.implode(',', $categories),
             'general_notes' => 'nullable|string|max:1000',
         ]);
 
@@ -393,6 +398,7 @@ class InventoryController extends Controller
                         'quantity' => $itemData['quantity'] ?? 1,
                         'unit' => 'шт',
                         'min_quantity' => 0,
+                        'category' => $itemData['category'] ?? null,
                     ]);
 
                     $createdCount++;

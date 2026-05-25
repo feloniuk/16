@@ -50,13 +50,23 @@
             </div>
 
             <div class="col-6 col-md-4 col-lg-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="hide_zero_stock" id="hide_zero_stock"
+                           value="1" {{ request('hide_zero_stock') ? 'checked' : '' }}>
+                    <label class="form-check-label" for="hide_zero_stock">
+                        Приховати нульові
+                    </label>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-2">
                 <button type="submit" class="btn btn-primary w-100">
                     <i class="bi bi-search"></i>
                     <span class="d-none d-lg-inline"> Пошук</span>
                 </button>
             </div>
 
-            @if(request()->hasAny(['search', 'low_stock']))
+            @if(request()->hasAny(['search', 'low_stock', 'hide_zero_stock']))
             <div class="col-12 col-md-4 col-lg-1">
                 <a href="{{ route('warehouse.index', ['category' => $activeCategory]) }}" class="btn btn-outline-secondary w-100">
                     <i class="bi bi-x"></i>
@@ -124,7 +134,6 @@
                             <th class="d-none d-md-table-cell">Категорія</th>
                             <th class="text-center" style="width: 80px;">Залишок</th>
                             <th class="d-none d-lg-table-cell text-center">Поз.</th>
-                            <th class="d-none d-lg-table-cell text-center">Ціна</th>
                             <th class="text-center" style="width: 100px;">Дії</th>
                         </tr>
                     </thead>
@@ -154,21 +163,19 @@
                             <td class="d-none d-lg-table-cell text-center">
                                 <span class="badge bg-secondary">{{ $item->items_count }}</span>
                             </td>
-                            <td class="d-none d-lg-table-cell text-center">
-                                <small>
-                                    @if($item->avg_price)
-                                        {{ number_format($item->avg_price, 2) }} грн
-                                    @else
-                                        -
-                                    @endif
-                                </small>
-                            </td>
                             <td>
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ route('warehouse.show-by-name', ['name' => $item->equipment_type]) }}"
-                                       class="btn btn-outline-primary" title="Детально">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
+                                    @if($item->items_count == 1)
+                                        <a href="{{ route('warehouse.show', ['item' => explode(',', $item->item_ids)[0]]) }}"
+                                           class="btn btn-outline-primary" title="Детально">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    @else
+                                        <a href="{{ route('warehouse.show-by-name', ['name' => $item->equipment_type]) }}"
+                                           class="btn btn-outline-primary" title="Детально">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    @endif
                                     @if($item->total_quantity > 0)
                                     <button type="button" class="btn btn-outline-info"
                                             onclick="showIssueModal('{{ addslashes($item->equipment_type) }}', {{ $item->total_quantity }}, '{{ addslashes($item->unit) }}')"
@@ -323,6 +330,63 @@ function showIssueModal(equipmentType, available, unit) {
     document.getElementById('issueNote').value = '';
     new bootstrap.Modal(document.getElementById('issueModal')).show();
 }
+
+// Зберігання фільтрів у localStorage
+function saveFiltersToLocalStorage() {
+    const filters = {
+        search: document.getElementById('search').value,
+        low_stock: document.getElementById('low_stock').checked ? '1' : '',
+        hide_zero_stock: document.getElementById('hide_zero_stock').checked ? '1' : '',
+        category: document.querySelector('input[name="category"]').value
+    };
+    localStorage.setItem('warehouse_filters', JSON.stringify(filters));
+}
+
+function restoreFiltersFromLocalStorage() {
+    const saved = localStorage.getItem('warehouse_filters');
+    if (saved) {
+        const filters = JSON.parse(saved);
+        document.getElementById('search').value = filters.search || '';
+        document.getElementById('low_stock').checked = filters.low_stock === '1';
+        document.getElementById('hide_zero_stock').checked = filters.hide_zero_stock === '1';
+        return true;
+    }
+    return false;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+
+    const hasUrlFilters = window.location.search.includes('search=') ||
+                         window.location.search.includes('low_stock=') ||
+                         window.location.search.includes('hide_zero_stock=') ||
+                         window.location.search.includes('category=');
+
+    if (!hasUrlFilters) {
+        const saved = localStorage.getItem('warehouse_filters');
+        if (saved) {
+            const filters = JSON.parse(saved);
+            const hasAnyFilter = filters.search ||
+                                 filters.low_stock === '1' ||
+                                 filters.hide_zero_stock === '1' ||
+                                 (filters.category && filters.category !== 'all');
+            if (hasAnyFilter) {
+                const params = new URLSearchParams();
+                if (filters.search) params.set('search', filters.search);
+                if (filters.low_stock === '1') params.set('low_stock', '1');
+                if (filters.hide_zero_stock === '1') params.set('hide_zero_stock', '1');
+                if (filters.category) params.set('category', filters.category);
+                window.location.href = '{{ route("warehouse.index") }}?' + params.toString();
+                return;
+            }
+        }
+    }
+
+    document.getElementById('search').addEventListener('change', saveFiltersToLocalStorage);
+    document.getElementById('low_stock').addEventListener('change', saveFiltersToLocalStorage);
+    document.getElementById('hide_zero_stock').addEventListener('change', saveFiltersToLocalStorage);
+    form.addEventListener('submit', saveFiltersToLocalStorage);
+});
 </script>
 @endpush
 

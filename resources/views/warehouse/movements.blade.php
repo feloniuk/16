@@ -88,10 +88,10 @@
                             </td>
                             <td>{!! $movement->type_badge !!}</td>
                             <td>
-                                @if($movement->quantity > 0)
-                                    <span class="text-success fw-bold">+{{ $movement->quantity }}</span>
+                                @if($movement->type === 'receipt')
+                                    <span class="text-success fw-bold">+{{ abs($movement->quantity) }}</span>
                                 @else
-                                    <span class="text-danger fw-bold">{{ $movement->quantity }}</span>
+                                    <span class="text-danger fw-bold">-{{ abs($movement->quantity) }}</span>
                                 @endif
                                 <small class="text-muted d-block">{{ $movement->inventoryItem->unit }}</small>
                             </td>

@@ -279,77 +279,112 @@ function openReceiveModalFromIndex(requestId, requestNumber) {
 
     document.getElementById('receiveModalTitle').textContent = requestNumber;
     const tableBody = document.getElementById('receiveTableBodyIndex');
+
+    // Показуємо модал з лоадером одразу
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="5" class="text-center p-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+                <div class="mt-2"><strong>Завантажуємо товари зі складу...</strong></div>
+            </td>
+        </tr>
+    `;
+
+    const modal = new bootstrap.Modal(document.getElementById('receiveModalIndex'));
+    modal.show();
+
+    // Батч-запит для пошуку товарів на складі
+    const queries = requestData.items.map(item => item.item_name);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                      document.querySelector('input[name="_token"]')?.value || '';
+
+    fetch(`{{ route('api.warehouse-items.search-batch') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({ queries })
+    })
+        .then(r => r.json())
+        .then(batchResults => {
+            const itemsWithResults = requestData.items.map(item => ({
+                ...item,
+                foundItems: batchResults[item.item_name] || []
+            }));
+            renderReceiveRowsIndex(itemsWithResults, tableBody);
+        })
+        .catch(err => {
+            console.error('Batch search error:', err);
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Помилка завантаження товарів</td></tr>';
+        });
+}
+
+function renderReceiveRowsIndex(itemsWithResults, tableBody) {
     tableBody.innerHTML = '';
 
-    // Запит для пошуку товарів на складі
-    const searchPromises = requestData.items.map(item =>
-        fetch(`{{ route('api.warehouse-items.search') }}?q=${encodeURIComponent(item.item_name)}`)
-            .then(r => r.json())
-            .then(results => ({
-                ...item,
-                foundItems: results
-            }))
-    );
+    itemsWithResults.forEach((itemData) => {
+        const foundItem = itemData.foundItems.length > 0 ? itemData.foundItems[0] : null;
 
-    Promise.all(searchPromises).then(itemsWithResults => {
-        itemsWithResults.forEach((itemData, idx) => {
-            const foundItem = itemData.foundItems.length > 0 ? itemData.foundItems[0] : null;
+        const row = document.createElement('tr');
+        let warehouseHTML = '';
 
-            const row = document.createElement('tr');
-            let warehouseHTML = '';
-
-            if (foundItem) {
-                warehouseHTML = `
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-success text-white">✓ Знайдено</span>
-                        <input type="text" class="form-control form-control-sm" value="${foundItem.name} (${foundItem.code})" readonly>
-                        <input type="hidden" class="receive-action" value="update_existing">
-                        <input type="hidden" class="receive-inventory-id" value="${foundItem.id}">
-                    </div>
-                `;
-            } else {
-                warehouseHTML = `
-                    <select class="form-select form-select-sm receive-action-select" onchange="updateReceiveActionSelectIndex(this)">
-                        <option value="">Виберіть дію</option>
-                        <option value="create_new">+ Створити новий</option>
-                        <option value="link_to_existing">Прив'язати до існуючого</option>
-                    </select>
-                    <div class="receive-existing-select" style="display:none; margin-top: 5px;">
-                        <input type="text" class="form-control form-control-sm receive-search" placeholder="Пошук товару..." onkeyup="searchWarehouseItemsIndex(this)">
-                        <div class="receive-search-results" style="max-height: 150px; overflow-y: auto; margin-top: 5px;"></div>
-                    </div>
-                    <input type="hidden" class="receive-inventory-id" value="">
-                    <input type="hidden" class="receive-action" value="">
-                `;
-            }
-
-            row.innerHTML = `
-                <td>
-                    <input type="checkbox" class="item-checkbox-index" data-item-id="${itemData.id}" checked>
-                </td>
-                <td>
-                    <strong>${itemData.item_name}</strong>
-                </td>
-                <td>
-                    <span class="badge bg-info">${itemData.quantity} ${itemData.unit}</span>
-                </td>
-                <td>
-                    <input type="number" class="form-control form-control-sm receive-quantity" value="${itemData.quantity}" min="1" data-item-id="${itemData.id}">
-                </td>
-                <td>
-                    ${warehouseHTML}
-                </td>
+        if (foundItem) {
+            const displayName = (foundItem.full_name && foundItem.full_name.trim() !== '') ? foundItem.full_name : foundItem.name;
+            warehouseHTML = `
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-success text-white">✓ Знайдено</span>
+                    <input type="text" class="form-control form-control-sm" value="${displayName} (${foundItem.code})" readonly>
+                    <input type="hidden" class="receive-action" value="update_existing">
+                    <input type="hidden" class="receive-inventory-id" value="${foundItem.id}">
+                </div>
             `;
+        } else {
+            warehouseHTML = `
+                <div class="d-flex gap-2">
+                    <div class="flex-grow-1">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-info text-white">+ Новий</span>
+                            <input type="text" class="form-control form-control-sm" value="Буде створено новий товар" readonly>
+                        </div>
+                        <input type="hidden" class="receive-inventory-id" value="">
+                        <input type="hidden" class="receive-action" value="create_new">
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="switchToExistingIndex(this)" title="Прив'язати до існуючого">
+                        <i class="bi bi-link"></i>
+                    </button>
+                </div>
+                <div class="receive-existing-select" style="display:none; margin-top: 8px;">
+                    <input type="text" class="form-control form-control-sm receive-search" placeholder="Пошук товару..." onkeyup="searchWarehouseItemsIndex(this)">
+                    <div class="receive-search-results" style="max-height: 150px; overflow-y: auto; margin-top: 5px;"></div>
+                </div>
+            `;
+        }
 
-            tableBody.appendChild(row);
-        });
+        row.innerHTML = `
+            <td>
+                <input type="checkbox" class="item-checkbox-index" data-item-id="${itemData.id}" checked>
+            </td>
+            <td>
+                <strong>${itemData.item_name}</strong>
+            </td>
+            <td>
+                <span class="badge bg-info">${itemData.quantity} ${itemData.unit}</span>
+            </td>
+            <td>
+                <input type="number" class="form-control form-control-sm receive-quantity" value="${itemData.quantity}" min="1" data-item-id="${itemData.id}">
+            </td>
+            <td>
+                ${warehouseHTML}
+            </td>
+        `;
 
-        // Отмечиваем все чекбоксы по умолчанию
-        document.getElementById('selectAllCheckboxIndex').checked = true;
-
-        const modal = new bootstrap.Modal(document.getElementById('receiveModalIndex'));
-        modal.show();
+        tableBody.appendChild(row);
     });
+
+    document.getElementById('selectAllCheckboxIndex').checked = true;
 }
 
 function toggleAllCheckboxesIndex() {
@@ -371,6 +406,20 @@ function updateReceiveActionSelectIndex(selectElement) {
     } else if (action === 'create_new') {
         existingSelect.style.display = 'none';
     }
+}
+
+function switchToExistingIndex(button) {
+    const td = button.closest('td');
+    const actionInput = td.querySelector('.receive-action');
+    const displayDiv = button.parentElement.querySelector('.input-group');
+    const existingSelect = td.querySelector('.receive-existing-select');
+    const searchInput = existingSelect.querySelector('.receive-search');
+
+    actionInput.value = 'link_to_existing';
+    displayDiv.style.display = 'none';
+    button.style.display = 'none';
+    existingSelect.style.display = 'block';
+    searchInput.focus();
 }
 
 function searchWarehouseItemsIndex(inputElement) {

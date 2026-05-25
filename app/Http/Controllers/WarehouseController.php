@@ -54,6 +54,10 @@ class WarehouseController extends Controller
             $query->havingRaw('SUM(quantity) <= MIN(min_quantity)');
         }
 
+        if ($request->filled('hide_zero_stock')) {
+            $query->havingRaw('SUM(quantity) > 0');
+        }
+
         $items = $query->orderBy('equipment_type')->paginate(20);
         $items->appends($request->query());
 
@@ -320,7 +324,7 @@ class WarehouseController extends Controller
                     'user_id' => Auth::id(),
                     'inventory_id' => $item->id,
                     'type' => 'issue',
-                    'quantity' => $issueFromThis,
+                    'quantity' => -$issueFromThis,
                     'balance_after' => $newBalance,
                     'note' => $request->note.($request->issued_to ? " | Кому: {$request->issued_to}" : ''),
                     'operation_date' => now()->toDateString(),
