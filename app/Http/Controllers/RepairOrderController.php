@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ReceiveRepairOrderItemsRequest;
 use App\Http\Requests\StoreRepairOrderRequest;
 use App\Http\Requests\UpdateRepairOrderRequest;
 use App\Models\Branch;
 use App\Models\RepairMaster;
 use App\Models\RepairOrder;
+use App\Models\RepairOrderItem;
 use App\Models\RoomInventory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +20,7 @@ class RepairOrderController extends Controller
      */
     public function index(Request $request)
     {
-        $query = RepairOrder::with(['user', 'items.equipment.branch', 'repairMaster'])
+        $query = RepairOrder::with(['user', 'items.equipment', 'repairMaster'])
             ->withCount('items');
 
         if ($request->filled('status')) {
@@ -184,6 +186,39 @@ class RepairOrderController extends Controller
         $repairOrder->approve(auth()->user());
 
         return back()->with('success', 'Заявку затверджено');
+    }
+
+    /**
+     * Receive items back from repair (partial or full).
+     */
+    public function receiveItems(ReceiveRepairOrderItemsRequest $request, RepairOrder $repairOrder)
+    {
+        if (! $repairOrder->canReceiveItems()) {
+            abort(403, 'Неможливо отримати товари для цієї заявки');
+        }
+
+        DB::transaction(function () use ($request, $repairOrder) {
+            RepairOrderItem::whereIn('id', $request->item_ids)
+                ->where('repair_order_id', $repairOrder->id)
+                ->whereNull('returned_at')
+                ->update([
+                    'returned_at' => $request->returned_at,
+                    'return_document_number' => $request->return_document_number,
+                ]);
+
+            $repairOrder->load('items');
+
+            $newStatus = $repairOrder->allItemsReturned() ? 'completed' : 'in_repair';
+            $updates = ['status' => $newStatus];
+
+            if ($repairOrder->allItemsReturned()) {
+                $updates['returned_date'] = $request->returned_at;
+            }
+
+            $repairOrder->update($updates);
+        });
+
+        return back()->with('success', 'Позиції отримано з ремонту');
     }
 
     /**

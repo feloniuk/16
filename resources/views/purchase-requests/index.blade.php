@@ -48,6 +48,9 @@
                 <a href="{{ route('purchase-requests.archiveIndex') }}" class="btn btn-outline-secondary me-2">
                     <i class="bi bi-archive"></i> Архів
                 </a>
+                <button type="button" class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#printSettingsModal" title="Налаштування документу">
+                    <i class="bi bi-gear"></i>
+                </button>
                 <a href="{{ route('purchase-requests.create') }}" class="btn btn-primary">
                     <i class="bi bi-plus"></i> Створити заявку
                 </a>
@@ -196,6 +199,39 @@
 </div>
 @endif
 
+<!-- Modal налаштувань документу -->
+<div class="modal fade" id="printSettingsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-gear me-2"></i>Налаштування документу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Директор (підпис)</label>
+                    <input type="text" id="settingDirector" class="form-control"
+                           value="{{ \App\Models\AppSetting::get('print_director', 'Ганна ПАВЛЕГА') }}">
+                    <div class="form-text">Відображається у правому верхньому куті документу</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Заст. директора з АГР</label>
+                    <input type="text" id="settingDeputy" class="form-control"
+                           value="{{ \App\Models\AppSetting::get('print_deputy_director', 'Олександр ХРОМЧЕНКО') }}">
+                    <div class="form-text">Відображається у рядку підпису внизу документу</div>
+                </div>
+                <div id="printSettingsAlert" class="alert d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" onclick="savePrintSettings()">
+                    <i class="bi bi-check-lg"></i> Зберегти
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal для оприходування товарів -->
 <div class="modal fade" id="receiveModalIndex" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -248,6 +284,42 @@
 
 @push('scripts')
 <script>
+function savePrintSettings() {
+    const deputy = document.getElementById('settingDeputy').value.trim();
+    const director = document.getElementById('settingDirector').value.trim();
+    const alertEl = document.getElementById('printSettingsAlert');
+
+    if (!deputy || !director) {
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Заповніть обидва поля';
+        return;
+    }
+
+    fetch('{{ route('purchase-requests.print-settings') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({ deputy_director: deputy, director: director }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = 'Збережено';
+            setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('printSettingsModal')).hide(), 800);
+        } else {
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = 'Помилка збереження';
+        }
+    })
+    .catch(() => {
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Помилка з\'єднання';
+    });
+}
+
 // Дані про заявки для оприходування
 const purchaseRequestsData = {!! json_encode($requests->map(function($request) {
     return [

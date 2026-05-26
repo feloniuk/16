@@ -104,14 +104,25 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('repairs.show', $repair) }}" 
+                                    <a href="{{ route('repairs.show', $repair) }}"
                                        class="btn btn-sm btn-outline-primary" title="Перегляд">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    
+
+                                    @if(in_array(auth()->user()->role, ['admin', 'warehouse_keeper']))
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-warning"
+                                            title="Видати зі складу"
+                                            data-issue-url="{{ route('repairs.issue-from-warehouse', $repair) }}"
+                                            data-label="Ремонт #{{ $repair->id }} · {{ $repair->branch->name }}, каб. {{ $repair->room_number }}"
+                                            onclick="openIssueModal(this)">
+                                        <i class="bi bi-box-arrow-up"></i>
+                                    </button>
+                                    @endif
+
                                     @if($repair->status !== 'виконана')
                                     <div class="btn-group" role="group">
-                                        <button type="button" class="btn btn-sm btn-outline-success dropdown-toggle" 
+                                        <button type="button" class="btn btn-sm btn-outline-success dropdown-toggle"
                                                 data-bs-toggle="dropdown" title="Змінити статус">
                                             <i class="bi bi-gear"></i>
                                         </button>
@@ -173,6 +184,58 @@
 </div>
 @endif
 
+@if(in_array(auth()->user()->role, ['admin', 'warehouse_keeper']))
+<div class="modal fade" id="issueModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-box-arrow-up text-warning me-2"></i>Видати зі складу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="issueForm">
+                @csrf
+                <div class="modal-body">
+                    <p class="text-muted mb-3" id="issueModalLabel"></p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Товар зі складу <span class="text-danger">*</span></label>
+                        <input type="text" id="issueItemSearch" class="form-control"
+                               placeholder="Введіть назву товару для пошуку..." autocomplete="off">
+                        <input type="hidden" name="inventory_id" id="issueInventoryId">
+                        <div id="issueSearchResults" class="border rounded mt-1 bg-white"
+                             style="display:none; max-height:200px; overflow-y:auto; position:relative; z-index:9999;"></div>
+                        <div id="issueSelectedItem" class="mt-2"></div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Кількість <span class="text-danger">*</span></label>
+                            <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Дата видачі <span class="text-danger">*</span></label>
+                            <input type="date" name="operation_date" class="form-control"
+                                   value="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Примітка</label>
+                            <input type="text" name="note" class="form-control"
+                                   placeholder="Деталь, матеріал тощо">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-box-arrow-up"></i> Видати
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
 @push('styles')
 <style>
 .pagination {
@@ -183,5 +246,71 @@
     border-color: #007bff;
 }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+function openIssueModal(btn) {
+    document.getElementById('issueForm').action = btn.dataset.issueUrl;
+    document.getElementById('issueModalLabel').textContent = btn.dataset.label;
+    document.getElementById('issueItemSearch').value = '';
+    document.getElementById('issueInventoryId').value = '';
+    document.getElementById('issueSearchResults').style.display = 'none';
+    document.getElementById('issueSelectedItem').innerHTML = '';
+    document.querySelector('#issueModal [name="quantity"]').value = 1;
+
+    new bootstrap.Modal(document.getElementById('issueModal')).show();
+    setTimeout(() => document.getElementById('issueItemSearch').focus(), 300);
+}
+
+function selectIssueItem(id, name) {
+    document.getElementById('issueInventoryId').value = id;
+    document.getElementById('issueItemSearch').value = name;
+    document.getElementById('issueSearchResults').style.display = 'none';
+    document.getElementById('issueSelectedItem').innerHTML =
+        `<span class="badge bg-success"><i class="bi bi-check"></i> Обрано: ${name}</span>`;
+}
+
+let issueSearchTimeout;
+
+document.getElementById('issueItemSearch').addEventListener('input', function () {
+    clearTimeout(issueSearchTimeout);
+    const q = this.value.trim();
+    const results = document.getElementById('issueSearchResults');
+
+    if (q.length < 2) {
+        results.style.display = 'none';
+        return;
+    }
+
+    issueSearchTimeout = setTimeout(() => {
+        fetch(`{{ route('api.warehouse-items.search') }}?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(items => {
+                if (!items.length) {
+                    results.innerHTML = '<div class="p-2 text-muted small">Нічого не знайдено</div>';
+                    results.style.display = 'block';
+                    return;
+                }
+                results.innerHTML = items.map(item => {
+                    const name = (item.full_name && item.full_name.trim()) ? item.full_name : item.name;
+                    return `<div class="p-2 border-bottom" style="cursor:pointer;"
+                                 onclick="selectIssueItem(${item.id}, '${name.replace(/'/g, "\\'")}')">
+                                <strong>${name}</strong>
+                                <small class="text-muted d-block">${item.code ?? ''}</small>
+                            </div>`;
+                }).join('');
+                results.style.display = 'block';
+            });
+    }, 300);
+});
+
+document.addEventListener('click', function (e) {
+    if (!e.target.closest('#issueItemSearch') && !e.target.closest('#issueSearchResults')) {
+        const results = document.getElementById('issueSearchResults');
+        if (results) { results.style.display = 'none'; }
+    }
+});
+</script>
 @endpush
 @endsection

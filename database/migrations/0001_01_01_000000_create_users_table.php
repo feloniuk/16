@@ -1,4 +1,5 @@
 <?php
+
 // database/migrations/2024_01_01_000001_create_users_table.php
 
 use Illuminate\Database\Migrations\Migration;
@@ -16,7 +17,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->bigInteger('telegram_id')->nullable()->unique();
-            $table->enum('role', ['admin', 'director', 'user'])->default('user');
+            $table->enum('role', ['admin', 'director', 'user', 'warehouse_keeper'])->default('user');
             $table->boolean('is_active')->default(true);
             $table->rememberToken();
             $table->timestamps();

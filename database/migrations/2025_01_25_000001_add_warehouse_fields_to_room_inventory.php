@@ -8,15 +8,35 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::table('room_inventory', function (Blueprint $table) {
-            $table->integer('quantity')->default(0)->after('inventory_number');
-            $table->string('unit', 20)->default('шт')->after('quantity');
-            $table->decimal('price', 10, 2)->nullable()->after('unit');
-            $table->integer('min_quantity')->default(0)->after('price');
-            $table->string('category', 100)->nullable()->after('equipment_type');
-            
-            $table->index('category');
-            $table->index('quantity');
+        if (! Schema::hasTable('room_inventory')) {
+            return;
+        }
+
+        $missing = collect(['quantity', 'unit', 'price', 'min_quantity', 'category'])
+            ->filter(fn ($col) => ! Schema::hasColumn('room_inventory', $col));
+
+        if ($missing->isEmpty()) {
+            return;
+        }
+
+        Schema::table('room_inventory', function (Blueprint $table) use ($missing) {
+            if ($missing->contains('quantity')) {
+                $table->integer('quantity')->default(0);
+                $table->index('quantity');
+            }
+            if ($missing->contains('unit')) {
+                $table->string('unit', 20)->default('шт');
+            }
+            if ($missing->contains('price')) {
+                $table->decimal('price', 10, 2)->nullable();
+            }
+            if ($missing->contains('min_quantity')) {
+                $table->integer('min_quantity')->default(0);
+            }
+            if ($missing->contains('category')) {
+                $table->string('category', 100)->nullable();
+                $table->index('category');
+            }
         });
     }
 
@@ -24,11 +44,11 @@ return new class extends Migration
     {
         Schema::table('room_inventory', function (Blueprint $table) {
             $table->dropColumn([
-                'quantity', 
-                'unit', 
-                'price', 
-                'min_quantity', 
-                'category'
+                'quantity',
+                'unit',
+                'price',
+                'min_quantity',
+                'category',
             ]);
         });
     }

@@ -19,6 +19,7 @@ use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WarehouseInventoryController;
 use App\Http\Controllers\WorkLogController;
+use App\Models\RoomInventory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -52,9 +53,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Заявки на ремонт
     Route::resource('repairs', RepairRequestController::class)->only(['index', 'show', 'update']);
+    Route::post('/repairs/{repair}/issue-from-warehouse', [RepairRequestController::class, 'issueFromWarehouse'])->name('repairs.issue-from-warehouse');
 
     // Замены картриджей
     Route::resource('cartridges', CartridgeReplacementController::class)->only(['index', 'show']);
+    Route::post('/cartridges/{cartridge}/issue-from-warehouse', [CartridgeReplacementController::class, 'issueFromWarehouse'])->name('cartridges.issue-from-warehouse');
 
     // Облік ремонтів (доступно всем авторизованным пользователям)
     Route::resource('repair-tracking', RepairTrackingController::class);
@@ -210,6 +213,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'update' => 'purchase-requests.update',
         ]);
 
+        // Налаштування документів заявок
+        Route::post('/purchase-requests/print-settings', [PurchaseRequestController::class, 'updatePrintSettings'])->name('purchase-requests.print-settings');
+
         // Дополнительные действия с заявками
         Route::post('/purchase-requests/{purchaseRequest}/submit', [PurchaseRequestController::class, 'submit'])->name('purchase-requests.submit');
         Route::post('/purchase-requests/{purchaseRequest}/split', [PurchaseRequestController::class, 'split'])->name('purchase-requests.split');
@@ -233,13 +239,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Дополнительные действия с заявками на ремонт
         Route::post('/repair-orders/{repairOrder}/submit', [RepairOrderController::class, 'submit'])->name('repair-orders.submit');
+        Route::post('/repair-orders/{repairOrder}/receive-items', [RepairOrderController::class, 'receiveItems'])->name('repair-orders.receive-items');
 
         // API для автозаполнения
         Route::get('/api/warehouse-items/search', function (Request $request) {
             $query = $request->get('q', '');
 
             // ЗМІНЕНО: шукаємо в room_inventory замість warehouse_items
-            $items = \App\Models\RoomInventory::where('branch_id', 6) // Тільки склад
+            $items = RoomInventory::where('branch_id', 6) // Тільки склад
                 ->where(function ($q) use ($query) {
                     $q->where('equipment_type', 'like', "%{$query}%") // назва товару
                         ->orWhere('inventory_number', 'like', "%{$query}%") // код товару
@@ -260,7 +267,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             $results = [];
             foreach ($queries as $itemName) {
-                $items = \App\Models\RoomInventory::where('branch_id', 6) // Тільки склад
+                $items = RoomInventory::where('branch_id', 6) // Тільки склад
                     ->where(function ($q) use ($itemName) {
                         $q->where('equipment_type', 'like', "%{$itemName}%") // назва товару
                             ->orWhere('inventory_number', 'like', "%{$itemName}%") // код товару

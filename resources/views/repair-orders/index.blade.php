@@ -83,39 +83,78 @@
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th width="15%">Номер</th>
-                                <th width="10%">Статус</th>
-                                <th width="10%">Вит предм.</th>
-                                <th width="12%">Витрати</th>
-                                <th width="15%">Майстер</th>
-                                <th width="15%">Створив</th>
-                                <th width="13%">Дата</th>
-                                <th width="10%">Дії</th>
+                                <th>Номер</th>
+                                <th>Статус</th>
+                                <th>Позицій</th>
+                                <th>Сума</th>
+                                <th>Майстер</th>
+                                <th>Відправлено</th>
+                                <th>Повернення</th>
+                                <th>Дії</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($repairOrders as $order)
+                                @php
+                                    $returnedCount = $order->items->filter(fn($i) => $i->returned_at)->count();
+                                    $totalCount = $order->items_count;
+                                @endphp
                                 <tr>
                                     <td>
-                                        <strong>{{ $order->order_number }}</strong>
+                                        <a href="{{ route('repair-orders.show', $order) }}" class="fw-semibold text-decoration-none">
+                                            {{ $order->order_number }}
+                                        </a>
+                                        @if($order->items->count() > 0)
+                                            @php
+                                                $itemsHtml = '<ul class="mb-0 ps-3">' . $order->items->map(fn($item) => '<li>' . e($item->equipment->equipment_type ?? '—') . ($item->equipment->inventory_number ? ' <small class=\"text-muted\">(' . e($item->equipment->inventory_number) . ')</small>' : '') . '</li>')->implode('') . '</ul>';
+                                            @endphp
+                                            <button type="button"
+                                                    class="btn btn-link p-0 ms-1 align-baseline text-info"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover focus"
+                                                    data-bs-placement="right"
+                                                    data-bs-html="true"
+                                                    data-bs-title="Обладнання"
+                                                    data-bs-content="{{ $itemsHtml }}"
+                                                    style="font-size:0.85rem;">
+                                                <i class="bi bi-list-ul"></i>
+                                            </button>
+                                        @endif
+                                        @if($order->description)
+                                            <div class="small text-muted">{{ Str::limit($order->description, 40) }}</div>
+                                        @endif
+                                    </td>
+                                    <td>{!! $order->status_badge !!}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ $totalCount }}</span>
+                                    </td>
+                                    <td class="text-nowrap">
+                                        @if($order->total_cost > 0)
+                                            {{ number_format($order->total_cost, 2, ',', ' ') }} грн
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
                                     </td>
                                     <td>
-                                        {!! $order->status_badge !!}
+                                        <small>{{ $order->repairMaster->name ?? '—' }}</small>
+                                    </td>
+                                    <td class="text-nowrap">
+                                        @if($order->sent_date)
+                                            <small>{{ $order->sent_date->format('d.m.Y') }}</small>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
                                     </td>
                                     <td>
-                                        <span class="badge bg-info">{{ $order->items_count }}</span>
-                                    </td>
-                                    <td>
-                                        {{ number_format($order->total_cost, 2, ',', ' ') }} грн
-                                    </td>
-                                    <td>
-                                        {{ $order->repairMaster->name ?? '-' }}
-                                    </td>
-                                    <td>
-                                        {{ $order->user->name ?? '-' }}
-                                    </td>
-                                    <td>
-                                        <small>{{ $order->created_at->format('d.m.Y') }}</small>
+                                        @if($returnedCount > 0)
+                                            <span class="badge {{ $returnedCount === $totalCount ? 'bg-success' : 'bg-warning text-dark' }}">
+                                                {{ $returnedCount }}/{{ $totalCount }}
+                                            </span>
+                                        @elseif(in_array($order->status, ['sent', 'in_repair']))
+                                            <span class="badge bg-secondary">0/{{ $totalCount }}</span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
@@ -163,4 +202,13 @@
         </div>
     </div>
 </div>
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function (el) {
+        new bootstrap.Popover(el);
+    });
+});
+</script>
+@endpush
 @endsection

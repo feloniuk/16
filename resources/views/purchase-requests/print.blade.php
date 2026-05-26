@@ -221,11 +221,11 @@
 
         <div class="director-signature">
             Директор КНП «ЦПМСД № 16» ОМР<br>
-            Ганна ПАВЛЕГА
+            {{ $director }}
         </div>
 
         <div class="title">
-            ЗАЯВКА на ________________ року
+            ЗАЯВКА на ______ {{ date('Y') }} року
         </div>
 
         <table class="items-table">
@@ -260,7 +260,7 @@
 
         <div class="signatures">
             <div class="signature-row">
-                Заст. директора з АГР _____________ Олександр ХРОМЧЕНКО
+                Заст. директора з АГР _____________ {{ $deputyDirector }}
             </div>
         </div>
     </div>

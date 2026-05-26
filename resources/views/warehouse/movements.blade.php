@@ -16,28 +16,36 @@
                         <option value="issue" {{ request('type') === 'issue' ? 'selected' : '' }}>Видача</option>
                         <option value="writeoff" {{ request('type') === 'writeoff' ? 'selected' : '' }}>Списання</option>
                         <option value="inventory" {{ request('type') === 'inventory' ? 'selected' : '' }}>Інвентаризація</option>
+                        <option value="transfer" {{ request('type') === 'transfer' ? 'selected' : '' }}>Переміщення</option>
                     </select>
                 </div>
-                
+
                 <div class="col-md-3">
+                    <label for="item_name" class="form-label">Назва товару</label>
+                    <input type="text" name="item_name" id="item_name" class="form-control"
+                           value="{{ request('item_name') }}"
+                           placeholder="Наприклад: картридж, принтер...">
+                </div>
+
+                <div class="col-md-2">
                     <label for="date_from" class="form-label">Дата від</label>
                     <input type="date" name="date_from" id="date_from" class="form-control" value="{{ request('date_from') }}">
                 </div>
-                
-                <div class="col-md-3">
+
+                <div class="col-md-2">
                     <label for="date_to" class="form-label">Дата до</label>
                     <input type="date" name="date_to" id="date_to" class="form-control" value="{{ request('date_to') }}">
                 </div>
-                
+
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Знайти
                     </button>
                 </div>
-                
-                <div class="col-md-2">
-                    <a href="{{ route('warehouse.movements') }}" class="btn btn-outline-secondary w-100">
-                        <i class="bi bi-x"></i> Очистити
+
+                <div class="col-md-1">
+                    <a href="{{ route('warehouse.movements') }}" class="btn btn-outline-secondary w-100" title="Очистити">
+                        <i class="bi bi-x"></i>
                     </a>
                 </div>
             </form>

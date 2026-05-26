@@ -243,7 +243,7 @@
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('repair-orders.*') ? 'active' : '' }}" href="{{ route('repair-orders.index') }}">
                             <i class="bi bi-tools me-2"></i>
-                            Заявки на ремонт
+                            Облік ремонтів
                         </a>
                     </li>
 
@@ -323,7 +323,7 @@
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('repair-orders.*') ? 'active' : '' }}" href="{{ route('repair-orders.index') }}">
                             <i class="bi bi-tools me-2"></i>
-                            Заявки на ремонт
+                            Облік ремонтів
                         </a>
                     </li>
 

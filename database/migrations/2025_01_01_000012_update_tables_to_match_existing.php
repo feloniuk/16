@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -23,7 +24,7 @@ return new class extends Migration
         }
 
         // Обновляем таблицу cartridge_replacements
-        if (Schema::hasTable('cartridge_replacements')) {
+        if (Schema::hasTable('cartridge_replacements') && DB::getDriverName() === 'mysql') {
             Schema::table('cartridge_replacements', function (Blueprint $table) {
                 $table->dropColumn('updated_at');
                 $table->string('printer_info', 500)->change();

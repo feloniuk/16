@@ -87,6 +87,21 @@ class RepairOrder extends Model
         $this->update(['total_cost' => $total]);
     }
 
+    public function returnedItemsCount(): int
+    {
+        return $this->items->filter(fn ($item) => $item->isReturned())->count();
+    }
+
+    public function allItemsReturned(): bool
+    {
+        return $this->items->isNotEmpty() && $this->items->every(fn ($item) => $item->isReturned());
+    }
+
+    public function canReceiveItems(): bool
+    {
+        return in_array($this->status, ['sent', 'in_repair', 'approved']);
+    }
+
     public function canBeEditedBy(User $user): bool
     {
         if ($user->role === 'admin') {

@@ -5,10 +5,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ReceivePurchaseRequestRequest;
+use App\Models\AppSetting;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\RoomInventory; // ЗМІНЕНО: замість WarehouseItem
 use App\Models\WarehouseMovement;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -261,10 +264,26 @@ class PurchaseRequestController extends Controller
     {
         $purchaseRequest->load(['items.inventoryItem', 'user']);
 
-        return view('purchase-requests.print', compact('purchaseRequest'));
+        $deputyDirector = AppSetting::get('print_deputy_director', 'Олександр ХРОМЧЕНКО');
+        $director = AppSetting::get('print_director', 'Ганна ПАВЛЕГА');
+
+        return view('purchase-requests.print', compact('purchaseRequest', 'deputyDirector', 'director'));
     }
 
-    public function archive(PurchaseRequest $purchaseRequest): \Illuminate\Http\RedirectResponse
+    public function updatePrintSettings(Request $request): JsonResponse
+    {
+        $request->validate([
+            'deputy_director' => 'required|string|max:255',
+            'director' => 'required|string|max:255',
+        ]);
+
+        AppSetting::set('print_deputy_director', $request->deputy_director);
+        AppSetting::set('print_director', $request->director);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function archive(PurchaseRequest $purchaseRequest): RedirectResponse
     {
         $purchaseRequest->update(['archived_at' => now()]);
 
@@ -293,7 +312,7 @@ class PurchaseRequestController extends Controller
         return view('purchase-requests.archive', compact('requests'));
     }
 
-    public function restore(PurchaseRequest $purchaseRequest): \Illuminate\Http\RedirectResponse
+    public function restore(PurchaseRequest $purchaseRequest): RedirectResponse
     {
         $purchaseRequest->update(['archived_at' => null]);
 

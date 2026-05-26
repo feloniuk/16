@@ -16,11 +16,17 @@ class RepairOrderItem extends Model
         'repair_description',
         'repair_notes',
         'cost',
+        'returned_at',
+        'return_document_number',
     ];
 
-    protected $casts = [
-        'cost' => 'decimal:2',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'cost' => 'decimal:2',
+            'returned_at' => 'date',
+        ];
+    }
 
     public function getFormattedCostAttribute(): string
     {
@@ -29,6 +35,11 @@ class RepairOrderItem extends Model
         }
 
         return number_format($this->cost, 2, ',', ' ').' грн';
+    }
+
+    public function isReturned(): bool
+    {
+        return $this->returned_at !== null;
     }
 
     public function repairOrder(): BelongsTo

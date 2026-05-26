@@ -270,6 +270,14 @@ class WarehouseController extends Controller
             $query->where('operation_date', '<=', $request->date_to);
         }
 
+        if ($request->filled('item_name')) {
+            $itemName = $request->item_name;
+            $query->whereHas('inventoryItem', function ($q) use ($itemName) {
+                $q->where('equipment_type', 'like', "%{$itemName}%")
+                    ->orWhere('full_name', 'like', "%{$itemName}%");
+            });
+        }
+
         $movements = $query->orderBy('created_at', 'desc')->paginate(20);
         $movements->appends($request->query());
 

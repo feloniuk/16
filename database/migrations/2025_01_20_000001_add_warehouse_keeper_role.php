@@ -1,18 +1,20 @@
 <?php
+
 // database/migrations/2025_01_20_000001_add_warehouse_keeper_role.php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up()
     {
-        // Обновляем enum для ролей пользователей
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'warehouse_manager', 'warehouse_keeper', 'director') DEFAULT 'warehouse_keeper'");
-        
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'warehouse_manager', 'warehouse_keeper', 'director') DEFAULT 'warehouse_keeper'");
+        }
+
         // Создаем таблицу для товарных позиций на складе
         Schema::create('warehouse_items', function (Blueprint $table) {
             $table->id();
@@ -27,7 +29,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
-        
+
         // Таблица для движения товаров
         Schema::create('warehouse_movements', function (Blueprint $table) {
             $table->id();
@@ -42,7 +44,7 @@ return new class extends Migration
             $table->date('operation_date');
             $table->timestamps();
         });
-        
+
         // Таблица для заявок на заказ товара
         Schema::create('purchase_requests', function (Blueprint $table) {
             $table->id();
@@ -55,7 +57,7 @@ return new class extends Migration
             $table->text('notes')->nullable(); // примечания
             $table->timestamps();
         });
-        
+
         // Позиции в заявке на заказ
         Schema::create('purchase_request_items', function (Blueprint $table) {
             $table->id();
@@ -69,7 +71,7 @@ return new class extends Migration
             $table->text('specifications')->nullable(); // технические требования
             $table->timestamps();
         });
-        
+
         // Инвентаризации (упрощенная версия)
         Schema::create('warehouse_inventories', function (Blueprint $table) {
             $table->id();
@@ -80,7 +82,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
         });
-        
+
         // Результаты инвентаризации
         Schema::create('warehouse_inventory_items', function (Blueprint $table) {
             $table->id();
@@ -102,8 +104,9 @@ return new class extends Migration
         Schema::dropIfExists('purchase_requests');
         Schema::dropIfExists('warehouse_movements');
         Schema::dropIfExists('warehouse_items');
-        
-        // Возвращаем старые роли
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'warehouse_manager', 'director') DEFAULT 'admin'");
+
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'warehouse_manager', 'director') DEFAULT 'admin'");
+        }
     }
 };
