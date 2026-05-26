@@ -253,7 +253,14 @@
                             Заявки на закупівлю
                         </a>
                     </li>
-                    
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('writeoff-requests.*') ? 'active' : '' }}" href="{{ route('writeoff-requests.index') }}">
+                            <i class="bi bi-file-earmark-minus me-2"></i>
+                            Заявки на списання
+                        </a>
+                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}" href="{{ route('branches.index') }}">
                             <i class="bi bi-building me-2"></i>
@@ -338,6 +345,13 @@
                         <a class="nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}" href="{{ route('purchase-requests.index') }}">
                             <i class="bi bi-cart-plus me-2"></i>
                             Заявки на закупівлю
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('writeoff-requests.*') ? 'active' : '' }}" href="{{ route('writeoff-requests.index') }}">
+                            <i class="bi bi-file-earmark-minus me-2"></i>
+                            Заявки на списання
                         </a>
                     </li>
 

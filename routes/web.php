@@ -19,6 +19,7 @@ use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WarehouseInventoryController;
 use App\Http\Controllers\WorkLogController;
+use App\Http\Controllers\WriteoffRequestController;
 use App\Models\RoomInventory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -222,9 +223,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/purchase-requests/{purchaseRequest}/receive', [PurchaseRequestController::class, 'receive'])->name('purchase-requests.receive');
         Route::get('/purchase-requests/{purchaseRequest}/print', [PurchaseRequestController::class, 'print'])->name('purchase-requests.print');
 
-        // Архив заявок
+        // Архив заявок на закупку
         Route::get('/purchase-requests-archive', [PurchaseRequestController::class, 'archiveIndex'])->name('purchase-requests.archiveIndex');
         Route::post('/purchase-requests/{purchaseRequest}/restore', [PurchaseRequestController::class, 'restore'])->name('purchase-requests.restore');
+
+        // Заявки на списання
+        Route::resource('writeoff-requests', WriteoffRequestController::class);
+        Route::post('/writeoff-requests/{writeoffRequest}/submit', [WriteoffRequestController::class, 'submit'])->name('writeoff-requests.submit');
+        Route::post('/writeoff-requests/{writeoffRequest}/approve', [WriteoffRequestController::class, 'approve'])->name('writeoff-requests.approve');
+        Route::post('/writeoff-requests/{writeoffRequest}/reject', [WriteoffRequestController::class, 'reject'])->name('writeoff-requests.reject');
+        Route::post('/writeoff-requests/{writeoffRequest}/complete', [WriteoffRequestController::class, 'complete'])->name('writeoff-requests.complete');
+        Route::post('/writeoff-requests/{writeoffRequest}/archive', [WriteoffRequestController::class, 'archive'])->name('writeoff-requests.archive');
+        Route::get('/writeoff-requests/{writeoffRequest}/print', [WriteoffRequestController::class, 'print'])->name('writeoff-requests.print');
 
         // Заявки на ремонт (новая система)
         Route::resource('repair-orders', RepairOrderController::class)->names([
