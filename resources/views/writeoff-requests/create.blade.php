@@ -14,6 +14,80 @@
     </div>
 </div>
 
+{{-- Фільтр виданих товарів — окрема форма, поза основною --}}
+<div class="stats-card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">
+            <i class="bi bi-box-arrow-up text-warning me-1"></i>
+            Вибрати з виданих товарів
+        </h5>
+        <form method="GET" action="{{ route('writeoff-requests.create') }}" class="d-flex gap-2 align-items-center" id="filterForm">
+            {{-- Зберігаємо поточні значення основної форми при фільтрації --}}
+            <input type="hidden" name="writeoff_date" id="filter_writeoff_date" value="{{ request('writeoff_date', old('writeoff_date', today()->toDateString())) }}">
+            <input type="hidden" name="description" id="filter_description" value="{{ request('description', old('description')) }}">
+            <input type="hidden" name="notes" id="filter_notes" value="{{ request('notes', old('notes')) }}">
+            <label class="small text-muted mb-0">Видачі за:</label>
+            <input type="date" name="date_from" class="form-control form-control-sm" style="width:140px"
+                value="{{ $dateFrom }}">
+            <span class="text-muted">—</span>
+            <input type="date" name="date_to" class="form-control form-control-sm" style="width:140px"
+                value="{{ $dateTo }}">
+            <button type="submit" class="btn btn-sm btn-outline-primary" id="filterSubmitBtn">
+                <i class="bi bi-funnel"></i>
+            </button>
+        </form>
+    </div>
+
+    @if($groupedMovements->isEmpty())
+    <p class="text-muted text-center py-3">Немає виданих товарів за обраний період</p>
+    @else
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:36px">
+                        <input type="checkbox" id="checkAll" class="form-check-input" title="Вибрати всі">
+                    </th>
+                    <th>Найменування</th>
+                    <th style="width:80px">Од.</th>
+                    <th style="width:100px">Видано</th>
+                    <th style="width:120px">Кількість для списання</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($groupedMovements as $row)
+                <tr class="movement-row" data-inventory-id="{{ $row['inventory_id'] }}"
+                    data-item-name="{{ $row['item_name'] }}"
+                    data-unit="{{ $row['unit'] }}"
+                    data-quantity="{{ $row['total_quantity'] }}">
+                    <td>
+                        <input type="checkbox" class="form-check-input movement-checkbox"
+                            data-inventory-id="{{ $row['inventory_id'] }}"
+                            data-item-name="{{ $row['item_name'] }}"
+                            data-unit="{{ $row['unit'] }}"
+                            data-quantity="{{ $row['total_quantity'] }}">
+                    </td>
+                    <td>{{ $row['item_name'] }}</td>
+                    <td class="text-muted">{{ $row['unit'] }}</td>
+                    <td>{{ $row['total_quantity'] }}</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm writeoff-qty"
+                            min="1" value="{{ $row['total_quantity'] }}" style="width:90px">
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    <div class="mt-2 text-end">
+        <button type="button" class="btn btn-sm btn-primary" id="addSelectedBtn">
+            <i class="bi bi-plus-circle"></i> Додати вибрані до заявки
+        </button>
+    </div>
+    @endif
+</div>
+
+{{-- Основна форма --}}
 <form method="POST" action="{{ route('writeoff-requests.store') }}" id="writeoffForm">
     @csrf
 
@@ -26,20 +100,20 @@
                 <div class="mb-3">
                     <label for="writeoff_date" class="form-label fw-semibold">Дата списання <span class="text-danger">*</span></label>
                     <input type="date" name="writeoff_date" id="writeoff_date" class="form-control @error('writeoff_date') is-invalid @enderror"
-                        value="{{ old('writeoff_date', today()->toDateString()) }}" required>
+                        value="{{ old('writeoff_date', request('writeoff_date', today()->toDateString())) }}" required>
                     @error('writeoff_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="mb-3">
                     <label for="description" class="form-label fw-semibold">Опис</label>
                     <input type="text" name="description" id="description" class="form-control"
-                        value="{{ old('description') }}" placeholder="Необов'язково">
+                        value="{{ old('description', request('description')) }}" placeholder="Необов'язково">
                 </div>
 
                 <div class="mb-3">
                     <label for="notes" class="form-label fw-semibold">Примітки</label>
                     <textarea name="notes" id="notes" class="form-control" rows="3"
-                        placeholder="Необов'язково">{{ old('notes') }}</textarea>
+                        placeholder="Необов'язково">{{ old('notes', request('notes')) }}</textarea>
                 </div>
 
                 <hr>
@@ -54,80 +128,8 @@
             </div>
         </div>
 
-        {{-- Права частина --}}
+        {{-- Права частина: позиції заявки --}}
         <div class="col-lg-9">
-            {{-- Блок вибору з виданих товарів --}}
-            <div class="stats-card p-4 mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0">
-                        <i class="bi bi-box-arrow-up text-warning me-1"></i>
-                        Вибрати з виданих товарів
-                    </h5>
-                    {{-- Фільтр по датам --}}
-                    <form method="GET" action="{{ route('writeoff-requests.create') }}" class="d-flex gap-2 align-items-center">
-                        <input type="hidden" name="writeoff_date" value="{{ request('writeoff_date') }}">
-                        <label class="small text-muted mb-0">Видачі за:</label>
-                        <input type="date" name="date_from" class="form-control form-control-sm" style="width:140px"
-                            value="{{ $dateFrom }}">
-                        <span class="text-muted">—</span>
-                        <input type="date" name="date_to" class="form-control form-control-sm" style="width:140px"
-                            value="{{ $dateTo }}">
-                        <button type="submit" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-funnel"></i>
-                        </button>
-                    </form>
-                </div>
-
-                @if($groupedMovements->isEmpty())
-                <p class="text-muted text-center py-3">Немає виданих товарів за обраний період</p>
-                @else
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width:36px">
-                                    <input type="checkbox" id="checkAll" class="form-check-input" title="Вибрати всі">
-                                </th>
-                                <th>Найменування</th>
-                                <th style="width:80px">Од.</th>
-                                <th style="width:100px">Видано</th>
-                                <th style="width:120px">Кількість для списання</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($groupedMovements as $row)
-                            <tr class="movement-row" data-inventory-id="{{ $row['inventory_id'] }}"
-                                data-item-name="{{ $row['item_name'] }}"
-                                data-unit="{{ $row['unit'] }}"
-                                data-quantity="{{ $row['total_quantity'] }}">
-                                <td>
-                                    <input type="checkbox" class="form-check-input movement-checkbox"
-                                        data-inventory-id="{{ $row['inventory_id'] }}"
-                                        data-item-name="{{ $row['item_name'] }}"
-                                        data-unit="{{ $row['unit'] }}"
-                                        data-quantity="{{ $row['total_quantity'] }}">
-                                </td>
-                                <td>{{ $row['item_name'] }}</td>
-                                <td class="text-muted">{{ $row['unit'] }}</td>
-                                <td>{{ $row['total_quantity'] }}</td>
-                                <td>
-                                    <input type="number" class="form-control form-control-sm writeoff-qty"
-                                        min="1" value="{{ $row['total_quantity'] }}" style="width:90px">
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                <div class="mt-2 text-end">
-                    <button type="button" class="btn btn-sm btn-primary" id="addSelectedBtn">
-                        <i class="bi bi-plus-circle"></i> Додати вибрані до заявки
-                    </button>
-                </div>
-                @endif
-            </div>
-
-            {{-- Позиції заявки --}}
             <div class="stats-card p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0">
@@ -160,16 +162,14 @@
 @push('scripts')
 <script>
 const itemsContainer = document.getElementById('itemsContainer');
-const emptyNotice = document.getElementById('emptyNotice');
+const emptyNotice    = document.getElementById('emptyNotice');
 let itemIndex = 0;
 
 function updateEmptyNotice() {
-    const rows = itemsContainer.querySelectorAll('.item-row');
-    emptyNotice.style.display = rows.length === 0 ? 'block' : 'none';
+    emptyNotice.style.display = itemsContainer.querySelectorAll('.item-row').length === 0 ? 'block' : 'none';
 }
 
 function addItem(inventoryId, itemName, unit, quantity) {
-    // Перевіряємо чи вже є такий inventory_id
     if (inventoryId) {
         const existing = itemsContainer.querySelector(`.item-row[data-inventory-id="${inventoryId}"]`);
         if (existing) {
@@ -221,6 +221,13 @@ function addItem(inventoryId, itemName, unit, quantity) {
     itemsContainer.appendChild(row);
     updateEmptyNotice();
 }
+
+// Синхронізуємо значення основної форми у приховані поля фільтра перед його сабмітом
+document.getElementById('filterForm').addEventListener('submit', function () {
+    document.getElementById('filter_writeoff_date').value = document.getElementById('writeoff_date').value;
+    document.getElementById('filter_description').value   = document.getElementById('description').value;
+    document.getElementById('filter_notes').value         = document.getElementById('notes').value;
+});
 
 // Вибрати всі чекбокси
 document.getElementById('checkAll')?.addEventListener('change', function () {

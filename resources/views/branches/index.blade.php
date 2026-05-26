@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Управление филиалами')
+@section('title', 'Управління філіями')
 
 @section('content')
 <div class="row mb-4">
     <div class="col">
         <div class="d-flex justify-content-between align-items-center">
-            <h2>Филиалы</h2>
+            <h2>Філії</h2>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBranchModal">
-                <i class="bi bi-plus"></i> Добавить филиал
+                <i class="bi bi-plus"></i> Додати філію
             </button>
         </div>
     </div>
@@ -38,7 +38,7 @@
                         </li>
                         <li>
                             <button class="dropdown-item" onclick="editBranch({{ $branch->id }}, '{{ $branch->name }}', {{ $branch->is_active ? 'true' : 'false' }})">
-                                <i class="bi bi-pencil"></i> Редактировать
+                                <i class="bi bi-pencil"></i> Редагувати
                             </button>
                         </li>
                     </ul>
@@ -55,13 +55,13 @@
                 <div class="col-4">
                     <div class="text-center">
                         <h4 class="text-warning mb-1">{{ $branch->cartridge_replacements_count }}</h4>
-                        <small class="text-muted">Картриджи</small>
+                        <small class="text-muted">Картриджі</small>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="text-center">
                         <h4 class="text-info mb-1">{{ $branch->inventory_count }}</h4>
-                        <small class="text-muted">Инвентарь</small>
+                        <small class="text-muted">Інвентар</small>
                     </div>
                 </div>
             </div>
@@ -77,18 +77,18 @@
             <form method="POST" action="{{ route('branches.store') }}">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title">Добавить филиал</h5>
+                    <h5 class="modal-title">Додати філію</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="name" class="form-label">Название филиала</label>
+                        <label for="name" class="form-label">Назва філії</label>
                         <input type="text" class="form-control" id="name" name="name" required>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-primary">Создать</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                    <button type="submit" class="btn btn-primary">Створити</button>
                 </div>
             </form>
         </div>
@@ -103,12 +103,12 @@
                 @csrf
                 @method('PATCH')
                 <div class="modal-header">
-                    <h5 class="modal-title">Редактировать филиал</h5>
+                    <h5 class="modal-title">Редагувати філію</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="edit_name" class="form-label">Название филиала</label>
+                        <label for="edit_name" class="form-label">Назва філії</label>
                         <input type="text" class="form-control" id="edit_name" name="name" required>
                     </div>
                     <div class="form-check">
@@ -119,8 +119,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                    <button type="submit" class="btn btn-primary">Зберегти</button>
                 </div>
             </form>
         </div>

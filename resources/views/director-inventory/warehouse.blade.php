@@ -89,6 +89,38 @@
     </div>
 </div>
 
+<!-- Топ видачі цього місяця -->
+@if($topIssuedThisMonth->isNotEmpty())
+<div class="stats-card p-4 mb-4">
+    <h5 class="card-title mb-3">
+        <i class="bi bi-arrow-up-circle text-primary"></i>
+        Топ-5 видачі цього місяця — {{ ucfirst($activeCategory) }}
+    </h5>
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Найменування</th>
+                    <th class="text-center">Видано</th>
+                    <th class="text-end">Одиниця</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($topIssuedThisMonth as $i => $item)
+                <tr>
+                    <td class="text-muted">{{ $i + 1 }}</td>
+                    <td>{{ $item->full_name ?: $item->equipment_type }}</td>
+                    <td class="text-center"><strong>{{ $item->total_issued }}</strong></td>
+                    <td class="text-end text-muted">{{ $item->unit }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
 <!-- Таблиця -->
 <div class="stats-card p-4">
     <div class="table-responsive">

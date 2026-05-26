@@ -399,7 +399,7 @@ function showReceiveModal() {
         <tr>
             <td colspan="4" class="text-center p-4">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Загрузка...</span>
+                    <span class="visually-hidden">Завантаження...</span>
                 </div>
                 <div class="mt-2"><strong>Завантажуємо товари зі складу...</strong></div>
             </td>

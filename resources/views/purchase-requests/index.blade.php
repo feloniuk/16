@@ -357,7 +357,7 @@ function openReceiveModalFromIndex(requestId, requestNumber) {
         <tr>
             <td colspan="5" class="text-center p-4">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Загрузка...</span>
+                    <span class="visually-hidden">Завантаження...</span>
                 </div>
                 <div class="mt-2"><strong>Завантажуємо товари зі складу...</strong></div>
             </td>

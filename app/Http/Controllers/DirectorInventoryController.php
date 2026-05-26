@@ -2,19 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\CartridgeReplacement;
 use App\Models\RoomInventory;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DirectorInventoryController extends Controller
 {
+    private const WAREHOUSE_BRANCH_ID = 6;
+
     public function warehouse(Request $request)
     {
         $query = RoomInventory::warehouse();
         $categories = config('warehouse-categories');
 
-        // По умолчанию фільтруємо по першій категорії (Господарчі Товари)
         $activeCategory = $request->get('category', $categories[0] ?? null);
 
         if ($activeCategory) {
@@ -26,7 +29,8 @@ class DirectorInventoryController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('equipment_type', 'like', "%{$search}%")
                     ->orWhere('inventory_number', 'like', "%{$search}%")
-                    ->orWhere('brand', 'like', "%{$search}%");
+                    ->orWhere('brand', 'like', "%{$search}%")
+                    ->orWhere('full_name', 'like', "%{$search}%");
             });
         }
 
@@ -34,15 +38,33 @@ class DirectorInventoryController extends Controller
             $query->lowStock();
         }
 
-        $items = $query->paginate(50);
-
-        $totalValue = $items->sum(function ($item) {
-            return $item->quantity * ($item->price ?? 0);
-        });
-
+        // Total value across ALL matching items (not just current page)
+        $totalValue = (clone $query)->sum(DB::raw('quantity * COALESCE(price, 0)'));
         $lowStockItems = RoomInventory::warehouse()->where('category', $activeCategory)->lowStock()->count();
 
-        return view('director-inventory.warehouse', compact('items', 'totalValue', 'lowStockItems', 'categories', 'activeCategory'));
+        $items = $query->orderBy('full_name')->paginate(50);
+
+        // Top 5 issued this month for sidebar
+        $topIssuedThisMonth = DB::table('warehouse_movements')
+            ->join('room_inventory', 'warehouse_movements.inventory_id', '=', 'room_inventory.id')
+            ->whereIn('warehouse_movements.type', ['issue', 'writeoff'])
+            ->whereYear('warehouse_movements.operation_date', now()->year)
+            ->whereMonth('warehouse_movements.operation_date', now()->month)
+            ->where('room_inventory.category', $activeCategory)
+            ->select(
+                'room_inventory.equipment_type',
+                'room_inventory.full_name',
+                'room_inventory.unit',
+                DB::raw('SUM(ABS(warehouse_movements.quantity)) as total_issued')
+            )
+            ->groupBy('room_inventory.equipment_type', 'room_inventory.full_name', 'room_inventory.unit')
+            ->orderByDesc('total_issued')
+            ->limit(5)
+            ->get();
+
+        return view('director-inventory.warehouse', compact(
+            'items', 'totalValue', 'lowStockItems', 'categories', 'activeCategory', 'topIssuedThisMonth'
+        ));
     }
 
     public function equipment(Request $request)
@@ -66,13 +88,9 @@ class DirectorInventoryController extends Controller
             $query->where('category', $request->get('category'));
         }
 
-        $items = $query->with('branch')->paginate(50);
-
-        $branches = \App\Models\Branch::where('is_active', true)->get();
-
-        $totalValue = $items->sum(function ($item) {
-            return $item->quantity * ($item->price ?? 0);
-        });
+        $totalValue = (clone $query)->sum(DB::raw('quantity * COALESCE(price, 0)'));
+        $items = $query->orderBy('branch_id')->orderBy('equipment_type')->with('branch')->paginate(50);
+        $branches = Branch::where('is_active', true)->get();
 
         return view('director-inventory.equipment', compact('items', 'branches', 'totalValue'));
     }
@@ -85,147 +103,218 @@ class DirectorInventoryController extends Controller
         $dateFrom = Carbon::now()->subMonths($months)->startOfMonth();
         $dateTo = Carbon::now()->endOfMonth();
 
-        // Витрати картриджів по місяцям
-        $cartridgeData = collect();
+        // --- Картриджі ---
+        $cartridgeMonthly = CartridgeReplacement::whereBetween('replacement_date', [$dateFrom, $dateTo])
+            ->selectRaw("DATE_FORMAT(replacement_date, '%Y-%m-01') as month, COUNT(*) as count")
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
 
-        try {
-            if (config('database.default') === 'sqlite') {
-                $cartridgeData = CartridgeReplacement::whereBetween('replacement_date', [$dateFrom, $dateTo])
-                    ->selectRaw('strftime(\'%Y-%m-01\', replacement_date) as month, COUNT(*) as count')
-                    ->groupBy('month')
-                    ->orderBy('month')
-                    ->get();
-            } else {
-                $cartridgeData = CartridgeReplacement::whereBetween('replacement_date', [$dateFrom, $dateTo])
-                    ->selectRaw('DATE_TRUNC(\'month\', replacement_date)::date as month, COUNT(*) as count')
-                    ->groupBy('month')
-                    ->orderBy('month')
-                    ->get();
-            }
-        } catch (\Exception $e) {
-            // Fallback на простий агрегат якщо запит не працює
-            $allData = CartridgeReplacement::whereBetween('replacement_date', [$dateFrom, $dateTo])->get();
-            $cartridgeData = $allData->groupBy(function ($item) {
-                return $item->replacement_date->format('Y-m-01');
-            })->map(function ($group) {
-                return (object) ['month' => $group[0]->replacement_date->format('Y-m-01'), 'count' => $group->count()];
-            })->values();
-        }
+        $cartridgeByType = CartridgeReplacement::whereBetween('replacement_date', [$dateFrom, $dateTo])
+            ->select('cartridge_type', DB::raw('COUNT(*) as count'))
+            ->groupBy('cartridge_type')
+            ->orderByDesc('count')
+            ->limit(10)
+            ->get();
 
-        // Розраховуємо витрати інвентарю через RoomInventory
-        $inventoryCosts = RoomInventory::whereNotNull('price')
-            ->where('price', '>', 0)
+        // --- Динаміка видачі зі складу по категоріях ---
+        $categoryMonthly = DB::table('warehouse_movements')
+            ->join('room_inventory', 'warehouse_movements.inventory_id', '=', 'room_inventory.id')
+            ->whereIn('warehouse_movements.type', ['issue', 'writeoff'])
+            ->whereBetween('warehouse_movements.operation_date', [$dateFrom, $dateTo])
+            ->selectRaw("DATE_FORMAT(warehouse_movements.operation_date, '%Y-%m-01') as month, room_inventory.category, SUM(ABS(warehouse_movements.quantity)) as total_issued")
+            ->groupBy('month', 'room_inventory.category')
+            ->orderBy('month')
+            ->get();
+
+        // --- Топ-10 позицій за кількістю видачі ---
+        $topIssuedItems = DB::table('warehouse_movements')
+            ->join('room_inventory', 'warehouse_movements.inventory_id', '=', 'room_inventory.id')
+            ->whereIn('warehouse_movements.type', ['issue', 'writeoff'])
+            ->whereBetween('warehouse_movements.operation_date', [$dateFrom, $dateTo])
+            ->select(
+                'room_inventory.id',
+                'room_inventory.equipment_type',
+                'room_inventory.full_name',
+                'room_inventory.category',
+                'room_inventory.unit',
+                'room_inventory.quantity as current_stock',
+                'room_inventory.min_quantity',
+                DB::raw('SUM(ABS(warehouse_movements.quantity)) as total_issued'),
+                DB::raw('COUNT(DISTINCT warehouse_movements.id) as issue_events')
+            )
+            ->groupBy('room_inventory.id', 'room_inventory.equipment_type', 'room_inventory.full_name',
+                'room_inventory.category', 'room_inventory.unit', 'room_inventory.quantity', 'room_inventory.min_quantity')
+            ->orderByDesc('total_issued')
+            ->limit(10)
             ->get()
-            ->groupBy(function ($item) {
-                return $item->created_at->format('Y-m');
-            })
-            ->map(function ($group) {
-                return $group->sum(function ($item) {
-                    return $item->quantity * $item->price;
-                });
+            ->map(function ($item) use ($months) {
+                $item->avg_monthly = round($item->total_issued / max(1, $months), 1);
+                $item->days_left = $item->avg_monthly > 0
+                    ? (int) round($item->current_stock / ($item->avg_monthly / 30))
+                    : null;
+
+                return $item;
             });
 
-        // Прогноз на основі тренду
-        $forecast = $this->calculateForecast($cartridgeData, $months);
+        // --- Прогнозування по витратних матеріалах ---
+        // Категорії що постійно витрачаються
+        $consumableCategories = ['орг техніка', 'канцелярські товари', 'миючі засоби', 'господарчі товари'];
 
-        // Статистика
+        $consumablesForecast = DB::table('warehouse_movements')
+            ->join('room_inventory', 'warehouse_movements.inventory_id', '=', 'room_inventory.id')
+            ->whereIn('warehouse_movements.type', ['issue', 'writeoff'])
+            ->whereBetween('warehouse_movements.operation_date', [$dateFrom, $dateTo])
+            ->where('room_inventory.branch_id', self::WAREHOUSE_BRANCH_ID)
+            ->whereIn('room_inventory.category', $consumableCategories)
+            ->select(
+                'room_inventory.id',
+                'room_inventory.equipment_type',
+                'room_inventory.full_name',
+                'room_inventory.category',
+                'room_inventory.unit',
+                'room_inventory.quantity as current_stock',
+                'room_inventory.min_quantity',
+                DB::raw('SUM(ABS(warehouse_movements.quantity)) as total_issued')
+            )
+            ->groupBy('room_inventory.id', 'room_inventory.equipment_type', 'room_inventory.full_name',
+                'room_inventory.category', 'room_inventory.unit', 'room_inventory.quantity', 'room_inventory.min_quantity')
+            ->having('total_issued', '>', 0)
+            ->orderBy('room_inventory.category')
+            ->orderByDesc('total_issued')
+            ->get()
+            ->map(function ($item) use ($months) {
+                $item->avg_monthly = round($item->total_issued / max(1, $months), 1);
+                $item->days_left = $item->avg_monthly > 0
+                    ? (int) round($item->current_stock / ($item->avg_monthly / 30))
+                    : null;
+                $item->months_forecast = $item->avg_monthly > 0
+                    ? round($item->current_stock / $item->avg_monthly, 1)
+                    : null;
+                // Urgency: critical ≤14 days, warning ≤30 days
+                $item->urgency = match (true) {
+                    $item->days_left === null => 'ok',
+                    $item->days_left <= 0 => 'depleted',
+                    $item->days_left <= 14 => 'critical',
+                    $item->days_left <= 30 => 'warning',
+                    default => 'ok',
+                };
+
+                return $item;
+            });
+
+        // --- Загальна статистика ---
+        $totalCartridges = CartridgeReplacement::whereBetween('replacement_date', [$dateFrom, $dateTo])->count();
+        $avgMonthlyCartridges = ceil($totalCartridges / max(1, $months));
+        $cartridgeForecast = $this->calculateTrend($cartridgeMonthly->pluck('count')->toArray());
+
+        $criticalItems = $consumablesForecast->whereIn('urgency', ['critical', 'depleted'])->count();
+        $warningItems = $consumablesForecast->where('urgency', 'warning')->count();
+        $totalIssued = $topIssuedItems->sum('total_issued');
+
         $stats = [
-            'total_cartridges' => CartridgeReplacement::whereBetween('replacement_date', [$dateFrom, $dateTo])->count(),
-            'avg_monthly_cartridges' => ceil(CartridgeReplacement::whereBetween('replacement_date', [$dateFrom, $dateTo])->count() / max(1, $months)),
-            'total_inventory_value' => RoomInventory::sum('price'),
+            'total_cartridges' => $totalCartridges,
+            'avg_monthly_cartridges' => $avgMonthlyCartridges,
+            'cartridge_trend' => $cartridgeForecast['trend'],
+            'cartridge_projection' => $cartridgeForecast['projection'],
+            'total_issued' => $totalIssued,
+            'critical_items' => $criticalItems,
+            'warning_items' => $warningItems,
             'warehouse_items_count' => RoomInventory::warehouse()->count(),
-            'equipment_items_count' => RoomInventory::equipment()->count(),
         ];
 
-        // Дані для графіка
-        $chartLabels = [];
-        $chartData = [];
+        // --- Дані для графіків ---
+        [$cartridgeChartLabels, $cartridgeChartData] = $this->buildMonthlyChartData($cartridgeMonthly, $dateFrom, $dateTo);
+
+        // Стековий графік по категоріях
+        $allMonths = collect();
         $currentMonth = $dateFrom->copy();
-
         while ($currentMonth->lte($dateTo)) {
-            $monthKey = $currentMonth->format('Y-m');
-            $chartLabels[] = $currentMonth->format('M Y');
-
-            $monthToFind = $currentMonth->format('Y-m-01');
-            $count = 0;
-
-            // Пошук у даних (обробка обох форматів)
-            foreach ($cartridgeData as $data) {
-                if ($data->month === $monthToFind || str_contains($data->month, $monthToFind)) {
-                    $count = $data->count;
-                    break;
-                }
-            }
-
-            $chartData[] = (int) $count;
+            $allMonths->push($currentMonth->format('Y-m-01'));
             $currentMonth->addMonth();
         }
 
-        // Прогноз на наступні 6 місяців
-        $forecastedMonths = [];
-        $forecastedData = [];
-        $forecastStart = Carbon::now()->addMonth()->startOfMonth();
+        $chartMonthLabels = $allMonths->map(fn ($m) => Carbon::parse($m)->translatedFormat('M Y'))->toArray();
 
-        for ($i = 0; $i < 6; $i++) {
-            $forecastMonth = $forecastStart->copy()->addMonths($i);
-            $forecastedMonths[] = $forecastMonth->format('M Y');
-            $forecastedData[] = (int) $forecast['avg'];
-        }
+        $categoryColors = [
+            'господарчі товари' => 'rgba(59,130,246,0.8)',
+            'канцелярські товари' => 'rgba(16,185,129,0.8)',
+            'миючі засоби' => 'rgba(245,158,11,0.8)',
+            'орг техніка' => 'rgba(139,92,246,0.8)',
+            'електрика' => 'rgba(239,68,68,0.8)',
+            'сантехніка' => 'rgba(20,184,166,0.8)',
+            'буд матеріали' => 'rgba(156,163,175,0.8)',
+        ];
 
-        // Гарантуємо що масиви не пусті
-        if (empty($chartLabels)) {
-            $chartLabels = ['Немає даних'];
-            $chartData = [0];
-        }
+        $distinctCategories = $categoryMonthly->pluck('category')->unique()->values()->toArray();
 
-        if (empty($forecastedMonths)) {
-            $forecastedMonths = ['Немає даних'];
-            $forecastedData = [0];
+        $categoryDatasets = collect($distinctCategories)->map(function ($cat) use ($categoryMonthly, $allMonths, $categoryColors) {
+            $data = $allMonths->map(function ($month) use ($cat, $categoryMonthly) {
+                return (int) ($categoryMonthly->where('category', $cat)->where('month', $month)->first()?->total_issued ?? 0);
+            })->toArray();
+
+            return [
+                'label' => ucfirst($cat),
+                'data' => $data,
+                'backgroundColor' => $categoryColors[$cat] ?? 'rgba(107,114,128,0.8)',
+                'borderWidth' => 0,
+            ];
+        })->values()->toArray();
+
+        // Прогноз картриджів на 6 місяців вперед
+        $forecastMonths = [];
+        $forecastData = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $forecastMonths[] = Carbon::now()->addMonths($i)->translatedFormat('M Y');
+            $forecastData[] = (int) $cartridgeForecast['projection'];
         }
 
         return view('director-inventory.forecasting', compact(
-            'stats',
-            'period',
-            'months',
-            'chartLabels',
-            'chartData',
-            'forecastedMonths',
-            'forecastedData',
-            'forecast',
-            'dateFrom',
-            'dateTo'
+            'stats', 'period', 'months', 'dateFrom', 'dateTo',
+            'cartridgeChartLabels', 'cartridgeChartData',
+            'cartridgeByType',
+            'chartMonthLabels', 'categoryDatasets',
+            'forecastMonths', 'forecastData',
+            'cartridgeForecast',
+            'topIssuedItems',
+            'consumablesForecast',
+            'consumableCategories'
         ));
     }
 
-    private function calculateForecast($data, $months)
+    private function buildMonthlyChartData($monthlyData, Carbon $from, Carbon $to): array
     {
-        $values = $data->pluck('count')->toArray();
+        $labels = [];
+        $data = [];
+        $current = $from->copy();
 
+        while ($current->lte($to)) {
+            $monthKey = $current->format('Y-m-01');
+            $labels[] = $current->translatedFormat('M Y');
+            $found = $monthlyData->first(fn ($row) => str_starts_with($row->month, substr($monthKey, 0, 7)));
+            $data[] = $found ? (int) $found->count : 0;
+            $current->addMonth();
+        }
+
+        return [$labels ?: ['Немає даних'], $data ?: [0]];
+    }
+
+    private function calculateTrend(array $values): array
+    {
         if (empty($values)) {
-            return [
-                'avg' => 0,
-                'trend' => 0,
-                'projection' => 0,
-            ];
+            return ['avg' => 0, 'trend' => 0, 'projection' => 0];
         }
 
         $avg = array_sum($values) / count($values);
-
-        // Простий тренд: порівняння першої половини з другою половиною
-        $midpoint = count($values) / 2;
-        $firstHalf = array_slice($values, 0, (int) $midpoint);
-        $secondHalf = array_slice($values, (int) $midpoint);
-
-        $firstAvg = ! empty($firstHalf) ? array_sum($firstHalf) / count($firstHalf) : 0;
-        $secondAvg = ! empty($secondHalf) ? array_sum($secondHalf) / count($secondHalf) : 0;
-
+        $mid = (int) (count($values) / 2);
+        $firstAvg = $mid > 0 ? array_sum(array_slice($values, 0, $mid)) / $mid : $avg;
+        $secondAvg = $mid > 0 ? array_sum(array_slice($values, $mid)) / max(1, count($values) - $mid) : $avg;
         $trend = $secondAvg - $firstAvg;
-        $projection = $avg + ($trend / 2); // Прогноз з 50% масштабом тренду
 
         return [
             'avg' => round($avg, 1),
             'trend' => round($trend, 1),
-            'projection' => round(max(0, $projection), 1),
+            'projection' => round(max(0, $avg + $trend * 0.5), 1),
         ];
     }
 }

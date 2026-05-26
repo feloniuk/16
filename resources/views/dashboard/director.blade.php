@@ -204,13 +204,13 @@
     <!-- Monthly Comparison -->
     <div class="col-lg-6">
         <div class="stats-card p-4">
-            <h5 class="card-title mb-3">Сравнение с прошлым месяцем</h5>
+            <h5 class="card-title mb-3">Порівняння з минулим місяцем</h5>
             
             <div class="row g-3">
                 <div class="col-6">
                     <div class="text-center p-3 bg-light rounded">
                         <h4 class="text-primary">{{ $monthlyStats['repairs_this_month'] }}</h4>
-                        <small class="text-muted">Заявки в этом месяце</small>
+                        <small class="text-muted">Заявки цього місяця</small>
                         @php
                             $repairChange = $monthlyStats['repairs_last_month'] > 0 
                                 ? (($monthlyStats['repairs_this_month'] - $monthlyStats['repairs_last_month']) / $monthlyStats['repairs_last_month']) * 100 
@@ -228,7 +228,7 @@
                 <div class="col-6">
                     <div class="text-center p-3 bg-light rounded">
                         <h4 class="text-info">{{ $monthlyStats['cartridges_this_month'] }}</h4>
-                        <small class="text-muted">Картриджи в этом месяце</small>
+                        <small class="text-muted">Картриджі цього місяця</small>
                         @php
                             $cartridgeChange = $monthlyStats['cartridges_last_month'] > 0 
                                 ? (($monthlyStats['cartridges_this_month'] - $monthlyStats['cartridges_last_month']) / $monthlyStats['cartridges_last_month']) * 100 
