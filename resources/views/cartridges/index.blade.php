@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Замены картриджей')
+@section('title', 'Заміни картриджів')
 
 @section('content')
 <div class="row mb-4">
@@ -9,9 +9,9 @@
             <!-- Filters -->
             <form method="GET" action="{{ route('cartridges.index') }}" class="row g-3 align-items-end">
                 <div class="col-md-2">
-                    <label for="branch_id" class="form-label">Филиал</label>
+                    <label for="branch_id" class="form-label">Філія</label>
                     <select name="branch_id" id="branch_id" class="form-select">
-                        <option value="">Все филиалы</option>
+                        <option value="">Усі філії</option>
                         @foreach($branches as $branch)
                             <option value="{{ $branch->id }}" {{ request('branch_id') == $branch->id ? 'selected' : '' }}>
                                 {{ $branch->name }}
@@ -48,7 +48,7 @@
 
 <div class="stats-card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">История замен картриджей ({{ $cartridges->total() }})</h5>
+        <h5 class="mb-0">Історія замін картриджів ({{ $cartridges->total() }})</h5>
         <div>
             <a href="{{ route('cartridges.index') }}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-clockwise"></i> Обновить
@@ -63,13 +63,13 @@
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
-                            <th>Филиал</th>
+                            <th>Філія</th>
                             <th>Кабинет</th>
                             <th>Принтер</th>
                             <th>Тип картриджа</th>
-                            <th>Пользователь</th>
-                            <th>Дата замены</th>
-                            <th>Действия</th>
+                            <th>Користувач</th>
+                            <th>Дата заміни</th>
+                            <th>Дії</th>
                         </tr>
                     </thead>
                     <tbody>

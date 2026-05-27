@@ -9,24 +9,24 @@
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div>
                     <h4>Заявка на ремонт #{{ $repair->id }}</h4>
-                    <p class="text-muted mb-0">Создана {{ $repair->created_at->format('d.m.Y в H:i') }}</p>
+                    <p class="text-muted mb-0">Створена {{ $repair->created_at->format('d.m.Y о H:i') }}</p>
                 </div>
                 <div>{!! $repair->status_badge !!}</div>
             </div>
 
             <div class="row g-4">
                 <div class="col-md-6">
-                    <h6 class="text-muted mb-2">Филиал</h6>
+                    <h6 class="text-muted mb-2">Філія</h6>
                     <p class="mb-0">{{ $repair->branch->name }}</p>
                 </div>
 
                 <div class="col-md-6">
-                    <h6 class="text-muted mb-2">Номер кабинета</h6>
+                    <h6 class="text-muted mb-2">Номер кабінету</h6>
                     <p class="mb-0">{{ $repair->room_number }}</p>
                 </div>
 
                 <div class="col-md-6">
-                    <h6 class="text-muted mb-2">Пользователь</h6>
+                    <h6 class="text-muted mb-2">Користувач</h6>
                     <p class="mb-0">
                         @if($repair->username)
                             <i class="bi bi-person"></i> @{{ $repair->username }}
@@ -47,7 +47,7 @@
                 @endif
 
                 <div class="col-12">
-                    <h6 class="text-muted mb-2">Описание проблемы</h6>
+                    <h6 class="text-muted mb-2">Опис проблеми</h6>
                     <div class="bg-light p-3 rounded">
                         <p class="mb-0">{{ $repair->description }}</p>
                     </div>
@@ -107,7 +107,7 @@
 
     <div class="col-lg-4">
         <div class="stats-card p-4">
-            <h5 class="mb-3">Действия</h5>
+            <h5 class="mb-3">Дії</h5>
 
             @if($repair->status !== 'виконана')
                 <div class="d-grid gap-2 mb-3">
@@ -117,7 +117,7 @@
                         @method('PATCH')
                         <input type="hidden" name="status" value="в_роботі">
                         <button type="submit" class="btn btn-warning w-100">
-                            <i class="bi bi-gear"></i> Взять в работу
+                            <i class="bi bi-gear"></i> Взяти в роботу
                         </button>
                     </form>
                     @endif
@@ -127,7 +127,7 @@
                         @method('PATCH')
                         <input type="hidden" name="status" value="виконана">
                         <button type="submit" class="btn btn-success w-100">
-                            <i class="bi bi-check-circle"></i> Отметить выполненным
+                            <i class="bi bi-check-circle"></i> Позначити як виконано
                         </button>
                     </form>
                 </div>
@@ -136,23 +136,23 @@
 
             <div class="d-grid gap-2">
                 <a href="{{ route('repairs.index') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Назад к списку
+                    <i class="bi bi-arrow-left"></i> Назад до списку
                 </a>
                 @if($repair->phone)
                 <a href="tel:{{ $repair->phone }}" class="btn btn-outline-primary">
-                    <i class="bi bi-telephone"></i> Позвонить
+                    <i class="bi bi-telephone"></i> Зателефонувати
                 </a>
                 @endif
             </div>
         </div>
 
         <div class="stats-card p-4 mt-4">
-            <h5 class="mb-3">История изменений</h5>
+            <h5 class="mb-3">Історія змін</h5>
             <div class="timeline">
                 <div class="timeline-item">
                     <div class="timeline-marker bg-primary"></div>
                     <div class="timeline-content">
-                        <h6 class="mb-1">Заявка создана</h6>
+                        <h6 class="mb-1">Заявку створено</h6>
                         <small class="text-muted">{{ $repair->created_at->format('d.m.Y H:i') }}</small>
                     </div>
                 </div>
@@ -160,7 +160,7 @@
                 <div class="timeline-item">
                     <div class="timeline-marker bg-warning"></div>
                     <div class="timeline-content">
-                        <h6 class="mb-1">Принята в работу</h6>
+                        <h6 class="mb-1">Прийнято в роботу</h6>
                         <small class="text-muted">{{ $repair->updated_at->format('d.m.Y H:i') }}</small>
                     </div>
                 </div>
@@ -169,7 +169,7 @@
                 <div class="timeline-item">
                     <div class="timeline-marker bg-success"></div>
                     <div class="timeline-content">
-                        <h6 class="mb-1">Заявка выполнена</h6>
+                        <h6 class="mb-1">Заявку виконано</h6>
                         <small class="text-muted">{{ $repair->updated_at->format('d.m.Y H:i') }}</small>
                     </div>
                 </div>

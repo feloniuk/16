@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Замена картриджа #' . $cartridge->id)
+@section('title', 'Заміна картриджа #' . $cartridge->id)
 
 @section('content')
 <div class="row">
@@ -8,24 +8,24 @@
         <div class="stats-card p-4">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div>
-                    <h4>Замена картриджа #{{ $cartridge->id }}</h4>
-                    <p class="text-muted mb-0">Запрос создан {{ $cartridge->created_at->format('d.m.Y в H:i') }}</p>
+                    <h4>Заміна картриджа #{{ $cartridge->id }}</h4>
+                    <p class="text-muted mb-0">Запит створено {{ $cartridge->created_at->format('d.m.Y о H:i') }}</p>
                 </div>
             </div>
 
             <div class="row g-4">
                 <div class="col-md-6">
-                    <h6 class="text-muted mb-2">Филиал</h6>
+                    <h6 class="text-muted mb-2">Філія</h6>
                     <p class="mb-0">{{ $cartridge->branch->name }}</p>
                 </div>
 
                 <div class="col-md-6">
-                    <h6 class="text-muted mb-2">Номер кабинета</h6>
+                    <h6 class="text-muted mb-2">Номер кабінету</h6>
                     <p class="mb-0">{{ $cartridge->room_number }}</p>
                 </div>
 
                 <div class="col-md-6">
-                    <h6 class="text-muted mb-2">Пользователь</h6>
+                    <h6 class="text-muted mb-2">Користувач</h6>
                     <p class="mb-0">
                         @if($cartridge->username)
                             <i class="bi bi-person"></i> @{{ $cartridge->username }}
@@ -36,12 +36,12 @@
                 </div>
 
                 <div class="col-md-6">
-                    <h6 class="text-muted mb-2">Дата замены</h6>
+                    <h6 class="text-muted mb-2">Дата заміни</h6>
                     <p class="mb-0">{{ $cartridge->replacement_date->format('d.m.Y') }}</p>
                 </div>
 
                 <div class="col-12">
-                    <h6 class="text-muted mb-2">Информация о принтере</h6>
+                    <h6 class="text-muted mb-2">Інформація про принтер</h6>
                     <div class="bg-light p-3 rounded">
                         <p class="mb-0">{{ $cartridge->printer_info }}</p>
                     </div>
@@ -54,7 +54,7 @@
 
                 @if($cartridge->notes)
                 <div class="col-12">
-                    <h6 class="text-muted mb-2">Заметки</h6>
+                    <h6 class="text-muted mb-2">Нотатки</h6>
                     <div class="bg-light p-3 rounded">
                         <p class="mb-0">{{ $cartridge->notes }}</p>
                     </div>
@@ -63,7 +63,7 @@
 
                 @if($cartridge->printer)
                 <div class="col-12">
-                    <h6 class="text-muted mb-2">Связанный инвентарь</h6>
+                    <h6 class="text-muted mb-2">Пов'язаний інвентар</h6>
                     <div class="card">
                         <div class="card-body">
                             <h6 class="card-title">{{ $cartridge->printer->equipment_type }}</h6>

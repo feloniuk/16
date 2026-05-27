@@ -4,12 +4,11 @@
 
 @section('content')
 <div class="row g-4">
-    <!-- Main Statistics -->
     <div class="col-md-3">
         <div class="stats-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h6 class="text-muted mb-2">Філіали</h6>
+                    <h6 class="text-muted mb-2">Філії</h6>
                     <h3 class="mb-0">{{ $totalStats['branches'] }}</h3>
                 </div>
                 <div class="bg-primary bg-opacity-10 p-3 rounded">
@@ -27,7 +26,7 @@
                     <h3 class="mb-0">{{ $totalStats['total_repairs'] }}</h3>
                     <small class="text-success">
                         <i class="bi bi-arrow-up"></i>
-                        +{{ $monthlyStats['repairs_this_month'] }} в цьому місяці
+                        +{{ $monthlyStats['repairs_this_month'] }} цього місяця
                     </small>
                 </div>
                 <div class="bg-warning bg-opacity-10 p-3 rounded">
@@ -45,7 +44,7 @@
                     <h3 class="mb-0">{{ $totalStats['total_cartridges'] }}</h3>
                     <small class="text-info">
                         <i class="bi bi-arrow-up"></i>
-                        +{{ $monthlyStats['cartridges_this_month'] }} в цьому місяці
+                        +{{ $monthlyStats['cartridges_this_month'] }} цього місяця
                     </small>
                 </div>
                 <div class="bg-info bg-opacity-10 p-3 rounded">
@@ -70,13 +69,13 @@
     </div>
 </div>
 
-<!-- SLA and Quality Metrics -->
+<!-- SLA та якість -->
 <div class="row g-4 mt-2">
     <div class="col-md-3">
         <div class="stats-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h6 class="text-muted mb-2">SLA Дотримання</h6>
+                    <h6 class="text-muted mb-2">Дотримання SLA</h6>
                     <h3 class="mb-0">{{ $slaMetrics['sla_compliance'] }}%</h3>
                     <small class="text-muted">
                         {{ $slaMetrics['within_sla_count'] }} з {{ $slaMetrics['total_completed'] }}
@@ -141,7 +140,7 @@
     </div>
 </div>
 
-<!-- Export Section -->
+<!-- Експорт -->
 <div class="row g-4 mt-2">
     <div class="col-12">
         <div class="stats-card p-4">
@@ -151,10 +150,10 @@
                     <small class="text-muted">Завантажте дашборд у форматі PDF або Excel</small>
                 </div>
                 <div>
-                    <a href="{{ route('director.export.pdf') }}" class="btn btn-danger me-2" title="Експорт у PDF">
+                    <a href="{{ route('director.export.pdf') }}" class="btn btn-danger me-2">
                         <i class="bi bi-file-pdf"></i> PDF
                     </a>
-                    <a href="{{ route('director.export.excel') }}" class="btn btn-success" title="Експорт у Excel">
+                    <a href="{{ route('director.export.excel') }}" class="btn btn-success">
                         <i class="bi bi-file-excel"></i> Excel
                     </a>
                 </div>
@@ -164,29 +163,29 @@
 </div>
 
 <div class="row g-4 mt-2">
-    <!-- Monthly Trends Chart -->
+    <!-- Динаміка заявок -->
     <div class="col-lg-8">
         <div class="stats-card p-4">
-            <h5 class="card-title mb-3">Динамика заявок</h5>
+            <h5 class="card-title mb-3">Динаміка заявок</h5>
             <canvas id="monthlyChart" height="100"></canvas>
         </div>
     </div>
-    
-    <!-- Status Distribution -->
+
+    <!-- Розподіл за статусами -->
     <div class="col-lg-4">
         <div class="stats-card p-4 h-100">
-            <h5 class="card-title mb-3">Распределение по статусам</h5>
+            <h5 class="card-title mb-3">Розподіл за статусами</h5>
             <canvas id="statusChart"></canvas>
         </div>
     </div>
 </div>
 
 <div class="row g-4 mt-2">
-    <!-- Top Branches -->
+    <!-- Топ філій -->
     <div class="col-lg-6">
         <div class="stats-card p-4">
-            <h5 class="card-title mb-3">Топ филиалы по активности</h5>
-            
+            <h5 class="card-title mb-3">Топ філії за активністю</h5>
+
             @foreach($topBranches as $branch)
             <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded">
                 <div>
@@ -194,26 +193,26 @@
                     <small class="text-muted">{{ $branch->repair_requests_count }} заявок</small>
                 </div>
                 <div class="text-end">
-                    <span class="badge bg-primary">{{ $branch->cartridge_replacements_count }} картриджей</span>
+                    <span class="badge bg-primary">{{ $branch->cartridge_replacements_count }} картриджів</span>
                 </div>
             </div>
             @endforeach
         </div>
     </div>
-    
-    <!-- Monthly Comparison -->
+
+    <!-- Порівняння з минулим місяцем -->
     <div class="col-lg-6">
         <div class="stats-card p-4">
             <h5 class="card-title mb-3">Порівняння з минулим місяцем</h5>
-            
+
             <div class="row g-3">
                 <div class="col-6">
                     <div class="text-center p-3 bg-light rounded">
                         <h4 class="text-primary">{{ $monthlyStats['repairs_this_month'] }}</h4>
                         <small class="text-muted">Заявки цього місяця</small>
                         @php
-                            $repairChange = $monthlyStats['repairs_last_month'] > 0 
-                                ? (($monthlyStats['repairs_this_month'] - $monthlyStats['repairs_last_month']) / $monthlyStats['repairs_last_month']) * 100 
+                            $repairChange = $monthlyStats['repairs_last_month'] > 0
+                                ? (($monthlyStats['repairs_this_month'] - $monthlyStats['repairs_last_month']) / $monthlyStats['repairs_last_month']) * 100
                                 : 0;
                         @endphp
                         <div class="mt-1">
@@ -224,14 +223,14 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="col-6">
                     <div class="text-center p-3 bg-light rounded">
                         <h4 class="text-info">{{ $monthlyStats['cartridges_this_month'] }}</h4>
                         <small class="text-muted">Картриджі цього місяця</small>
                         @php
-                            $cartridgeChange = $monthlyStats['cartridges_last_month'] > 0 
-                                ? (($monthlyStats['cartridges_this_month'] - $monthlyStats['cartridges_last_month']) / $monthlyStats['cartridges_last_month']) * 100 
+                            $cartridgeChange = $monthlyStats['cartridges_last_month'] > 0
+                                ? (($monthlyStats['cartridges_this_month'] - $monthlyStats['cartridges_last_month']) / $monthlyStats['cartridges_last_month']) * 100
                                 : 0;
                         @endphp
                         <div class="mt-1">
@@ -250,49 +249,36 @@
 
 @push('scripts')
 <script>
-    // Monthly Repairs Chart
-    const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
-    const monthlyChart = new Chart(monthlyCtx, {
+const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+new Chart(monthlyCtx, {
     type: 'line',
     data: {
-        labels: {!! json_encode($monthlyRepairs->map(function($item) {
-            return \Carbon\Carbon::create($item->year, $item->month)->format('M Y');
-        })) !!},
+        labels: {!! json_encode($monthlyRepairs->map(fn($item) => \Carbon\Carbon::create($item->year, $item->month)->translatedFormat('M Y'))) !!},
         datasets: [{
             label: 'Заявки на ремонт',
             data: {!! json_encode($monthlyRepairs->pluck('count')) !!},
-            borderColor: 'rgb(59, 130, 246)',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderColor: 'rgb(59,130,246)',
+            backgroundColor: 'rgba(59,130,246,0.1)',
             fill: true,
             tension: 0.4
         }]
     },
     options: {
         responsive: true,
-        maintainAspectRatio: true, // Добавили эту строку
-        aspectRatio: 2, // Добавили фиксированное соотношение сторон
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
+        maintainAspectRatio: true,
+        aspectRatio: 2,
+        plugins: { legend: { display: false } },
         scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    stepSize: 1 // Целые числа на оси Y
-                }
-            }
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
         }
     }
 });
 
-// Status Distribution Chart
 const statusCtx = document.getElementById('statusChart').getContext('2d');
-const statusChart = new Chart(statusCtx, {
+new Chart(statusCtx, {
     type: 'doughnut',
     data: {
-        labels: ['Новые', 'В работе', 'Выполнено'],
+        labels: ['Нові', 'В роботі', 'Виконано'],
         datasets: [{
             data: [
                 {{ $statusStats['нова'] ?? 0 }},
@@ -300,21 +286,17 @@ const statusChart = new Chart(statusCtx, {
                 {{ $statusStats['виконана'] ?? 0 }}
             ],
             backgroundColor: [
-                'rgb(245, 158, 11)',
-                'rgb(59, 130, 246)',
-                'rgb(34, 197, 94)'
+                'rgb(245,158,11)',
+                'rgb(59,130,246)',
+                'rgb(34,197,94)'
             ]
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: true,
-        aspectRatio: 1, // Квадратная форма для doughnut chart
-        plugins: {
-            legend: {
-                position: 'bottom'
-            }
-        }
+        aspectRatio: 1,
+        plugins: { legend: { position: 'bottom' } }
     }
 });
 </script>

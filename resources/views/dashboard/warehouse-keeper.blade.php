@@ -1,10 +1,10 @@
 {{-- resources/views/dashboard/warehouse-keeper.blade.php --}}
 @extends('layouts.app')
 
-@section('title', 'Головна - Складовщик')
+@section('title', 'Головна - Складник')
 
 @section('content')
-<!-- Статистика товаров -->
+<!-- Статистика товарів -->
 <div class="row g-4 mb-4">
     <div class="col-lg-3 col-md-6">
         <div class="stats-card p-4 text-center">
