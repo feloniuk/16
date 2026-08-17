@@ -6,6 +6,7 @@ use App\Models\AppSetting;
 use App\Models\WarehouseMovement;
 use App\Models\WriteoffRequest;
 use App\Models\WriteoffRequestItem;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -120,13 +121,31 @@ class WriteoffRequestController extends Controller
         $dateFrom = now()->startOfMonth()->toDateString();
         $dateTo = now()->toDateString();
 
+        $groupedMovements = $this->groupedMovements($dateFrom, $dateTo);
+
+        return view('writeoff-requests.edit', compact('writeoffRequest', 'groupedMovements', 'dateFrom', 'dateTo'));
+    }
+
+    public function movements(Request $request, WriteoffRequest $writeoffRequest): JsonResponse
+    {
+        $dateFrom = $request->get('date_from', now()->startOfMonth()->toDateString());
+        $dateTo = $request->get('date_to', now()->toDateString());
+
+        return response()->json([
+            'movements' => $this->groupedMovements($dateFrom, $dateTo)->values(),
+        ]);
+    }
+
+    private function groupedMovements(string $dateFrom, string $dateTo)
+    {
         $movements = WarehouseMovement::with('inventoryItem')
             ->whereIn('type', ['issue', 'writeoff'])
-            ->whereBetween('operation_date', [$dateFrom, $dateTo])
+            ->whereDate('operation_date', '>=', $dateFrom)
+            ->whereDate('operation_date', '<=', $dateTo)
             ->orderBy('operation_date', 'desc')
             ->get();
 
-        $groupedMovements = $movements->groupBy('inventory_id')->map(function ($items) {
+        return $movements->groupBy('inventory_id')->map(function ($items) {
             $first = $items->first();
 
             return [
@@ -136,8 +155,6 @@ class WriteoffRequestController extends Controller
                 'total_quantity' => $items->sum(fn ($m) => abs($m->quantity)),
             ];
         })->values();
-
-        return view('writeoff-requests.edit', compact('writeoffRequest', 'groupedMovements', 'dateFrom', 'dateTo'));
     }
 
     public function update(Request $request, WriteoffRequest $writeoffRequest): RedirectResponse

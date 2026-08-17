@@ -41,6 +41,11 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        @include('purchase-requests._print-period-fields', [
+                            'printMonth' => $purchaseRequest->print_month,
+                            'printYear' => $purchaseRequest->print_year,
+                        ])
                     </div>
 
                     <!-- Товари -->
@@ -172,6 +177,21 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-save"></i> Зберегти зміни
                         </button>
+                    </div>
+
+                    <div class="sticky-save-bar">
+                        <div class="text-muted small">
+                            <i class="bi bi-list-ul"></i> Товарів у заявці: <strong id="itemsCountBar">{{ $purchaseRequest->items->count() }}</strong>
+                            <span class="ms-2">Разом: <strong id="totalAmountBar">{{ number_format($purchaseRequest->total_amount, 2) }} грн</strong></span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('purchase-requests.show', $purchaseRequest) }}" class="btn btn-outline-secondary btn-lg">
+                                Скасувати
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-save"></i> Зберегти зміни
+                            </button>
+                        </div>
                     </div>
             </form>
         </div>
@@ -363,6 +383,8 @@ function addItemRow(itemData = null) {
 
     if (itemData) {
         calculateRowTotal(row.querySelector('.price-input'));
+    } else {
+        updateItemsCountBar();
     }
 }
 
@@ -508,6 +530,15 @@ function calculateTotal() {
     });
 
     document.getElementById('totalAmount').textContent = total.toFixed(2) + ' грн';
+    document.getElementById('totalAmountBar').textContent = total.toFixed(2) + ' грн';
+    updateItemsCountBar();
+}
+
+function updateItemsCountBar() {
+    const countEl = document.getElementById('itemsCountBar');
+    if (countEl) {
+        countEl.textContent = document.querySelectorAll('#itemsTableBody tr').length;
+    }
 }
 
 // Функції для розділення заявки
@@ -869,6 +900,23 @@ function executeReceive() {
 .item-select-btn {
     white-space: normal;
     line-height: 1.5;
+}
+
+.sticky-save-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 1020;
+    background: #fff;
+    border-top: 1px solid #dee2e6;
+    padding: .75rem 1.25rem;
+    margin: 1.5rem 0 0;
+    box-shadow: 0 -2px 8px rgba(0,0,0,.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+    border-radius: .5rem;
+    flex-wrap: wrap;
 }
 </style>
 @endpush

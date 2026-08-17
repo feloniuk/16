@@ -1,4 +1,5 @@
-<?php 
+<?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,15 +14,16 @@ class RepairRequest extends Model
         'username',
         'branch_id',
         'room_number',
+        'old_inventory_id',
         'description',
         'phone',
-        'status'
+        'status',
     ];
 
     protected $casts = [
         'user_telegram_id' => 'integer',
         'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'updated_at' => 'datetime',
     ];
 
     public function branch()
@@ -29,9 +31,14 @@ class RepairRequest extends Model
         return $this->belongsTo(Branch::class);
     }
 
+    public function oldInventory()
+    {
+        return $this->belongsTo(RoomInventory::class, 'old_inventory_id');
+    }
+
     public function getStatusBadgeAttribute()
     {
-        return match($this->status) {
+        return match ($this->status) {
             'нова' => '<span class="badge bg-warning">Нова</span>',
             'в_роботі' => '<span class="badge bg-info">В роботі</span>',
             'виконана' => '<span class="badge bg-success">Виконана</span>',

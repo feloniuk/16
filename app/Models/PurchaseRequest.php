@@ -12,12 +12,13 @@ class PurchaseRequest extends Model
 
     protected $fillable = [
         'request_number', 'user_id', 'status', 'description',
-        'total_amount', 'requested_date', 'notes', 'archived_at',
+        'total_amount', 'requested_date', 'print_month', 'print_year', 'notes', 'archived_at',
     ];
 
     protected $casts = [
         'total_amount' => 'decimal:2',
         'requested_date' => 'date',
+        'print_year' => 'integer',
         'archived_at' => 'datetime',
     ];
 
@@ -33,6 +34,10 @@ class PurchaseRequest extends Model
         static::creating(function ($model) {
             if (empty($model->request_number)) {
                 $model->request_number = 'ZAY-'.date('Y').'-'.str_pad(static::count() + 1, 6, '0', STR_PAD_LEFT);
+            }
+
+            if (empty($model->print_year)) {
+                $model->print_year = $model->requested_date ? date('Y', strtotime($model->requested_date)) : date('Y');
             }
         });
     }

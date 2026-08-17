@@ -170,6 +170,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/warehouse/by-name', [WarehouseController::class, 'showByName'])->name('warehouse.show-by-name');
         Route::post('/warehouse/issue-by-name', [WarehouseController::class, 'issueByName'])->name('warehouse.issue-by-name');
         Route::post('/warehouse/receipt-by-name', [WarehouseController::class, 'receiptByName'])->name('warehouse.receipt-by-name');
+        Route::post('/warehouse/toggle-priority', [WarehouseController::class, 'togglePriority'])->name('warehouse.toggle-priority');
+        Route::post('/warehouse/issue-batch', [WarehouseController::class, 'issueBatch'])->name('warehouse.issue-batch');
+        Route::get('/warehouse/room-equipment', [WarehouseController::class, 'roomEquipment'])->name('warehouse.room-equipment');
 
         // Динамічні маршрути (ПІСЛЯ статичних!)
         Route::get('/warehouse/{item}', [WarehouseController::class, 'show'])->name('warehouse.show');
@@ -235,6 +238,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/writeoff-requests/{writeoffRequest}/complete', [WriteoffRequestController::class, 'complete'])->name('writeoff-requests.complete');
         Route::post('/writeoff-requests/{writeoffRequest}/archive', [WriteoffRequestController::class, 'archive'])->name('writeoff-requests.archive');
         Route::get('/writeoff-requests/{writeoffRequest}/print', [WriteoffRequestController::class, 'print'])->name('writeoff-requests.print');
+        Route::get('/writeoff-requests/{writeoffRequest}/movements', [WriteoffRequestController::class, 'movements'])->name('writeoff-requests.movements');
 
         // Заявки на ремонт (новая система)
         Route::resource('repair-orders', RepairOrderController::class)->names([

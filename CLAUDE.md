@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
@@ -246,3 +250,58 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 - Always use Tailwind CSS v3 - verify you're using only classes supported by this version.
 </laravel-boost-guidelines>
+
+## Project Overview
+
+This is an internal IT asset & operations management system for a multi-branch organization (a Laravel 12 monolith, server-rendered Blade + Alpine.js + Tailwind). It tracks:
+
+- **Repair requests** (`RepairRequest`, `RepairOrder`, `RepairOrderItem`, `RepairMaster`, `RepairTracking`) — IT equipment repair workflow, from request through master assignment to completion, with a separate "orders" system for approval-gated purchases of repair parts.
+- **Cartridge replacements** (`CartridgeReplacement`) — printer cartridge swap tracking, tied to a specific printer via `RoomInventory`.
+- **Inventory** (`RoomInventory`, `InventoryTemplate`) — equipment tracked per branch/room. `RoomInventory` doubles as both branch equipment records and the central warehouse stock — branch `id = 6` is the reserved "warehouse" branch (see scopes `scopeWarehouse` / `scopeEquipment` in `app/Models/RoomInventory.php`, and the hardcoded `branch_id = 6` filters in `routes/web.php`).
+- **Warehouse** (`WarehouseItem`, `WarehouseInventory`, `WarehouseInventoryItem`, `WarehouseMovement`) — a second, older stock-item model with its own movement ledger; still active alongside `RoomInventory`-as-warehouse. When working on warehouse features, check which of the two models a given screen actually uses before assuming.
+- **Purchase requests** (`PurchaseRequest`, `PurchaseRequestItem`) — procurement workflow: submit → approve/reject → split → receive → archive.
+- **Write-off requests** (`WriteoffRequest`, `WriteoffRequestItem`) — asset disposal workflow: submit → approve/reject → complete → archive.
+- **Branches** (`Branch`) and **work logs** (`WorkLog`) for admin/director-facing reporting.
+- **Telegram bot integration** — a parallel interface into the same domain (repairs, cartridges, inventory) for on-the-ground staff, plus a webhook API for external notifications.
+
+The UI is server-rendered Blade (resources/views), using Alpine.js for interactivity and Tailwind v3 for styling — there is no SPA/JS framework.
+
+### Roles & access control
+
+Authorization is role-string-based (`users.role` column, not a full Spatie-permission setup despite the package being installed). Roles seen in routes: `admin`, `director`, `warehouse_keeper`, `warehouse_manager`. Enforced via the custom `role:...` middleware alias (`App\Http\Middleware\RoleMiddleware`, registered in `app/Http/Kernel.php`) — it also rejects deactivated users (`is_active = false`). `routes/web.php` groups routes by role; check the surrounding `Route::middleware('role:...')` group before adding a new route to know which roles should see it.
+
+This is a **Laravel 10-style application structure** running on Laravel 12 (see Boost guidelines above) — `app/Http/Kernel.php` and `app/Console/Kernel.php` still exist and are the source of truth for middleware/route-service-provider config, there is no `bootstrap/app.php`-based configuration.
+
+### Telegram bot architecture
+
+Only classes directly under `app/Services/Telegram/` (`TelegramService`, `KeyboardService`, `MessageCacheService`, `MessageHandler`, `CallbackHandler`, `RepairHandler`, `InventoryHandler`, `StateManager`, `ReplyKeyboardService`) are wired up via `App\Providers\TelegramServiceProvider` and actually used by `App\Http\Controllers\Api\TelegramBotController`. The `app/Services/Telegram/Handlers/` subdirectory (`AdminHandler`, `CartridgeHandler`, `InventoryHandler`, `RepairHandler`) is **not** referenced by the service provider or controller — confirm before assuming it's live code. `MessageCacheService` exists specifically to avoid Telegram's "message is not modified" API error when editing messages; use `$telegram->editMessageSafe(...)` for edits that might fail. See `README_Telegram_Setup.md` for webhook setup/debug commands (`telegram:set-webhook`, `telegram:webhook-info`, `telegram:test-bot`, `support:create-admin`, `support:stats`).
+
+## Commands
+
+```bash
+# Full dev environment (server + queue worker + log tail + vite), matches `composer dev`
+composer run dev
+
+# Frontend only
+npm run dev      # vite dev server
+npm run build    # production build
+
+# Tests
+php artisan test                                  # full suite
+php artisan test tests/Feature/WorkLogTest.php     # single file
+php artisan test --filter=testName                 # by test name
+
+# Code style (run before finalizing any PHP change)
+vendor/bin/pint --dirty
+
+# Artisan project-specific commands
+php artisan telegram:set-webhook
+php artisan telegram:webhook-info
+php artisan telegram:test-bot
+php artisan telegram:delete-webhook
+php artisan support:create-admin {telegram_id} {name}
+php artisan support:stats
+php artisan support:clear-old-states
+```
+
+Tests run against an in-memory SQLite DB (`phpunit.xml`), so no local DB setup is needed to run the suite.

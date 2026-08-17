@@ -115,6 +115,9 @@
                 <a href="{{ route('warehouse-inventory.quick') }}" class="btn btn-warning me-2">
                     <i class="bi bi-clipboard-check"></i> Швидка інвентаризація
                 </a>
+                <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#batchIssueModal">
+                    <i class="bi bi-box-arrow-right"></i> Видати кілька позицій
+                </button>
                 <a href="{{ route('warehouse.create') }}" class="btn btn-primary">
                     <i class="bi bi-plus"></i> Додати товар
                 </a>
@@ -130,6 +133,7 @@
                 <table class="table table-hover table-sm mb-0">
                     <thead class="table-light">
                         <tr>
+                            <th style="width: 44px;"></th>
                             <th>Найменування</th>
                             <th class="d-none d-md-table-cell">Категорія</th>
                             <th class="text-center" style="width: 80px;">Залишок</th>
@@ -143,6 +147,16 @@
                             $isLowStock = $item->total_quantity <= $item->min_quantity;
                         @endphp
                         <tr class="{{ $isLowStock ? 'table-warning' : '' }}">
+                            <td class="text-center">
+                                <button type="button"
+                                        class="btn btn-link p-2 priority-star {{ $item->is_priority ? 'text-warning' : 'text-muted' }}"
+                                        data-equipment-type="{{ $item->equipment_type }}"
+                                        data-priority="{{ $item->is_priority ? '1' : '0' }}"
+                                        title="{{ $item->is_priority ? 'Прибрати з пріоритетних' : 'Зробити пріоритетним' }}"
+                                        aria-label="Пріоритетний товар">
+                                    <i class="bi {{ $item->is_priority ? 'bi-star-fill' : 'bi-star' }} fs-5"></i>
+                                </button>
+                            </td>
                             <td>
                                 <div>
                                     <strong class="d-block">{{ $item->equipment_type }}</strong>
@@ -307,6 +321,8 @@
         </div>
     </div>
 </div>
+
+@include('warehouse.partials.batch-issue-modal')
 @endsection
 
 @push('scripts')
@@ -330,6 +346,51 @@ function showIssueModal(equipmentType, available, unit) {
     document.getElementById('issueNote').value = '';
     new bootstrap.Modal(document.getElementById('issueModal')).show();
 }
+
+document.querySelectorAll('.priority-star').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        const equipmentType = this.dataset.equipmentType;
+        const newValue = this.dataset.priority === '1' ? '0' : '1';
+        const icon = this.querySelector('i');
+        this.disabled = true;
+
+        fetch(`{{ route('warehouse.toggle-priority') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({ equipment_type: equipmentType, is_priority: newValue === '1' }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.dataset.priority = newValue;
+                    if (newValue === '1') {
+                        this.classList.remove('text-muted');
+                        this.classList.add('text-warning');
+                        icon.classList.remove('bi-star');
+                        icon.classList.add('bi-star-fill');
+                        this.title = 'Прибрати з пріоритетних';
+                    } else {
+                        this.classList.remove('text-warning');
+                        this.classList.add('text-muted');
+                        icon.classList.remove('bi-star-fill');
+                        icon.classList.add('bi-star');
+                        this.title = 'Зробити пріоритетним';
+                    }
+                } else {
+                    alert('Не вдалося оновити пріоритет товару');
+                }
+            })
+            .catch(() => {
+                alert('Не вдалося оновити пріоритет товару');
+            })
+            .finally(() => {
+                this.disabled = false;
+            });
+    });
+});
 
 // Зберігання фільтрів у localStorage
 function saveFiltersToLocalStorage() {
@@ -388,6 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', saveFiltersToLocalStorage);
 });
 </script>
+@include('warehouse.partials.batch-issue-script')
 @endpush
 
 @push('styles')

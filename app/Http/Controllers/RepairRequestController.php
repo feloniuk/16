@@ -68,36 +68,43 @@ class RepairRequestController extends Controller
     public function issueFromWarehouse(Request $request, RepairRequest $repair): RedirectResponse
     {
         $request->validate([
-            'inventory_id' => 'required|integer|exists:room_inventory,id',
-            'quantity' => 'required|integer|min:1',
+            'items' => 'required|array|min:1',
+            'items.*.inventory_id' => 'required|integer|exists:room_inventory,id',
+            'items.*.quantity' => 'required|integer|min:1',
             'operation_date' => 'required|date',
             'note' => 'nullable|string|max:500',
         ]);
 
-        $item = RoomInventory::findOrFail($request->inventory_id);
+        $branchName = $repair->branch->name ?? '—';
+        $baseNote = "Ремонт #{$repair->id}. {$branchName}, каб. {$repair->room_number}";
+        $note = $request->filled('note') ? "{$request->note}. {$baseNote}" : $baseNote;
 
-        if ($item->quantity < $request->quantity) {
-            return back()->withErrors(['quantity' => "Недостатньо товару на складі. Залишок: {$item->quantity} {$item->unit}"]);
+        try {
+            DB::transaction(function () use ($request, $note) {
+                foreach ($request->items as $line) {
+                    $item = RoomInventory::findOrFail($line['inventory_id']);
+
+                    if ($item->quantity < $line['quantity']) {
+                        throw new \RuntimeException("Недостатньо товару на складі: {$item->equipment_type}. Залишок: {$item->quantity} {$item->unit}");
+                    }
+
+                    $newBalance = $item->quantity - $line['quantity'];
+                    $item->update(['quantity' => $newBalance]);
+
+                    WarehouseMovement::create([
+                        'user_id' => Auth::id(),
+                        'inventory_id' => $item->id,
+                        'type' => 'issue',
+                        'quantity' => -$line['quantity'],
+                        'balance_after' => $newBalance,
+                        'note' => $note,
+                        'operation_date' => $request->operation_date,
+                    ]);
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['items' => $e->getMessage()]);
         }
-
-        DB::transaction(function () use ($request, $repair, $item) {
-            $newBalance = $item->quantity - $request->quantity;
-            $item->update(['quantity' => $newBalance]);
-
-            $branchName = $repair->branch->name ?? '—';
-            $baseNote = "Ремонт #{$repair->id}. {$branchName}, каб. {$repair->room_number}";
-            $note = $request->filled('note') ? "{$request->note}. {$baseNote}" : $baseNote;
-
-            WarehouseMovement::create([
-                'user_id' => Auth::id(),
-                'inventory_id' => $item->id,
-                'type' => 'issue',
-                'quantity' => -$request->quantity,
-                'balance_after' => $newBalance,
-                'note' => $note,
-                'operation_date' => $request->operation_date,
-            ]);
-        });
 
         return back()->with('success', 'Товар видано зі складу');
     }

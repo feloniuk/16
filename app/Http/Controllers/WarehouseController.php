@@ -4,8 +4,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\RoomInventory;
 use App\Models\WarehouseMovement;
+use App\Services\WarehouseIssueService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +35,8 @@ class WarehouseController extends Controller
             DB::raw('MAX(category) as category'),
             DB::raw('MAX(unit) as unit'),
             DB::raw('AVG(price) as avg_price'),
-            DB::raw('MIN(min_quantity) as min_quantity')
+            DB::raw('MIN(min_quantity) as min_quantity'),
+            DB::raw('MAX(is_priority) as is_priority')
         )
             ->where('branch_id', self::WAREHOUSE_BRANCH_ID)
             ->groupBy('equipment_type');
@@ -58,7 +62,7 @@ class WarehouseController extends Controller
             $query->havingRaw('SUM(quantity) > 0');
         }
 
-        $items = $query->orderBy('equipment_type')->paginate(20);
+        $items = $query->orderByDesc('is_priority')->orderBy('equipment_type')->paginate(20);
         $items->appends($request->query());
 
         // Кількість найменувань з низьким залишком
@@ -75,7 +79,23 @@ class WarehouseController extends Controller
             ->get()
             ->count();
 
-        return view('warehouse.index', compact('items', 'categories', 'lowStockCount', 'activeCategory'));
+        $branches = Branch::where('is_active', true)->where('id', '!=', self::WAREHOUSE_BRANCH_ID)->orderBy('name')->get();
+
+        return view('warehouse.index', compact('items', 'categories', 'lowStockCount', 'activeCategory', 'branches'));
+    }
+
+    public function togglePriority(Request $request)
+    {
+        $request->validate([
+            'equipment_type' => 'required|string',
+            'is_priority' => 'required|boolean',
+        ]);
+
+        RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
+            ->where('equipment_type', $request->equipment_type)
+            ->update(['is_priority' => $request->boolean('is_priority')]);
+
+        return response()->json(['success' => true]);
     }
 
     public function show(RoomInventory $item)
@@ -89,7 +109,9 @@ class WarehouseController extends Controller
             $query->with(['user'])->orderBy('created_at', 'desc')->limit(20);
         }]);
 
-        return view('warehouse.show', compact('item'));
+        $branches = Branch::where('is_active', true)->where('id', '!=', self::WAREHOUSE_BRANCH_ID)->orderBy('name')->get();
+
+        return view('warehouse.show', compact('item', 'branches'));
     }
 
     public function create()
@@ -252,6 +274,64 @@ class WarehouseController extends Controller
         });
 
         return redirect()->route('warehouse.show', $item)->with('success', 'Видачу зафіксовано');
+    }
+
+    public function issueBatch(Request $request, WarehouseIssueService $issueService)
+    {
+        $request->validate([
+            'destination_branch_id' => 'required|exists:branches,id',
+            'destination_room_number' => 'required|string|max:50',
+            'issued_to' => 'nullable|string|max:255',
+            'items' => 'required|array|min:1',
+            'items.*.inventory_id' => 'required|integer|exists:room_inventory,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'replace_old_item_id' => 'nullable|integer|exists:room_inventory,id',
+            'replace_action' => 'nullable|in:repair,transfer,warehouse',
+            'replace_to_branch_id' => 'required_if:replace_action,transfer|exists:branches,id',
+            'replace_to_room_number' => 'required_if:replace_action,transfer|string|max:50',
+            'replace_note' => 'nullable|string|max:500',
+        ]);
+
+        $contextNote = "Видача в кабінет {$request->destination_room_number}".
+            ($request->issued_to ? " (Видано: {$request->issued_to})" : '');
+
+        $replacement = null;
+        if ($request->filled('replace_old_item_id') && $request->filled('replace_action')) {
+            $replacement = [
+                'old_inventory_id' => (int) $request->replace_old_item_id,
+                'action' => $request->replace_action,
+                'to_branch_id' => $request->replace_to_branch_id,
+                'to_room_number' => $request->replace_to_room_number,
+                'note' => $request->replace_note,
+            ];
+        }
+
+        try {
+            $issueService->issueBatch(
+                $request->items,
+                ['note' => $contextNote],
+                $replacement,
+                Auth::user()
+            );
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['items' => $e->getMessage()])->withInput();
+        }
+
+        return redirect()->route('warehouse.index')->with('success', 'Видачу зафіксовано');
+    }
+
+    public function roomEquipment(Request $request): JsonResponse
+    {
+        $request->validate([
+            'branch_id' => 'required|exists:branches,id',
+            'room_number' => 'required|string|max:50',
+        ]);
+
+        $items = RoomInventory::where('branch_id', $request->branch_id)
+            ->where('room_number', $request->room_number)
+            ->get(['id', 'equipment_type', 'full_name', 'inventory_number']);
+
+        return response()->json($items);
     }
 
     public function movements(Request $request)

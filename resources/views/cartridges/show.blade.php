@@ -93,25 +93,16 @@
 
             <form method="POST" action="{{ route('cartridges.issue-from-warehouse', $cartridge) }}">
                 @csrf
+                <div class="mb-2">
+                    <label class="form-label">Картриджі зі складу <span class="text-danger">*</span></label>
+                </div>
+                <div id="cartridgeItemsContainer"></div>
+                <button type="button" id="addMultiIssueItemBtn_cartridgeItemsContainer" class="btn btn-sm btn-outline-success mb-3">
+                    <i class="bi bi-plus"></i> Додати товар
+                </button>
+
                 <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label">Товар зі складу <span class="text-danger">*</span></label>
-                        <input type="text" id="cartridgeItemSearch" class="form-control"
-                               placeholder="Введіть назву картриджа для пошуку..."
-                               autocomplete="off">
-                        <input type="hidden" name="inventory_id" id="cartridgeInventoryId">
-                        <div id="cartridgeSearchResults" class="border rounded mt-1" style="display:none; max-height:200px; overflow-y:auto;"></div>
-                        <div id="cartridgeSelectedItem" class="mt-2"></div>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Кількість <span class="text-danger">*</span></label>
-                        <input type="number" name="quantity" class="form-control @error('quantity') is-invalid @enderror"
-                               value="{{ old('quantity', 1) }}" min="1" required>
-                        @error('quantity')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-8">
                         <label class="form-label">Дата видачі <span class="text-danger">*</span></label>
                         <input type="date" name="operation_date" class="form-control"
                                value="{{ old('operation_date', date('Y-m-d')) }}" required>
@@ -157,53 +148,7 @@
 @endsection
 
 @push('scripts')
-<script>
-let cartridgeSearchTimeout;
-
-document.getElementById('cartridgeItemSearch').addEventListener('input', function () {
-    clearTimeout(cartridgeSearchTimeout);
-    const q = this.value.trim();
-    const results = document.getElementById('cartridgeSearchResults');
-
-    if (q.length < 2) {
-        results.style.display = 'none';
-        return;
-    }
-
-    cartridgeSearchTimeout = setTimeout(() => {
-        fetch(`{{ route('api.warehouse-items.search') }}?q=${encodeURIComponent(q)}`)
-            .then(r => r.json())
-            .then(items => {
-                if (!items.length) {
-                    results.innerHTML = '<div class="p-2 text-muted small">Нічого не знайдено</div>';
-                    results.style.display = 'block';
-                    return;
-                }
-                results.innerHTML = items.map(item => {
-                    const name = (item.full_name && item.full_name.trim()) ? item.full_name : item.name;
-                    return `<div class="p-2 border-bottom" style="cursor:pointer;"
-                                 onclick="selectCartridgeItem(${item.id}, '${name.replace(/'/g,"\\'")}')">
-                                <strong>${name}</strong>
-                                <small class="text-muted d-block">${item.code ?? ''}</small>
-                            </div>`;
-                }).join('');
-                results.style.display = 'block';
-            });
-    }, 300);
-});
-
-function selectCartridgeItem(id, name) {
-    document.getElementById('cartridgeInventoryId').value = id;
-    document.getElementById('cartridgeItemSearch').value = name;
-    document.getElementById('cartridgeSearchResults').style.display = 'none';
-    document.getElementById('cartridgeSelectedItem').innerHTML =
-        `<span class="badge bg-success"><i class="bi bi-check"></i> Обрано: ${name}</span>`;
-}
-
-document.addEventListener('click', function (e) {
-    if (!e.target.closest('#cartridgeItemSearch') && !e.target.closest('#cartridgeSearchResults')) {
-        document.getElementById('cartridgeSearchResults').style.display = 'none';
-    }
-});
-</script>
+@if(in_array(auth()->user()->role, ['admin', 'warehouse_keeper']))
+@include('partials.multi-item-issue-script', ['containerId' => 'cartridgeItemsContainer'])
+@endif
 @endpush

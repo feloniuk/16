@@ -225,7 +225,7 @@
         </div>
 
         <div class="title">
-            ЗАЯВКА на ______ {{ date('Y') }} року
+            ЗАЯВКА на {{ $purchaseRequest->print_month ?? '______' }} {{ $purchaseRequest->print_year ?? date('Y') }} року
         </div>
 
         <table class="items-table">

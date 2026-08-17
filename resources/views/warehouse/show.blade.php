@@ -13,6 +13,11 @@
                     <p class="text-muted mb-0">Код товару: <strong>{{ $item->inventory_number }}</strong></p>
                 </div>
                 <div>
+                    @if($item->quantity > 0)
+                    <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#batchIssueModal">
+                        <i class="bi bi-box-arrow-right"></i> Видати кілька позицій
+                    </button>
+                    @endif
                     <a href="{{ route('warehouse.edit', $item) }}" class="btn btn-warning">
                         <i class="bi bi-pencil"></i> Редагувати
                     </a>
@@ -250,4 +255,22 @@
     </div>
 </div>
 @endif
+
+@if($item->quantity > 0)
+@include('warehouse.partials.batch-issue-modal')
+@endif
 @endsection
+
+@push('scripts')
+@if($item->quantity > 0)
+<script>
+window.__batchIssuePresetItem = {
+    id: {{ $item->id }},
+    name: '{{ addslashes($item->full_name ?: $item->equipment_type) }}',
+    quantity: 1,
+    readonly: true,
+};
+</script>
+@include('warehouse.partials.batch-issue-script')
+@endif
+@endpush

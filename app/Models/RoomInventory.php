@@ -33,6 +33,7 @@ class RoomInventory extends Model
         'price',
         'min_quantity',
         'category',
+        'is_priority',
         'balance_code',
         'notes',
     ];
@@ -42,6 +43,7 @@ class RoomInventory extends Model
         'quantity' => 'integer',
         'min_quantity' => 'integer',
         'price' => 'decimal:2',
+        'is_priority' => 'boolean',
         'created_at' => 'datetime',
     ];
 

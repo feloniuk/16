@@ -101,6 +101,8 @@ class PurchaseRequestController extends Controller
         $request->validate([
             'description' => 'nullable|string',
             'requested_date' => 'required|date|after_or_equal:today',
+            'print_month' => 'nullable|string|max:30',
+            'print_year' => 'nullable|integer|min:2000|max:2100',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.item_name' => 'required|string',
@@ -116,6 +118,8 @@ class PurchaseRequestController extends Controller
                 'status' => 'draft',
                 'description' => $request->description,
                 'requested_date' => $request->requested_date,
+                'print_month' => $request->print_month,
+                'print_year' => $request->print_year,
                 'notes' => $request->notes,
             ]);
 
@@ -165,6 +169,8 @@ class PurchaseRequestController extends Controller
         $request->validate([
             'description' => 'nullable|string',
             'requested_date' => 'required|date|after_or_equal:today',
+            'print_month' => 'nullable|string|max:30',
+            'print_year' => 'nullable|integer|min:2000|max:2100',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.id' => 'nullable|integer',
@@ -179,6 +185,8 @@ class PurchaseRequestController extends Controller
             $purchaseRequest->update([
                 'description' => $request->description,
                 'requested_date' => $request->requested_date,
+                'print_month' => $request->print_month,
+                'print_year' => $request->print_year,
                 'notes' => $request->notes,
             ]);
 

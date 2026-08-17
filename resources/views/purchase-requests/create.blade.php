@@ -68,6 +68,8 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+
+                    @include('purchase-requests._print-period-fields')
                 </div>
 
                 <!-- Товари -->
