@@ -70,7 +70,7 @@ class CartridgeReplacementController extends Controller
         try {
             DB::transaction(function () use ($request, $note) {
                 foreach ($request->items as $line) {
-                    $item = RoomInventory::findOrFail($line['inventory_id']);
+                    $item = RoomInventory::where('id', $line['inventory_id'])->lockForUpdate()->firstOrFail();
 
                     if ($item->quantity < $line['quantity']) {
                         throw new \RuntimeException("Недостатньо товару на складі: {$item->equipment_type}. Залишок: {$item->quantity} {$item->unit}");

@@ -263,9 +263,9 @@ class PurchaseRequestController extends Controller
             return redirect()->back()->withErrors(['Тільки адмін або директор можуть відхилити заявку']);
         }
 
-        $purchaseRequest->update(['status' => 'rejected']);
+        $purchaseRequest->update(['status' => 'draft']);
 
-        return redirect()->route('purchase-requests.show', $purchaseRequest)->with('success', 'Заявку відхилено');
+        return redirect()->route('purchase-requests.show', $purchaseRequest)->with('success', 'Заявку повернено до чернетки');
     }
 
     public function print(PurchaseRequest $purchaseRequest)

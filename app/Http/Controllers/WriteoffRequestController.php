@@ -159,6 +159,11 @@ class WriteoffRequestController extends Controller
 
     public function update(Request $request, WriteoffRequest $writeoffRequest): RedirectResponse
     {
+        if (! in_array($writeoffRequest->status, ['draft', 'submitted'])) {
+            return redirect()->route('writeoff-requests.show', $writeoffRequest)
+                ->withErrors(['Редагування доступне лише для чернеток та поданих заявок']);
+        }
+
         $request->validate([
             'writeoff_date' => 'required|date',
             'description' => 'nullable|string|max:1000',

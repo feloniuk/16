@@ -252,26 +252,35 @@ class WarehouseController extends Controller
         }
 
         $request->validate([
-            'quantity' => 'required|integer|min:1|max:'.$item->quantity,
+            'quantity' => 'required|integer|min:1',
             'note' => 'nullable|string|max:500',
             'issued_to' => 'nullable|string|max:255',
         ]);
 
-        DB::transaction(function () use ($request, $item) {
-            $newBalance = $item->quantity - $request->quantity;
+        try {
+            DB::transaction(function () use ($request, $item) {
+                $locked = RoomInventory::where('id', $item->id)->lockForUpdate()->firstOrFail();
 
-            $item->update(['quantity' => $newBalance]);
+                if ($locked->quantity < $request->quantity) {
+                    throw new \RuntimeException("Недостатньо товару на складі. Залишок: {$locked->quantity} {$locked->unit}");
+                }
 
-            WarehouseMovement::create([
-                'user_id' => Auth::id(),
-                'inventory_id' => $item->id,
-                'type' => 'issue',
-                'quantity' => -$request->quantity,
-                'balance_after' => $newBalance,
-                'note' => $request->note.($request->issued_to ? " (Видано: {$request->issued_to})" : ''),
-                'operation_date' => now()->toDateString(),
-            ]);
-        });
+                $newBalance = $locked->quantity - $request->quantity;
+                $locked->update(['quantity' => $newBalance]);
+
+                WarehouseMovement::create([
+                    'user_id' => Auth::id(),
+                    'inventory_id' => $locked->id,
+                    'type' => 'issue',
+                    'quantity' => -$request->quantity,
+                    'balance_after' => $newBalance,
+                    'note' => $request->note.($request->issued_to ? " (Видано: {$request->issued_to})" : ''),
+                    'operation_date' => now()->toDateString(),
+                ]);
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['quantity' => $e->getMessage()])->withInput();
+        }
 
         return redirect()->route('warehouse.show', $item)->with('success', 'Видачу зафіксовано');
     }
@@ -379,48 +388,50 @@ class WarehouseController extends Controller
         $equipmentType = $request->equipment_type;
         $quantityToIssue = $request->quantity;
 
-        // Отримуємо загальну кількість товару
-        $totalAvailable = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
-            ->where('equipment_type', $equipmentType)
-            ->sum('quantity');
+        try {
+            DB::transaction(function () use ($request, $equipmentType, $quantityToIssue) {
+                // Блокуємо всі записи цього найменування, щоб уникнути гонки при одночасній видачі
+                $items = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
+                    ->where('equipment_type', $equipmentType)
+                    ->where('quantity', '>', 0)
+                    ->orderBy('quantity', 'desc') // Спочатку з більшим залишком
+                    ->lockForUpdate()
+                    ->get();
 
-        if ($totalAvailable < $quantityToIssue) {
-            return back()->with('error', "Недостатньо товару на складі. Доступно: {$totalAvailable}");
-        }
+                $totalAvailable = $items->sum('quantity');
 
-        DB::transaction(function () use ($request, $equipmentType, $quantityToIssue) {
-            $remaining = $quantityToIssue;
-
-            // Отримуємо записи з цим найменуванням, у яких є залишок
-            $items = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)
-                ->where('equipment_type', $equipmentType)
-                ->where('quantity', '>', 0)
-                ->orderBy('quantity', 'desc') // Спочатку з більшим залишком
-                ->get();
-
-            foreach ($items as $item) {
-                if ($remaining <= 0) {
-                    break;
+                if ($totalAvailable < $quantityToIssue) {
+                    throw new \RuntimeException("Недостатньо товару на складі. Доступно: {$totalAvailable}");
                 }
 
-                $issueFromThis = min($remaining, $item->quantity);
-                $newBalance = $item->quantity - $issueFromThis;
+                $remaining = $quantityToIssue;
 
-                $item->update(['quantity' => $newBalance]);
+                foreach ($items as $item) {
+                    if ($remaining <= 0) {
+                        break;
+                    }
 
-                WarehouseMovement::create([
-                    'user_id' => Auth::id(),
-                    'inventory_id' => $item->id,
-                    'type' => 'issue',
-                    'quantity' => -$issueFromThis,
-                    'balance_after' => $newBalance,
-                    'note' => $request->note.($request->issued_to ? " | Кому: {$request->issued_to}" : ''),
-                    'operation_date' => now()->toDateString(),
-                ]);
+                    $issueFromThis = min($remaining, $item->quantity);
+                    $newBalance = $item->quantity - $issueFromThis;
 
-                $remaining -= $issueFromThis;
-            }
-        });
+                    $item->update(['quantity' => $newBalance]);
+
+                    WarehouseMovement::create([
+                        'user_id' => Auth::id(),
+                        'inventory_id' => $item->id,
+                        'type' => 'issue',
+                        'quantity' => -$issueFromThis,
+                        'balance_after' => $newBalance,
+                        'note' => $request->note.($request->issued_to ? " | Кому: {$request->issued_to}" : ''),
+                        'operation_date' => now()->toDateString(),
+                    ]);
+
+                    $remaining -= $issueFromThis;
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('warehouse.index')->with('success', "Видано {$quantityToIssue} од. товару \"{$equipmentType}\"");
     }

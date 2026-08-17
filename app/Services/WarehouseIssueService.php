@@ -37,7 +37,7 @@ class WarehouseIssueService
 
     private function issueOne(int $inventoryId, int $quantity, ?string $lineNote, ?string $contextNote, User $user): void
     {
-        $item = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)->findOrFail($inventoryId);
+        $item = RoomInventory::where('branch_id', self::WAREHOUSE_BRANCH_ID)->lockForUpdate()->findOrFail($inventoryId);
 
         if ($item->quantity < $quantity) {
             throw new \RuntimeException("Недостатньо товару на складі: {$item->equipment_type}. Залишок: {$item->quantity} {$item->unit}");
@@ -61,7 +61,7 @@ class WarehouseIssueService
 
     private function applyReplacement(array $replacement, User $user): void
     {
-        $oldItem = RoomInventory::findOrFail($replacement['old_inventory_id']);
+        $oldItem = RoomInventory::where('id', $replacement['old_inventory_id'])->lockForUpdate()->firstOrFail();
 
         match ($replacement['action']) {
             'repair' => $this->toRepair($oldItem, $replacement['note'] ?? null),
