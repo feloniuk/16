@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Services\Telegram\Handlers\AdminHandler;
 use App\Services\Telegram\Handlers\CartridgeHandler;
 use App\Services\Telegram\Handlers\InventoryHandler;
+use App\Services\Telegram\Handlers\OnboardingHandler;
 use App\Services\Telegram\Handlers\RepairHandler;
 use Illuminate\Support\Facades\Log;
 
@@ -27,6 +28,8 @@ class MessageHandler
 
     private AdminHandler $adminHandler;
 
+    private OnboardingHandler $onboardingHandler;
+
     public function __construct(
         TelegramService $telegram,
         StateManager $stateManager,
@@ -35,7 +38,8 @@ class MessageHandler
         RepairHandler $repairHandler,
         CartridgeHandler $cartridgeHandler,
         InventoryHandler $inventoryHandler,
-        AdminHandler $adminHandler
+        AdminHandler $adminHandler,
+        OnboardingHandler $onboardingHandler
     ) {
         $this->telegram = $telegram;
         $this->stateManager = $stateManager;
@@ -45,6 +49,7 @@ class MessageHandler
         $this->cartridgeHandler = $cartridgeHandler;
         $this->inventoryHandler = $inventoryHandler;
         $this->adminHandler = $adminHandler;
+        $this->onboardingHandler = $onboardingHandler;
     }
 
     public function handle(array $message): void
@@ -55,6 +60,13 @@ class MessageHandler
         $text = $message['text'] ?? '';
 
         Log::info("Processing message from user {$userId}: {$text}");
+
+        // Поділ контакту (кнопка request_contact)
+        if (isset($message['contact'])) {
+            $this->onboardingHandler->handleContactShared($message);
+
+            return;
+        }
 
         // Обработка команд
         if (str_starts_with($text, '/')) {
@@ -82,6 +94,17 @@ class MessageHandler
     {
         Log::info("Checking menu button: {$text} for user: {$userId}");
 
+        // "⏭️ Пропустити" тут — це кнопка reply-клавіатури запиту контакту (онбординг),
+        // а не inline-кнопка "skip_phone" з клавіатури репair-флоу (інший механізм доставки).
+        if ($text === '⏭️ Пропустити') {
+            $userState = $this->stateManager->getUserState($userId);
+            if ($userState && ($userState['state'] ?? null) === 'onboarding_awaiting_contact') {
+                $this->onboardingHandler->handleSkipContact($chatId, $userId);
+
+                return true;
+            }
+        }
+
         match ($text) {
             '🔧 Виклик IT майстра' => $this->handleRepairButton($chatId, $userId),
             '🖨️ Заміна картриджа' => $this->handleCartridgeButton($chatId, $userId),
@@ -101,41 +124,13 @@ class MessageHandler
     private function handleRepairButton(int $chatId, int $userId): void
     {
         $this->stateManager->clearUserState($userId);
-        $branches = Branch::where('is_active', true)->get();
-
-        if ($branches->isEmpty()) {
-            $this->telegram->sendMessage($chatId, '❌ На жаль, філіали недоступні. Зв\'яжіться з адміністратором.');
-
-            return;
-        }
-
-        $this->stateManager->setUserState($userId, 'repair_awaiting_branch');
-
-        $this->telegram->sendMessage(
-            $chatId,
-            "🔧 <b>Виклик IT майстра</b>\n\nОберіть філіал:",
-            $this->keyboard->getBranchesKeyboard($branches, 'repair')
-        );
+        $this->repairHandler->startFromMenu($chatId, $userId);
     }
 
     private function handleCartridgeButton(int $chatId, int $userId): void
     {
         $this->stateManager->clearUserState($userId);
-        $branches = Branch::where('is_active', true)->get();
-
-        if ($branches->isEmpty()) {
-            $this->telegram->sendMessage($chatId, '❌ На жаль, філіали недоступні. Зв\'яжіться з адміністратором.');
-
-            return;
-        }
-
-        $this->stateManager->setUserState($userId, 'cartridge_awaiting_branch');
-
-        $this->telegram->sendMessage(
-            $chatId,
-            "🖨️ <b>Заміна картриджа</b>\n\nОберіть філіал:",
-            $this->keyboard->getBranchesKeyboard($branches, 'cartridge')
-        );
+        $this->cartridgeHandler->startFromMenu($chatId, $userId);
     }
 
     private function handleInventoryButton(int $chatId, int $userId): void
@@ -144,7 +139,7 @@ class MessageHandler
         $branches = Branch::where('is_active', true)->get();
 
         if ($branches->isEmpty()) {
-            $this->telegram->sendMessage($chatId, '❌ На жаль, філіали недоступні. Зв\'яжіться з адміністратором.');
+            $this->telegram->sendMessage($chatId, '❌ Філіали недоступні. Зв\'яжіться з адміністратором.');
 
             return;
         }
@@ -188,20 +183,21 @@ class MessageHandler
     {
         $this->stateManager->clearUserState($userId);
         $this->sendWelcomeMessage($chatId, $userId, $username);
+        $this->onboardingHandler->maybeStartOnboarding($chatId, $userId);
     }
 
     private function handleHelpCommand(int $chatId, int $userId): void
     {
-        $text = "📋 <b>Довідка:</b>\n\n".
-               "🔧 <b>Виклик IT майстра</b> - подати заявку на ремонт обладнання\n".
-               "🖨️ <b>Заміна картриджа</b> - запит на заміну картриджа\n\n".
+        $text = "📋 <b>Довідка</b>\n\n".
+               "🔧 <b>Виклик IT майстра</b> — заявка на ремонт обладнання\n".
+               "🖨️ <b>Заміна картриджа</b> — запит на заміну картриджа\n\n".
                "📞 <b>Команди:</b>\n".
                "/start - Головне меню\n".
                "/help - Ця довідка\n".
                "/cancel - Скасувати поточну дію\n".
                "/admin - Панель адміністратора (тільки для адміністраторів)\n".
                "/status - Статистика системи\n\n".
-               "❓ Якщо у вас виникли питання, зв\'яжіться з адміністратором.";
+               '❓ Питання? Зв\'яжіться з адміністратором.';
 
         $this->telegram->sendMessage($chatId, $text, $this->keyboard->getMainMenuKeyboard($userId));
     }
@@ -211,7 +207,7 @@ class MessageHandler
         $this->stateManager->clearUserState($userId);
         $this->telegram->sendMessage(
             $chatId,
-            '✅ Дія скасована. Оберіть нову дію:',
+            '✅ Скасовано. Оберіть дію:',
             $this->keyboard->getMainMenuKeyboard($userId)
         );
     }
@@ -221,7 +217,7 @@ class MessageHandler
         if ($this->telegram->isAdmin($userId)) {
             $this->adminHandler->sendAdminMenu($chatId);
         } else {
-            $this->telegram->sendMessage($chatId, '❌ У вас немає прав адміністратора.');
+            $this->telegram->sendMessage($chatId, '❌ Недостатньо прав.');
         }
     }
 
@@ -234,7 +230,7 @@ class MessageHandler
     {
         $this->telegram->sendMessage(
             $chatId,
-            "❓ Невідома команда: {$command}. Використовуйте /help для довідки.",
+            "❓ Невідома команда: {$command}. Наберіть /help для довідки.",
             $this->keyboard->getMainMenuKeyboard($userId)
         );
     }
@@ -292,6 +288,11 @@ class MessageHandler
                 $this->inventoryHandler->handleInventoryNumber($chatId, $userId, $username, $text);
                 break;
 
+                // Onboarding states
+            case 'onboarding_awaiting_room':
+                $this->onboardingHandler->handleRoomInput($chatId, $userId, $text);
+                break;
+
             default:
                 $this->handleUnknownState($chatId, $userId, $state);
                 break;
@@ -312,9 +313,9 @@ class MessageHandler
     private function sendWelcomeMessage(int $chatId, int $userId, ?string $username): void
     {
         $name = $username ? "@$username" : 'Користувач';
-        $text = "🤖 Ласкаво просимо, $name!\n\n".
-               "Я бот для подачі заявок на ремонт обладнання та заміни картриджів.\n\n".
-               'Що ви хочете зробити?';
+        $text = "🤖 Вітаємо, $name!\n\n".
+               "Цей бот приймає заявки на ремонт обладнання та заміну картриджів.\n\n".
+               'Оберіть дію:';
 
         $this->telegram->sendMessage($chatId, $text, $this->replyKeyboard->getMainMenuKeyboard());
     }

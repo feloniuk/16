@@ -3,8 +3,10 @@
 namespace App\Services\Telegram;
 
 use App\Services\Telegram\Handlers\AdminHandler;
+use App\Services\Telegram\Handlers\AdminPanelHandler;
 use App\Services\Telegram\Handlers\CartridgeHandler;
 use App\Services\Telegram\Handlers\InventoryHandler;
+use App\Services\Telegram\Handlers\OnboardingHandler;
 use App\Services\Telegram\Handlers\RepairHandler;
 use Illuminate\Support\Facades\Log;
 
@@ -24,6 +26,10 @@ class CallbackHandler
 
     private AdminHandler $adminHandler;
 
+    private OnboardingHandler $onboardingHandler;
+
+    private AdminPanelHandler $adminPanelHandler;
+
     public function __construct(
         TelegramService $telegram,
         StateManager $stateManager,
@@ -31,7 +37,9 @@ class CallbackHandler
         RepairHandler $repairHandler,
         CartridgeHandler $cartridgeHandler,
         InventoryHandler $inventoryHandler,
-        AdminHandler $adminHandler
+        AdminHandler $adminHandler,
+        OnboardingHandler $onboardingHandler,
+        AdminPanelHandler $adminPanelHandler
     ) {
         $this->telegram = $telegram;
         $this->stateManager = $stateManager;
@@ -40,6 +48,8 @@ class CallbackHandler
         $this->cartridgeHandler = $cartridgeHandler;
         $this->inventoryHandler = $inventoryHandler;
         $this->adminHandler = $adminHandler;
+        $this->onboardingHandler = $onboardingHandler;
+        $this->adminPanelHandler = $adminPanelHandler;
     }
 
     public function handle(array $callbackQuery): void
@@ -90,8 +100,12 @@ class CallbackHandler
                     $this->cartridgeHandler->handleCallback($callbackQuery);
                 } elseif (str_starts_with($data, 'inventory_')) {
                     $this->inventoryHandler->handleCallback($callbackQuery);
+                } elseif (str_starts_with($data, 'adminpanel_')) {
+                    $this->adminPanelHandler->handleCallback($callbackQuery);
                 } elseif (str_starts_with($data, 'admin_')) {
                     $this->adminHandler->handleCallback($callbackQuery);
+                } elseif (str_starts_with($data, 'onboarding_')) {
+                    $this->onboardingHandler->handleCallback($callbackQuery);
                 } elseif (str_starts_with($data, 'branch_select:')) {
                     $this->handleBranchSelection($callbackQuery);
                 } elseif ($action === 'skip_phone') {
@@ -179,6 +193,9 @@ class CallbackHandler
                     break;
                 case 'inventory_branch_selection':
                     $this->inventoryHandler->handleBranchSelection($callbackQuery, $branchId);
+                    break;
+                case 'onboarding_awaiting_branch':
+                    $this->onboardingHandler->handleBranchSelection($callbackQuery, $branchId);
                     break;
                 default:
                     Log::warning("Unknown state for branch selection: {$userState['state']}");

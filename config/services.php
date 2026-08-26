@@ -37,8 +37,8 @@ return [
 
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
-        'webhook_token' => env('TELEGRAM_WEBHOOK_TOKEN', 'default_webhook_token'),
-        'webhook_url' => env('APP_URL') . '/api/telegram/webhook',
+        'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+        'webhook_url' => env('APP_URL').'/api/telegram/webhook',
         'timeout' => env('TELEGRAM_TIMEOUT', 30),
         'retry_attempts' => env('TELEGRAM_RETRY_ATTEMPTS', 3),
         'rate_limit_per_chat' => env('TELEGRAM_RATE_LIMIT_PER_CHAT', 30), // сообщений в минуту

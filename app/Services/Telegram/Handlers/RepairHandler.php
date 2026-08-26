@@ -5,6 +5,7 @@ namespace App\Services\Telegram\Handlers;
 use App\Models\Admin;
 use App\Models\Branch;
 use App\Models\RepairRequest;
+use App\Models\TelegramProfile;
 use App\Services\Telegram\KeyboardService;
 use App\Services\Telegram\StateManager;
 use App\Services\Telegram\TelegramService;
@@ -36,8 +37,30 @@ class RepairHandler
         $data = $callbackQuery['data'];
 
         if ($data === 'repair_request') {
-            $this->startRepairRequest($chatId, $userId, $messageId);
+            $this->startFromMenu($chatId, $userId, $messageId);
+        } elseif ($data === 'repair_workplace_use') {
+            $this->handleWorkplaceConfirmation($callbackQuery, true);
+        } elseif ($data === 'repair_workplace_change') {
+            $this->handleWorkplaceConfirmation($callbackQuery, false);
         }
+    }
+
+    /**
+     * Single source of truth for the "returning user with a saved workplace"
+     * branching, shared by the inline-button path (handleCallback) and the
+     * reply-keyboard path (MessageHandler::handleRepairButton).
+     */
+    public function startFromMenu(int $chatId, int $userId, ?int $messageId = null): void
+    {
+        $profile = TelegramProfile::where('telegram_user_id', $userId)->first();
+
+        if ($profile && $profile->is_profile_complete) {
+            $this->showWorkplaceConfirmation($chatId, $userId, $messageId, $profile);
+
+            return;
+        }
+
+        $this->startPicker($chatId, $userId, $messageId);
     }
 
     public function handleBranchSelection(array $callbackQuery, int $branchId): void
@@ -48,7 +71,7 @@ class RepairHandler
 
         $branch = Branch::find($branchId);
         if (! $branch) {
-            $this->telegram->editMessage($chatId, $messageId, '❌ Помилка: філіал не знайдено.');
+            $this->telegram->editMessage($chatId, $messageId, '❌ Філіал не знайдено.');
 
             return;
         }
@@ -61,7 +84,7 @@ class RepairHandler
         $this->telegram->editMessage(
             $chatId,
             $messageId,
-            '🚪 <b>Введіть номер кабінету:</b>',
+            '🚪 <b>Номер кабінету?</b>',
             $this->keyboard->getCancelKeyboard()
         );
     }
@@ -78,23 +101,94 @@ class RepairHandler
         $this->createRepairRequest($chatId, $userId, $username, '', $tempData);
     }
 
-    private function startRepairRequest(int $chatId, int $userId, int $messageId): void
+    /**
+     * Shows the from-scratch branch picker. Edits the given message when
+     * $messageId is provided (inline callback path), otherwise sends a new
+     * message (reply-keyboard path).
+     */
+    public function startPicker(int $chatId, int $userId, ?int $messageId = null, string $prefix = ''): void
     {
         $branches = Branch::where('is_active', true)->get();
 
         if ($branches->isEmpty()) {
-            $this->telegram->editMessage($chatId, $messageId, '❌ На жаль, філіали недоступні. Зв\'яжіться з адміністратором.');
+            $text = '❌ Філіали недоступні. Зв\'яжіться з адміністратором.';
+            if ($messageId) {
+                $this->telegram->editMessage($chatId, $messageId, $text);
+            } else {
+                $this->telegram->sendMessage($chatId, $text);
+            }
 
             return;
         }
 
         $this->stateManager->setUserState($userId, 'repair_awaiting_branch');
 
+        $text = $prefix."🔧 <b>Виклик IT майстра</b>\n\nОберіть філіал:";
+        $keyboard = $this->keyboard->getBranchesKeyboard($branches, 'repair');
+
+        if ($messageId) {
+            $this->telegram->editMessage($chatId, $messageId, $text, $keyboard);
+        } else {
+            $this->telegram->sendMessage($chatId, $text, $keyboard);
+        }
+    }
+
+    private function showWorkplaceConfirmation(int $chatId, int $userId, ?int $messageId, TelegramProfile $profile): void
+    {
+        $branch = Branch::find($profile->default_branch_id);
+
+        if (! $branch || ! $branch->is_active) {
+            $this->startPicker($chatId, $userId, $messageId, "⚠️ Збережений філіал більше недоступний.\n\n");
+
+            return;
+        }
+
+        $this->stateManager->setUserState($userId, 'repair_awaiting_workplace_confirmation', [
+            'branch_id' => $profile->default_branch_id,
+            'branch_name' => $branch->name,
+            'room_number' => $profile->default_room_number,
+        ]);
+
+        $text = "🏠 <b>Ваше робоче місце</b>\n\n".
+            "Філія: {$branch->name}\n".
+            "Кабінет: {$profile->default_room_number}";
+        $keyboard = $this->keyboard->getWorkplaceConfirmationKeyboard('repair');
+
+        if ($messageId) {
+            $this->telegram->editMessage($chatId, $messageId, $text, $keyboard);
+        } else {
+            $this->telegram->sendMessage($chatId, $text, $keyboard);
+        }
+    }
+
+    public function handleWorkplaceConfirmation(array $callbackQuery, bool $useSaved): void
+    {
+        $chatId = $callbackQuery['message']['chat']['id'];
+        $userId = $callbackQuery['from']['id'];
+        $messageId = $callbackQuery['message']['message_id'];
+
+        if (! $useSaved) {
+            $this->startPicker($chatId, $userId, $messageId);
+
+            return;
+        }
+
+        $userState = $this->stateManager->getUserState($userId);
+        $tempData = $userState['temp_data'] ?? [];
+
+        if (! isset($tempData['branch_id'], $tempData['branch_name'], $tempData['room_number'])) {
+            $this->startPicker($chatId, $userId, $messageId);
+
+            return;
+        }
+
+        $this->stateManager->setUserState($userId, 'repair_awaiting_description', $tempData);
+
         $this->telegram->editMessage(
             $chatId,
             $messageId,
-            "🔧 <b>Виклик IT майстра</b>\n\nОберіть філіал:",
-            $this->keyboard->getBranchesKeyboard($branches, 'repair')
+            "📝 <b>Опишіть проблему</b>\n10–1000 символів.",
+            $this->keyboard->getCancelKeyboard()
         );
     }
 
@@ -104,7 +198,7 @@ class RepairHandler
         $tempData = $userState['temp_data'] ?? [];
 
         if (empty(trim($room)) || strlen($room) > 50) {
-            $this->telegram->sendMessage($chatId, '❌ Введіть номер кабінету (до 50 символів):');
+            $this->telegram->sendMessage($chatId, '❌ Номер кабінету не довший за 50 символів. Спробуйте ще раз:');
 
             return;
         }
@@ -114,7 +208,7 @@ class RepairHandler
 
         $this->telegram->sendMessage(
             $chatId,
-            "📝 <b>Опишіть проблему:</b>\n(від 10 до 1000 символів)",
+            "📝 <b>Опишіть проблему</b>\n10–1000 символів.",
             $this->keyboard->getCancelKeyboard()
         );
     }
@@ -125,7 +219,7 @@ class RepairHandler
         $tempData = $userState['temp_data'] ?? [];
 
         if (empty(trim($description)) || strlen($description) < 10 || strlen($description) > 1000) {
-            $this->telegram->sendMessage($chatId, '❌ Опис має містити від 10 до 1000 символів:');
+            $this->telegram->sendMessage($chatId, '❌ Опис має бути від 10 до 1000 символів. Спробуйте ще раз:');
 
             return;
         }
@@ -135,7 +229,7 @@ class RepairHandler
 
         $this->telegram->sendMessage(
             $chatId,
-            "📞 <b>Введіть номер телефону:</b>\nабо натисніть «Пропустити»",
+            "📞 <b>Номер телефону?</b>\nАбо натисніть «Пропустити».",
             $this->keyboard->getPhoneKeyboard()
         );
     }
@@ -147,7 +241,7 @@ class RepairHandler
 
         $phone = trim($phone);
         if (! empty($phone) && ! preg_match('/^\+?3?8?0\d{9}$/', $phone)) {
-            $this->telegram->sendMessage($chatId, '❌ Невірний формат. Введіть номер у форматі +380XXXXXXXXX:');
+            $this->telegram->sendMessage($chatId, '❌ Невірний формат. Приклад: +380XXXXXXXXX:');
 
             return;
         }
@@ -159,7 +253,7 @@ class RepairHandler
     {
         try {
             if (! isset($tempData['branch_id'], $tempData['room_number'], $tempData['description'])) {
-                $this->telegram->sendMessage($chatId, '❌ Помилка: не всі дані збережені. Спробуйте ще раз:', $this->keyboard->getMainMenuKeyboard($userId));
+                $this->telegram->sendMessage($chatId, '❌ Дані не збереглися. Спробуйте ще раз:', $this->keyboard->getMainMenuKeyboard($userId));
                 $this->stateManager->clearUserState($userId);
 
                 return;
@@ -175,10 +269,11 @@ class RepairHandler
                 'status' => 'нова',
             ]);
 
+            app(\App\Services\Telegram\TelegramProfileService::class)->rememberWorkplace($userId, $tempData['branch_id'], $tempData['room_number']);
+
             $this->stateManager->clearUserState($userId);
 
-            $message = "✅ <b>Заявку створено успішно!</b>\n\n".
-                      "📋 <b>Деталі заявки № {$repair->id}:</b>\n".
+            $message = "✅ <b>Заявку № {$repair->id} створено</b>\n\n".
                       "🏢 Філіал: {$tempData['branch_name']}\n".
                       "🚪 Кабінет: {$tempData['room_number']}\n".
                       '📝 Проблема: '.htmlspecialchars($tempData['description'])."\n";
@@ -187,8 +282,8 @@ class RepairHandler
                 $message .= "📞 Телефон: $phone\n";
             }
 
-            $message .= "\n📧 Адміністратори отримали сповіщення про вашу заявку.\n".
-                       '⏰ Очікуйте зв\'язку від IT майстра.';
+            $message .= "\n📧 Адміністраторів сповіщено.\n".
+                       '⏰ Очікуйте на зв\'язок від IT майстра.';
 
             $this->telegram->sendMessage($chatId, $message, $this->keyboard->getMainMenuKeyboard($userId));
 
@@ -197,7 +292,7 @@ class RepairHandler
 
         } catch (\Exception $e) {
             Log::error('Error creating repair request: '.$e->getMessage());
-            $this->telegram->sendMessage($chatId, '❌ Сталася помилка. Спробуйте пізніше або зв\'яжіться з адміністратором.');
+            $this->telegram->sendMessage($chatId, '❌ Сталася помилка. Спробуйте пізніше.');
             $this->stateManager->clearUserState($userId);
         }
     }
@@ -215,7 +310,7 @@ class RepairHandler
 
             $username = $repair->username ? "@{$repair->username}" : "ID: {$repair->user_telegram_id}";
 
-            $message = "🔧 <b>Нова заявка на ремонт № {$repair->id}!</b>\n\n";
+            $message = "🔧 <b>Нова заявка на ремонт № {$repair->id}</b>\n\n";
             $message .= "📍 Філіал: <b>$branchName</b>\n";
             $message .= "🏢 Кабінет: <b>{$repair->room_number}</b>\n";
             $message .= '📝 Проблема: '.htmlspecialchars($repair->description)."\n";

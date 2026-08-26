@@ -4,14 +4,17 @@ namespace App\Providers;
 
 use App\Services\Telegram\CallbackHandler;
 use App\Services\Telegram\Handlers\AdminHandler;
+use App\Services\Telegram\Handlers\AdminPanelHandler;
 use App\Services\Telegram\Handlers\CartridgeHandler;
 use App\Services\Telegram\Handlers\InventoryHandler;
+use App\Services\Telegram\Handlers\OnboardingHandler;
 use App\Services\Telegram\Handlers\RepairHandler;
 use App\Services\Telegram\KeyboardService;
 use App\Services\Telegram\MessageCacheService;
 use App\Services\Telegram\MessageHandler;
 use App\Services\Telegram\ReplyKeyboardService;
 use App\Services\Telegram\StateManager;
+use App\Services\Telegram\TelegramProfileService;
 use App\Services\Telegram\TelegramService;
 use Illuminate\Support\ServiceProvider;
 
@@ -72,6 +75,25 @@ class TelegramServiceProvider extends ServiceProvider
             );
         });
 
+        $this->app->singleton(OnboardingHandler::class, function ($app) {
+            return new OnboardingHandler(
+                $app->make(TelegramService::class),
+                $app->make(StateManager::class),
+                $app->make(KeyboardService::class),
+                $app->make(ReplyKeyboardService::class),
+                $app->make(TelegramProfileService::class)
+            );
+        });
+
+        $this->app->singleton(AdminPanelHandler::class, function ($app) {
+            return new AdminPanelHandler(
+                $app->make(TelegramService::class),
+                $app->make(StateManager::class),
+                $app->make(KeyboardService::class),
+                $app->make(TelegramProfileService::class)
+            );
+        });
+
         // Главные обработчики
         $this->app->singleton(CallbackHandler::class, function ($app) {
             return new CallbackHandler(
@@ -81,7 +103,9 @@ class TelegramServiceProvider extends ServiceProvider
                 $app->make(RepairHandler::class),
                 $app->make(CartridgeHandler::class),
                 $app->make(InventoryHandler::class),
-                $app->make(AdminHandler::class)
+                $app->make(AdminHandler::class),
+                $app->make(OnboardingHandler::class),
+                $app->make(AdminPanelHandler::class)
             );
         });
 
@@ -94,7 +118,8 @@ class TelegramServiceProvider extends ServiceProvider
                 $app->make(RepairHandler::class),
                 $app->make(CartridgeHandler::class),
                 $app->make(InventoryHandler::class),
-                $app->make(AdminHandler::class)
+                $app->make(AdminHandler::class),
+                $app->make(OnboardingHandler::class)
             );
         });
     }

@@ -12,16 +12,6 @@ class ReplyKeyboardService
                     ['text' => '🔧 Виклик IT майстра'],
                     ['text' => '🖨️ Заміна картриджа'],
                 ],
-                [
-                    ['text' => '📋 Керування інвентарем'],
-                ],
-                [
-                    ['text' => '⚙️ Панель адміністратора'],
-                ],
-                [
-                    ['text' => '/help'],
-                    ['text' => '/cancel'],
-                ],
             ],
             'resize_keyboard' => true,
             'one_time_keyboard' => false,
@@ -34,11 +24,28 @@ class ReplyKeyboardService
         return [
             'keyboard' => [
                 [
-                    ['text' => '❌ Скасування'],
+                    ['text' => '❌ Скасувати'],
                 ],
             ],
             'resize_keyboard' => true,
             'one_time_keyboard' => false,
+            'selective' => false,
+        ];
+    }
+
+    public function getContactKeyboard(): array
+    {
+        return [
+            'keyboard' => [
+                [
+                    ['text' => '📞 Поділитися контактом', 'request_contact' => true],
+                ],
+                [
+                    ['text' => '⏭️ Пропустити'],
+                ],
+            ],
+            'resize_keyboard' => true,
+            'one_time_keyboard' => true,
             'selective' => false,
         ];
     }

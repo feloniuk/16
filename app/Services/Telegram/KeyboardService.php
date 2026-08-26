@@ -24,13 +24,9 @@ class KeyboardService
             ],
         ];
 
-        // Додаємо кнопки адміністратора тільки для адміністраторів
-        if ($this->telegram->isAdmin($userId)) {
+        if (app(\App\Services\Telegram\TelegramProfileService::class)->isRecognizedAdmin($userId)) {
             $keyboard[] = [
-                ['text' => '📋 Керування інвентарем', 'callback_data' => 'inventory_management'],
-            ];
-            $keyboard[] = [
-                ['text' => '⚙️ Панель адміністратора', 'callback_data' => 'admin_menu'],
+                ['text' => '👑 Адмін-панель', 'callback_data' => 'adminpanel_menu'],
             ];
         }
 
@@ -41,7 +37,7 @@ class KeyboardService
     {
         return $this->createInlineKeyboard([
             [
-                ['text' => '❌ Скасування', 'callback_data' => 'main_menu'],
+                ['text' => '❌ Скасувати', 'callback_data' => 'main_menu'],
             ],
         ]);
     }
@@ -53,7 +49,31 @@ class KeyboardService
                 ['text' => '⏭️ Пропустити', 'callback_data' => 'skip_phone'],
             ],
             [
-                ['text' => '❌ Скасування', 'callback_data' => 'main_menu'],
+                ['text' => '❌ Скасувати', 'callback_data' => 'main_menu'],
+            ],
+        ]);
+    }
+
+    public function getWorkplaceChoiceKeyboard(): array
+    {
+        return $this->createInlineKeyboard([
+            [
+                ['text' => '⚙️ Налаштувати зараз', 'callback_data' => 'onboarding_setup_workplace'],
+            ],
+            [
+                ['text' => '⏭️ Пізніше', 'callback_data' => 'onboarding_skip_workplace'],
+            ],
+        ]);
+    }
+
+    public function getWorkplaceConfirmationKeyboard(string $type): array
+    {
+        return $this->createInlineKeyboard([
+            [
+                ['text' => '✅ Використати', 'callback_data' => "{$type}_workplace_use"],
+            ],
+            [
+                ['text' => '✏️ Змінити', 'callback_data' => "{$type}_workplace_change"],
             ],
         ]);
     }
@@ -349,6 +369,72 @@ class KeyboardService
 
         $keyboard[] = [
             ['text' => '◀️ До списку', 'callback_data' => 'admin_repairs'],
+            ['text' => '🏠 Головне меню', 'callback_data' => 'main_menu'],
+        ];
+
+        return $this->createInlineKeyboard($keyboard);
+    }
+
+    // === ADMIN PANEL (role-based) KEYBOARDS ===
+
+    public function getAdminPanelMenuKeyboard(): array
+    {
+        return $this->createInlineKeyboard([
+            [
+                ['text' => '📋 Заявки на ремонт', 'callback_data' => 'adminpanel_repairs'],
+            ],
+            [
+                ['text' => '🖨️ Історія картриджів', 'callback_data' => 'adminpanel_cartridges'],
+            ],
+            [
+                ['text' => '🏠 Головне меню', 'callback_data' => 'main_menu'],
+            ],
+        ]);
+    }
+
+    public function getAdminPanelRepairsListKeyboard($repairs, ?string $statusFilter): array
+    {
+        $keyboard = [];
+
+        foreach ($repairs->take(5) as $repair) {
+            $status = $this->getStatusEmoji($repair->status);
+            $text = "#{$repair->id} $status ".$this->truncateText($repair->branch->name, 25);
+
+            $keyboard[] = [
+                ['text' => $text, 'callback_data' => "adminpanel_repair_details:{$repair->id}"],
+            ];
+        }
+
+        $keyboard[] = [
+            ['text' => 'Всі', 'callback_data' => 'adminpanel_repairs'],
+            ['text' => 'Нові', 'callback_data' => 'adminpanel_repairs_filter:нова'],
+            ['text' => 'В роботі', 'callback_data' => 'adminpanel_repairs_filter:в_роботі'],
+            ['text' => 'Виконано', 'callback_data' => 'adminpanel_repairs_filter:виконана'],
+        ];
+
+        $keyboard[] = [
+            ['text' => '◀️ Панель', 'callback_data' => 'adminpanel_menu'],
+        ];
+
+        return $this->createInlineKeyboard($keyboard);
+    }
+
+    public function getAdminPanelRepairDetailsKeyboard($repair): array
+    {
+        $keyboard = [];
+
+        if ($repair->status === 'нова') {
+            $keyboard[] = [
+                ['text' => '▶️ Взяти в роботу', 'callback_data' => "adminpanel_status_update:{$repair->id}:в_роботі"],
+            ];
+        } elseif ($repair->status === 'в_роботі') {
+            $keyboard[] = [
+                ['text' => '✅ Виконано', 'callback_data' => "adminpanel_status_update:{$repair->id}:виконана"],
+            ];
+        }
+
+        $keyboard[] = [
+            ['text' => '◀️ До списку', 'callback_data' => 'adminpanel_repairs'],
             ['text' => '🏠 Головне меню', 'callback_data' => 'main_menu'],
         ];
 

@@ -3,30 +3,38 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\Telegram\TelegramService;
 use App\Services\Telegram\CallbackHandler;
 use App\Services\Telegram\MessageHandler;
 use App\Services\Telegram\StateManager;
+use App\Services\Telegram\TelegramProfileService;
+use App\Services\Telegram\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class TelegramBotController extends Controller
 {
     private TelegramService $telegramService;
+
     private CallbackHandler $callbackHandler;
+
     private MessageHandler $messageHandler;
+
     private StateManager $stateManager;
+
+    private TelegramProfileService $telegramProfileService;
 
     public function __construct(
         TelegramService $telegramService,
-        CallbackHandler $callbackHandler, 
+        CallbackHandler $callbackHandler,
         MessageHandler $messageHandler,
-        StateManager $stateManager
+        StateManager $stateManager,
+        TelegramProfileService $telegramProfileService
     ) {
         $this->telegramService = $telegramService;
         $this->callbackHandler = $callbackHandler;
         $this->messageHandler = $messageHandler;
         $this->stateManager = $stateManager;
+        $this->telegramProfileService = $telegramProfileService;
     }
 
     /**
@@ -34,50 +42,67 @@ class TelegramBotController extends Controller
      */
     public function webhook(Request $request)
     {
+        $webhookSecret = config('services.telegram.webhook_secret');
+        if (app()->environment('production') && (! is_string($webhookSecret) || $webhookSecret === '')) {
+            Log::critical('Telegram webhook secret is not configured.');
+
+            return response()->json(['message' => 'Webhook secret is not configured'], 503);
+        }
+
+        if (is_string($webhookSecret) && $webhookSecret !== '' && ! hash_equals($webhookSecret, (string) $request->header('X-Telegram-Bot-Api-Secret-Token'))) {
+            Log::warning('Telegram webhook rejected because its secret token did not match.');
+
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         try {
             $update = $request->all();
-            
+
             // Логируем только основную информацию, избегая больших объемов данных
             Log::info('Telegram webhook received', [
                 'update_id' => $update['update_id'] ?? 'unknown',
                 'type' => $this->getUpdateType($update),
                 'chat_id' => $this->extractChatId($update),
-                'user_id' => $this->extractUserId($update)
+                'user_id' => $this->extractUserId($update),
             ]);
 
             if (empty($update)) {
                 Log::warning('Empty webhook update received');
+
                 return response()->json(['status' => 'ok']);
             }
 
             // Валидируем структуру update
-            if (!$this->validateUpdate($update)) {
+            if (! $this->validateUpdate($update)) {
                 Log::warning('Invalid update structure', ['update_id' => $update['update_id'] ?? 'unknown']);
+
                 return response()->json(['status' => 'ok']);
             }
 
             if (isset($update['message'])) {
+                $this->telegramProfileService->sync($update['message']['from'], $update['message']['chat']['id']);
                 $this->messageHandler->handle($update['message']);
             } elseif (isset($update['callback_query'])) {
+                $this->telegramProfileService->sync($update['callback_query']['from'], $update['callback_query']['message']['chat']['id']);
                 $this->callbackHandler->handle($update['callback_query']);
             } else {
                 Log::info('Unhandled update type', [
                     'update_id' => $update['update_id'] ?? 'unknown',
-                    'available_keys' => array_keys($update)
+                    'available_keys' => array_keys($update),
                 ]);
             }
 
             return response()->json(['status' => 'ok']);
-            
+
         } catch (\Exception $e) {
-            Log::error('Telegram webhook error: ' . $e->getMessage(), [
+            Log::error('Telegram webhook error: '.$e->getMessage(), [
                 'exception' => $e,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
-                'request_data_keys' => array_keys($request->all())
+                'request_data_keys' => array_keys($request->all()),
             ]);
-            
+
             // Всегда возвращаем 200 OK, чтобы Telegram не повторял запрос
             return response()->json(['error' => 'Internal error'], 200);
         }
@@ -88,12 +113,22 @@ class TelegramBotController extends Controller
      */
     private function getUpdateType(array $update): string
     {
-        if (isset($update['message'])) return 'message';
-        if (isset($update['callback_query'])) return 'callback_query';
-        if (isset($update['inline_query'])) return 'inline_query';
-        if (isset($update['chosen_inline_result'])) return 'chosen_inline_result';
-        if (isset($update['edited_message'])) return 'edited_message';
-        
+        if (isset($update['message'])) {
+            return 'message';
+        }
+        if (isset($update['callback_query'])) {
+            return 'callback_query';
+        }
+        if (isset($update['inline_query'])) {
+            return 'inline_query';
+        }
+        if (isset($update['chosen_inline_result'])) {
+            return 'chosen_inline_result';
+        }
+        if (isset($update['edited_message'])) {
+            return 'edited_message';
+        }
+
         return 'unknown';
     }
 
@@ -108,7 +143,7 @@ class TelegramBotController extends Controller
         if (isset($update['callback_query']['message']['chat']['id'])) {
             return $update['callback_query']['message']['chat']['id'];
         }
-        
+
         return null;
     }
 
@@ -123,7 +158,7 @@ class TelegramBotController extends Controller
         if (isset($update['callback_query']['from']['id'])) {
             return $update['callback_query']['from']['id'];
         }
-        
+
         return null;
     }
 
@@ -133,14 +168,14 @@ class TelegramBotController extends Controller
     private function validateUpdate(array $update): bool
     {
         // Проверяем наличие update_id
-        if (!isset($update['update_id']) || !is_numeric($update['update_id'])) {
+        if (! isset($update['update_id']) || ! is_numeric($update['update_id'])) {
             return false;
         }
 
         // Проверяем структуру message
         if (isset($update['message'])) {
             $message = $update['message'];
-            if (!isset($message['message_id'], $message['date'], $message['chat'], $message['from'])) {
+            if (! isset($message['message_id'], $message['date'], $message['chat'], $message['from'])) {
                 return false;
             }
         }
@@ -148,7 +183,7 @@ class TelegramBotController extends Controller
         // Проверяем структуру callback_query
         if (isset($update['callback_query'])) {
             $callback = $update['callback_query'];
-            if (!isset($callback['id'], $callback['from'], $callback['data'])) {
+            if (! isset($callback['id'], $callback['from'], $callback['data'])) {
                 return false;
             }
         }
@@ -163,13 +198,14 @@ class TelegramBotController extends Controller
     {
         try {
             $request->validate([
-                'telegram_id' => 'required|numeric'
+                'telegram_id' => 'required|numeric',
             ]);
 
             return $this->telegramService->getUserInfo($request->telegram_id);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error in getUserInfo: ' . $e->getMessage());
+            Log::error('Error in getUserInfo: '.$e->getMessage());
+
             return response()->json(['error' => 'Internal error'], 500);
         }
     }
@@ -179,21 +215,22 @@ class TelegramBotController extends Controller
         try {
             $request->validate([
                 'telegram_id' => 'required|numeric',
-                'message' => 'required|string|max:4096'
+                'message' => 'required|string|max:4096',
             ]);
 
             $result = $this->telegramService->sendMessage(
-                $request->telegram_id, 
+                $request->telegram_id,
                 $request->message
             );
 
             return response()->json([
                 'success' => (bool) $result,
-                'data' => $result
+                'data' => $result,
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error in sendNotification: ' . $e->getMessage());
+            Log::error('Error in sendNotification: '.$e->getMessage());
+
             return response()->json(['error' => 'Internal error'], 500);
         }
     }
@@ -205,8 +242,8 @@ class TelegramBotController extends Controller
     {
         try {
             $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
-            
-            if (!$botToken) {
+
+            if (! $botToken) {
                 return response()->json(['error' => 'Bot token not configured'], 500);
             }
 
@@ -216,11 +253,12 @@ class TelegramBotController extends Controller
             return response()->json([
                 'success' => $result['ok'] ?? false,
                 'bot_info' => $result['result'] ?? null,
-                'response_status' => $response->status()
+                'response_status' => $response->status(),
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error in testApi: ' . $e->getMessage());
+            Log::error('Error in testApi: '.$e->getMessage());
+
             return response()->json(['error' => 'Internal error'], 500);
         }
     }
@@ -229,8 +267,8 @@ class TelegramBotController extends Controller
     {
         try {
             $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
-            
-            if (!$botToken) {
+
+            if (! $botToken) {
                 return response()->json(['error' => 'Bot token not configured'], 500);
             }
 
@@ -240,11 +278,12 @@ class TelegramBotController extends Controller
             return response()->json([
                 'success' => $result['ok'] ?? false,
                 'webhook_info' => $result['result'] ?? null,
-                'response_status' => $response->status()
+                'response_status' => $response->status(),
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error in getWebhookInfo: ' . $e->getMessage());
+            Log::error('Error in getWebhookInfo: '.$e->getMessage());
+
             return response()->json(['error' => 'Internal error'], 500);
         }
     }
@@ -253,29 +292,32 @@ class TelegramBotController extends Controller
     {
         try {
             $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
-            
-            if (!$botToken) {
-                return response()->json(['error' => 'Bot token not configured'], 500);
+
+            $webhookSecret = config('services.telegram.webhook_secret');
+            if (! $botToken || ! is_string($webhookSecret) || $webhookSecret === '') {
+                return response()->json(['error' => 'Bot token or webhook secret not configured'], 503);
             }
 
-            $webhookUrl = $request->input('url', config('app.url') . '/api/telegram/webhook');
+            $webhookUrl = $request->input('url', config('app.url').'/api/telegram/webhook');
 
             $response = \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$botToken}/setWebhook", [
                 'url' => $webhookUrl,
-                'allowed_updates' => ['message', 'callback_query']
+                'allowed_updates' => ['message', 'callback_query'],
+                'secret_token' => $webhookSecret,
             ]);
-            
+
             $result = $response->json();
 
             return response()->json([
                 'success' => $result['ok'] ?? false,
                 'description' => $result['description'] ?? null,
                 'webhook_url' => $webhookUrl,
-                'response_status' => $response->status()
+                'response_status' => $response->status(),
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error in setWebhook: ' . $e->getMessage());
+            Log::error('Error in setWebhook: '.$e->getMessage());
+
             return response()->json(['error' => 'Internal error'], 500);
         }
     }
@@ -291,23 +333,24 @@ class TelegramBotController extends Controller
                     'total' => \App\Models\RepairRequest::count(),
                     'new' => \App\Models\RepairRequest::where('status', 'нова')->count(),
                     'in_progress' => \App\Models\RepairRequest::where('status', 'в_роботі')->count(),
-                    'completed' => \App\Models\RepairRequest::where('status', 'виконана')->count()
+                    'completed' => \App\Models\RepairRequest::where('status', 'виконана')->count(),
                 ],
                 'cartridges' => [
                     'total' => \App\Models\CartridgeReplacement::count(),
-                    'this_month' => \App\Models\CartridgeReplacement::whereMonth('created_at', now()->month)->count()
+                    'this_month' => \App\Models\CartridgeReplacement::whereMonth('created_at', now()->month)->count(),
                 ],
                 'branches' => \App\Models\Branch::where('is_active', true)->count(),
-                'generated_at' => now()
+                'generated_at' => now(),
             ];
 
             return response()->json([
                 'success' => true,
-                'stats' => $stats
+                'stats' => $stats,
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error in getStats: ' . $e->getMessage());
+            Log::error('Error in getStats: '.$e->getMessage());
+
             return response()->json(['error' => 'Internal error'], 500);
         }
     }
@@ -328,17 +371,18 @@ class TelegramBotController extends Controller
                         'name' => $branch->name,
                         'repair_requests_count' => $branch->repair_requests_count ?? 0,
                         'cartridge_replacements_count' => $branch->cartridge_replacements_count ?? 0,
-                        'created_at' => $branch->created_at
+                        'created_at' => $branch->created_at,
                     ];
                 });
 
             return response()->json([
                 'success' => true,
-                'branches' => $branches
+                'branches' => $branches,
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error in getBranches: ' . $e->getMessage());
+            Log::error('Error in getBranches: '.$e->getMessage());
+
             return response()->json(['error' => 'Internal error'], 500);
         }
     }

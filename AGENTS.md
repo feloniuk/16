@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 <laravel-boost-guidelines>
 === foundation rules ===
@@ -274,7 +274,7 @@ This is a **Laravel 10-style application structure** running on Laravel 12 (see 
 
 ### Telegram bot architecture
 
-The live/loaded Telegram classes are `app/Services/Telegram/Handlers/{RepairHandler,CartridgeHandler,InventoryHandler,AdminHandler}.php` (the `Handlers/` subdirectory) plus `TelegramService`, `KeyboardService`, `MessageCacheService`, `MessageHandler`, `CallbackHandler`, `StateManager`, `ReplyKeyboardService`, `TelegramProfileService` directly under `app/Services/Telegram/` — all registered in `App\Providers\TelegramServiceProvider` and used by `App\Http\Controllers\Api\TelegramBotController`. No file should ever be created at `app/Services/Telegram/*Handler.php` (outside the `Handlers/` subdirectory) — that historically caused a dead-code FQCN collision (duplicate `RepairHandler`/`InventoryHandler` files declaring `namespace App\Services\Telegram\Handlers;` while physically living one level up) that has since been cleaned up. `MessageCacheService` exists specifically to avoid Telegram's "message is not modified" API error when editing messages; use `$telegram->editMessageSafe(...)` for edits that might fail. See `README_Telegram_Setup.md` for webhook setup/debug commands (`telegram:set-webhook`, `telegram:webhook-info`, `telegram:test-bot`, `support:create-admin`, `support:stats`).
+Only classes directly under `app/Services/Telegram/` (`TelegramService`, `KeyboardService`, `MessageCacheService`, `MessageHandler`, `CallbackHandler`, `RepairHandler`, `InventoryHandler`, `StateManager`, `ReplyKeyboardService`) are wired up via `App\Providers\TelegramServiceProvider` and actually used by `App\Http\Controllers\Api\TelegramBotController`. The `app/Services/Telegram/Handlers/` subdirectory (`AdminHandler`, `CartridgeHandler`, `InventoryHandler`, `RepairHandler`) is **not** referenced by the service provider or controller — confirm before assuming it's live code. `MessageCacheService` exists specifically to avoid Telegram's "message is not modified" API error when editing messages; use `$telegram->editMessageSafe(...)` for edits that might fail. See `README_Telegram_Setup.md` for webhook setup/debug commands (`telegram:set-webhook`, `telegram:webhook-info`, `telegram:test-bot`, `support:create-admin`, `support:stats`).
 
 ## Commands
 
