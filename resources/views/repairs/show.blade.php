@@ -28,11 +28,7 @@
                 <div class="col-md-6">
                     <h6 class="text-muted mb-2">Користувач</h6>
                     <p class="mb-0">
-                        @if($repair->username)
-                            <i class="bi bi-person"></i> @{{ $repair->username }}
-                        @else
-                            <i class="bi bi-hash"></i> ID: {{ $repair->user_telegram_id }}
-                        @endif
+                        @include('partials.telegram-user-link', ['username' => $repair->username, 'telegramId' => $repair->user_telegram_id])
                     </p>
                 </div>
 

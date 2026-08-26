@@ -27,11 +27,7 @@
                 <div class="col-md-6">
                     <h6 class="text-muted mb-2">Користувач</h6>
                     <p class="mb-0">
-                        @if($cartridge->username)
-                            <i class="bi bi-person"></i> @{{ $cartridge->username }}
-                        @else
-                            <i class="bi bi-hash"></i> ID: {{ $cartridge->user_telegram_id }}
-                        @endif
+                        @include('partials.telegram-user-link', ['username' => $cartridge->username, 'telegramId' => $cartridge->user_telegram_id])
                     </p>
                 </div>
 

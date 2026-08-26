@@ -72,6 +72,12 @@ class MessageHandler
             return;
         }
 
+        if ($this->profileService->isBlocked($userId)) {
+            $this->onboardingHandler->requestContactForBlockedProfile($chatId, $userId);
+
+            return;
+        }
+
         // Обработка команд
         if (str_starts_with($text, '/')) {
             $this->handleCommand($chatId, $userId, $username, $text);

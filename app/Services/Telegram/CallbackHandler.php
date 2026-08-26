@@ -27,6 +27,8 @@ class CallbackHandler
 
     private AdminPanelHandler $adminPanelHandler;
 
+    private TelegramProfileService $profileService;
+
     public function __construct(
         TelegramService $telegram,
         StateManager $stateManager,
@@ -35,7 +37,8 @@ class CallbackHandler
         CartridgeHandler $cartridgeHandler,
         InventoryHandler $inventoryHandler,
         OnboardingHandler $onboardingHandler,
-        AdminPanelHandler $adminPanelHandler
+        AdminPanelHandler $adminPanelHandler,
+        TelegramProfileService $profileService
     ) {
         $this->telegram = $telegram;
         $this->stateManager = $stateManager;
@@ -45,6 +48,7 @@ class CallbackHandler
         $this->inventoryHandler = $inventoryHandler;
         $this->onboardingHandler = $onboardingHandler;
         $this->adminPanelHandler = $adminPanelHandler;
+        $this->profileService = $profileService;
     }
 
     public function handle(array $callbackQuery): void
@@ -73,6 +77,12 @@ class CallbackHandler
 
             // Подтверждение получения callback (очень важно!)
             $this->telegram->answerCallbackQuery($callbackId);
+
+            if ($this->profileService->isBlocked($userId)) {
+                $this->onboardingHandler->requestContactForBlockedProfile($chatId, $userId);
+
+                return;
+            }
 
             // Парсим данные callback'а
             $parts = explode(':', $data);

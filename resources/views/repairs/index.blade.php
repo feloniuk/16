@@ -86,11 +86,7 @@
                                 </div>
                             </td>
                             <td>
-                                @if($repair->username)
-                                    <i class="bi bi-person"></i> @{{ $repair->username }}
-                                @else
-                                    <i class="bi bi-hash"></i> {{ $repair->user_telegram_id }}
-                                @endif
+                                @include('partials.telegram-user-link', ['username' => $repair->username, 'telegramId' => $repair->user_telegram_id])
                                 @if($repair->phone)
                                     <br><small class="text-muted">
                                         <i class="bi bi-telephone"></i> {{ $repair->phone }}

@@ -39,6 +39,17 @@ class OnboardingHandler
         }
     }
 
+    public function requestContactForBlockedProfile(int $chatId, int $userId): void
+    {
+        $this->stateManager->setUserState($userId, 'onboarding_awaiting_contact');
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "🔐 <b>Потрібно оновити дані профілю</b>\n\nЩоб продовжити роботу з ботом, поділіться своїм контактом Telegram. Після цього бот запропонує налаштувати робоче місце.",
+            $this->replyKeyboard->getContactKeyboard()
+        );
+    }
+
     public function handleContactShared(array $message): void
     {
         $chatId = $message['chat']['id'];
@@ -53,6 +64,8 @@ class OnboardingHandler
             'phone' => $phone,
             'contact_consent' => true,
         ]);
+
+        $this->profileService->restoreAfterContactShare($userId);
 
         $this->stateManager->setUserState($userId, 'onboarding_awaiting_workplace_choice');
 

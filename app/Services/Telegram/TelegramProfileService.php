@@ -35,6 +35,23 @@ class TelegramProfileService
         ]);
     }
 
+    public function isBlocked(int $telegramUserId): bool
+    {
+        return TelegramProfile::query()
+            ->where('telegram_user_id', $telegramUserId)
+            ->where('is_blocked', true)
+            ->exists();
+    }
+
+    public function restoreAfterContactShare(int $telegramUserId): void
+    {
+        TelegramProfile::query()->where('telegram_user_id', $telegramUserId)->update([
+            'is_blocked' => false,
+            'notifications_enabled' => true,
+            'last_interaction_at' => now(),
+        ]);
+    }
+
     public function isRecognizedAdmin(int $telegramUserId): bool
     {
         return User::where('telegram_id', $telegramUserId)->whereIn('role', ['admin', 'director'])->exists();

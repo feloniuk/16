@@ -95,7 +95,8 @@ class TelegramServiceProvider extends ServiceProvider
                 $app->make(CartridgeHandler::class),
                 $app->make(InventoryHandler::class),
                 $app->make(OnboardingHandler::class),
-                $app->make(AdminPanelHandler::class)
+                $app->make(AdminPanelHandler::class),
+                $app->make(TelegramProfileService::class)
             );
         });
 

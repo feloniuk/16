@@ -89,11 +89,7 @@
                                 <span class="badge bg-warning">{{ $cartridge->cartridge_type }}</span>
                             </td>
                             <td>
-                                @if($cartridge->username)
-                                    <i class="bi bi-person"></i> @{{ $cartridge->username }}
-                                @else
-                                    <i class="bi bi-hash"></i> {{ $cartridge->user_telegram_id }}
-                                @endif
+                                @include('partials.telegram-user-link', ['username' => $cartridge->username, 'telegramId' => $cartridge->user_telegram_id])
                             </td>
                             <td>
                                 <div>{{ $cartridge->replacement_date->format('d.m.Y') }}</div>

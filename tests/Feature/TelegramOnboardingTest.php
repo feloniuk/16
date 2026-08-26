@@ -31,6 +31,83 @@ class TelegramOnboardingTest extends TestCase
         ];
     }
 
+    public function test_blocked_existing_profile_is_prompted_to_share_contact_before_old_button_actions(): void
+    {
+        TelegramProfile::query()->create([
+            'telegram_user_id' => 119,
+            'telegram_chat_id' => 230,
+            'contact_consent' => false,
+            'is_blocked' => true,
+        ]);
+
+        app(MessageHandler::class)->handle($this->message(119, 230, '📋 Керування інвентарем'));
+
+        $state = app(StateManager::class)->getUserState(119);
+        $this->assertSame('onboarding_awaiting_contact', $state['state'] ?? null);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+            $keyboard = collect($body['reply_markup']['keyboard'] ?? [])->flatten(1);
+
+            return isset($body['text'])
+                && str_contains($body['text'], 'Потрібно оновити дані профілю')
+                && $keyboard->contains(fn ($button) => ($button['request_contact'] ?? false) === true);
+        });
+    }
+
+    public function test_blocked_existing_profile_is_prompted_to_share_contact_before_old_inline_callbacks(): void
+    {
+        TelegramProfile::query()->create([
+            'telegram_user_id' => 121,
+            'telegram_chat_id' => 232,
+            'contact_consent' => false,
+            'is_blocked' => true,
+        ]);
+
+        app(CallbackHandler::class)->handle([
+            'id' => 'blocked-callback',
+            'from' => ['id' => 121, 'username' => 'olena'],
+            'message' => ['chat' => ['id' => 232], 'message_id' => 77],
+            'data' => 'repair_request',
+        ]);
+
+        $state = app(StateManager::class)->getUserState(121);
+        $this->assertSame('onboarding_awaiting_contact', $state['state'] ?? null);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+            $keyboard = collect($body['reply_markup']['keyboard'] ?? [])->flatten(1);
+
+            return isset($body['text'])
+                && str_contains($body['text'], 'Потрібно оновити дані профілю')
+                && $keyboard->contains(fn ($button) => ($button['request_contact'] ?? false) === true);
+        });
+    }
+
+    public function test_sharing_contact_restores_blocked_profile(): void
+    {
+        TelegramProfile::query()->create([
+            'telegram_user_id' => 120,
+            'telegram_chat_id' => 231,
+            'contact_consent' => false,
+            'is_blocked' => true,
+        ]);
+
+        app(StateManager::class)->setUserState(120, 'onboarding_awaiting_contact');
+
+        $message = $this->message(120, 231);
+        $message['contact'] = ['phone_number' => '+380991111111'];
+
+        app(MessageHandler::class)->handle($message);
+
+        $this->assertDatabaseHas('telegram_profiles', [
+            'telegram_user_id' => 120,
+            'contact_consent' => true,
+            'phone' => '+380991111111',
+            'is_blocked' => false,
+        ]);
+    }
+
     public function test_first_start_for_new_telegram_user_triggers_contact_prompt(): void
     {
         TelegramProfile::query()->create([
