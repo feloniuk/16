@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Telegram\CallbackHandler;
 use App\Services\Telegram\Handlers\AdminPanelHandler;
 use App\Services\Telegram\KeyboardService;
+use App\Services\Telegram\MessageHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -139,6 +140,69 @@ class TelegramAdminPanelTest extends TestCase
         });
     }
 
+    public function test_admin_command_opens_new_admin_panel_for_recognized_admin(): void
+    {
+        User::factory()->create(['role' => 'admin', 'telegram_id' => 512]);
+
+        app(MessageHandler::class)->handle([
+            'chat' => ['id' => 612],
+            'from' => ['id' => 512, 'username' => 'olena'],
+            'text' => '/admin',
+        ]);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return isset($body['text']) && str_contains($body['text'], 'Адмін-панель');
+        });
+    }
+
+    public function test_status_command_shows_new_panel_stats_for_recognized_admin(): void
+    {
+        User::factory()->create(['role' => 'admin', 'telegram_id' => 516]);
+        $branch = Branch::factory()->create();
+        $this->makeRepair('нова', $branch->id);
+
+        app(MessageHandler::class)->handle([
+            'chat' => ['id' => 616],
+            'from' => ['id' => 516, 'username' => 'olena'],
+            'text' => '/status',
+        ]);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return isset($body['text']) && str_contains($body['text'], 'Статистика Telegram-заявок');
+        });
+    }
+
+    public function test_admin_panel_stats_callback_shows_stats(): void
+    {
+        User::factory()->create(['role' => 'admin', 'telegram_id' => 517]);
+
+        app(CallbackHandler::class)->handle($this->callbackQuery(517, 617, 1, 'adminpanel_stats'));
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return isset($body['text']) && str_contains($body['text'], 'Статистика Telegram-заявок');
+        });
+    }
+
+    public function test_status_command_is_rejected_for_regular_user(): void
+    {
+        app(MessageHandler::class)->handle([
+            'chat' => ['id' => 613],
+            'from' => ['id' => 513, 'username' => 'petro'],
+            'text' => '/status',
+        ]);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return isset($body['text']) && str_contains($body['text'], 'Недостатньо прав');
+        });
+    }
     // === Status update ===
 
     public function test_status_update_changes_repair_status_in_database(): void
@@ -150,6 +214,33 @@ class TelegramAdminPanelTest extends TestCase
         app(CallbackHandler::class)->handle($this->callbackQuery(508, 608, 1, "adminpanel_status_update:{$repair->id}:в_роботі"));
 
         $this->assertSame('в_роботі', $repair->fresh()->status);
+
+        $expectedCallbackId = "cb-adminpanel_status_update:{$repair->id}:в_роботі";
+
+        Http::assertSent(function ($request) use ($expectedCallbackId) {
+            $body = $request->data();
+
+            return ($body['callback_query_id'] ?? null) === $expectedCallbackId
+                && isset($body['text'])
+                && str_contains($body['text'], 'Статус змінено');
+        });
+    }
+
+    public function test_admin_cannot_skip_repair_status_sequence(): void
+    {
+        User::factory()->create(['role' => 'admin', 'telegram_id' => 514]);
+        $branch = Branch::factory()->create();
+        $repair = $this->makeRepair('нова', $branch->id);
+
+        app(CallbackHandler::class)->handle($this->callbackQuery(514, 614, 1, "adminpanel_status_update:{$repair->id}:виконана"));
+
+        $this->assertSame('нова', $repair->fresh()->status);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return isset($body['text']) && str_contains($body['text'], 'перехід статусу недоступний');
+        });
     }
 
     // === Cartridges: view-only, no status UI ===
@@ -197,6 +288,19 @@ class TelegramAdminPanelTest extends TestCase
 
         $buttons = collect($keyboard['inline_keyboard'])->flatten(1);
         $this->assertFalse($buttons->contains(fn ($button) => str_starts_with($button['callback_data'], 'adminpanel_status_update')));
+    }
+
+    public function test_legacy_admin_callbacks_are_no_longer_routed(): void
+    {
+        User::factory()->create(['role' => 'admin', 'telegram_id' => 515]);
+
+        app(CallbackHandler::class)->handle($this->callbackQuery(515, 615, 1, 'admin_inventory'));
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return isset($body['text']) && str_contains($body['text'], 'Невідома дія');
+        });
     }
 
     public function test_direct_handler_call_also_enforces_gate(): void

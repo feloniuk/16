@@ -44,8 +44,9 @@ class AdminPanelHandler
             'adminpanel_repairs' => $this->showRepairsList($chatId, $messageId, null),
             'adminpanel_repairs_filter' => $this->showRepairsList($chatId, $messageId, $parts[1] ?? null),
             'adminpanel_repair_details' => $this->showRepairDetails($chatId, $messageId, (int) ($parts[1] ?? 0)),
-            'adminpanel_status_update' => $this->updateRepairStatus($chatId, $messageId, (int) ($parts[1] ?? 0), $parts[2] ?? ''),
+            'adminpanel_status_update' => $this->updateRepairStatus($chatId, $messageId, $callbackQuery['id'], (int) ($parts[1] ?? 0), $parts[2] ?? ''),
             'adminpanel_cartridges' => $this->showCartridgesList($chatId, $messageId),
+            'adminpanel_stats' => $this->sendStats($chatId, $messageId),
             default => Log::warning("Unknown admin panel action: {$action}")
         };
     }
@@ -129,12 +130,24 @@ class AdminPanelHandler
         $this->telegram->editMessage($chatId, $messageId, $message, $this->keyboard->getAdminPanelRepairDetailsKeyboard($repair));
     }
 
-    private function updateRepairStatus(int $chatId, int $messageId, int $repairId, string $newStatus): void
+    private function updateRepairStatus(int $chatId, int $messageId, string $callbackQueryId, int $repairId, string $newStatus): void
     {
         $repair = RepairRequest::find($repairId);
 
         if (! $repair) {
             $this->telegram->editMessage($chatId, $messageId, '❌ Заявку не знайдено.');
+
+            return;
+        }
+
+        $allowedTransitions = [
+            'нова' => 'в_роботі',
+            'в_роботі' => 'виконана',
+        ];
+
+        if (($allowedTransitions[$repair->status] ?? null) !== $newStatus) {
+            $this->telegram->answerCallbackQuery($callbackQueryId, 'Цей перехід статусу недоступний.');
+            $this->showRepairDetails($chatId, $messageId, $repairId);
 
             return;
         }
@@ -148,8 +161,27 @@ class AdminPanelHandler
             'виконана' => 'Виконана',
         ];
 
-        $this->telegram->answerCallbackQuery($messageId, 'Статус змінено на: '.$statusText[$newStatus]);
+        $this->telegram->answerCallbackQuery($callbackQueryId, 'Статус змінено на: '.$statusText[$newStatus]);
         $this->showRepairDetails($chatId, $messageId, $repairId);
+    }
+
+    public function sendStats(int $chatId, ?int $messageId = null): void
+    {
+        $message = "📈 <b>Статистика Telegram-заявок</b>\n\n";
+        $message .= '🔧 Ремонт: '.RepairRequest::count()."\n";
+        $message .= '🆕 Нові: '.RepairRequest::where('status', 'нова')->count()."\n";
+        $message .= '⚙️ В роботі: '.RepairRequest::where('status', 'в_роботі')->count()."\n";
+        $message .= '✅ Виконані: '.RepairRequest::where('status', 'виконана')->count()."\n\n";
+        $message .= '🖨️ Картриджі: '.CartridgeReplacement::count()."\n";
+        $message .= '📅 За місяць: '.CartridgeReplacement::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count();
+
+        if ($messageId) {
+            $this->telegram->editMessage($chatId, $messageId, $message, $this->keyboard->getBackKeyboard('adminpanel_menu'));
+
+            return;
+        }
+
+        $this->telegram->sendMessage($chatId, $message, $this->keyboard->getBackKeyboard('adminpanel_menu'));
     }
 
     private function showCartridgesList(int $chatId, int $messageId): void

@@ -3,7 +3,7 @@
 namespace App\Services\Telegram;
 
 use App\Models\Branch;
-use App\Services\Telegram\Handlers\AdminHandler;
+use App\Services\Telegram\Handlers\AdminPanelHandler;
 use App\Services\Telegram\Handlers\CartridgeHandler;
 use App\Services\Telegram\Handlers\InventoryHandler;
 use App\Services\Telegram\Handlers\OnboardingHandler;
@@ -26,9 +26,11 @@ class MessageHandler
 
     private InventoryHandler $inventoryHandler;
 
-    private AdminHandler $adminHandler;
-
     private OnboardingHandler $onboardingHandler;
+
+    private AdminPanelHandler $adminPanelHandler;
+
+    private TelegramProfileService $profileService;
 
     public function __construct(
         TelegramService $telegram,
@@ -38,8 +40,9 @@ class MessageHandler
         RepairHandler $repairHandler,
         CartridgeHandler $cartridgeHandler,
         InventoryHandler $inventoryHandler,
-        AdminHandler $adminHandler,
-        OnboardingHandler $onboardingHandler
+        OnboardingHandler $onboardingHandler,
+        AdminPanelHandler $adminPanelHandler,
+        TelegramProfileService $profileService
     ) {
         $this->telegram = $telegram;
         $this->stateManager = $stateManager;
@@ -48,8 +51,9 @@ class MessageHandler
         $this->repairHandler = $repairHandler;
         $this->cartridgeHandler = $cartridgeHandler;
         $this->inventoryHandler = $inventoryHandler;
-        $this->adminHandler = $adminHandler;
         $this->onboardingHandler = $onboardingHandler;
+        $this->adminPanelHandler = $adminPanelHandler;
+        $this->profileService = $profileService;
     }
 
     public function handle(array $message): void
@@ -108,16 +112,12 @@ class MessageHandler
         match ($text) {
             '🔧 Виклик IT майстра' => $this->handleRepairButton($chatId, $userId),
             '🖨️ Заміна картриджа' => $this->handleCartridgeButton($chatId, $userId),
-            '📋 Керування інвентарем' => $this->handleInventoryButton($chatId, $userId),
-            '⚙️ Панель адміністратора' => $this->adminHandler->sendAdminMenu($chatId),
             default => false,
         };
 
         return in_array($text, [
             '🔧 Виклик IT майстра',
             '🖨️ Заміна картриджа',
-            '📋 Керування інвентарем',
-            '⚙️ Панель адміністратора',
         ]);
     }
 
@@ -171,7 +171,7 @@ class MessageHandler
                 $this->handleAdminCommand($chatId, $userId);
                 break;
             case '/status':
-                $this->handleStatusCommand($chatId);
+                $this->handleStatusCommand($chatId, $userId);
                 break;
             default:
                 $this->handleUnknownCommand($chatId, $userId, $command);
@@ -214,16 +214,20 @@ class MessageHandler
 
     private function handleAdminCommand(int $chatId, int $userId): void
     {
-        if ($this->telegram->isAdmin($userId)) {
-            $this->adminHandler->sendAdminMenu($chatId);
+        if ($this->profileService->isRecognizedAdmin($userId)) {
+            $this->adminPanelHandler->sendPanelMenu($chatId);
         } else {
             $this->telegram->sendMessage($chatId, '❌ Недостатньо прав.');
         }
     }
 
-    private function handleStatusCommand(int $chatId): void
+    private function handleStatusCommand(int $chatId, int $userId): void
     {
-        $this->adminHandler->sendSystemStatus($chatId);
+        if ($this->profileService->isRecognizedAdmin($userId)) {
+            $this->adminPanelHandler->sendStats($chatId);
+        } else {
+            $this->telegram->sendMessage($chatId, '❌ Недостатньо прав.');
+        }
     }
 
     private function handleUnknownCommand(int $chatId, int $userId, string $command): void

@@ -310,71 +310,6 @@ class KeyboardService
         ]);
     }
 
-    // === ADMIN KEYBOARDS ===
-
-    public function getAdminMenuKeyboard(): array
-    {
-        return $this->createInlineKeyboard([
-            [
-                ['text' => '📊 Заявки на ремонт', 'callback_data' => 'admin_repairs'],
-                ['text' => '🖨️ Історія картриджів', 'callback_data' => 'admin_cartridges'],
-            ],
-            [
-                ['text' => '📦 Керування інвентарем', 'callback_data' => 'admin_inventory'],
-            ],
-            [
-                ['text' => '📈 Статистика', 'callback_data' => 'admin_stats'],
-            ],
-            [
-                ['text' => '🏠 Головне меню', 'callback_data' => 'main_menu'],
-            ],
-        ]);
-    }
-
-    public function getRepairsListKeyboard($repairs): array
-    {
-        $keyboard = [];
-
-        foreach ($repairs->take(5) as $repair) {
-            $status = $this->getStatusEmoji($repair->status);
-            $text = "#{$repair->id} $status ".$this->truncateText($repair->branch->name, 25);
-
-            $keyboard[] = [
-                ['text' => $text, 'callback_data' => "repair_details:{$repair->id}"],
-            ];
-        }
-
-        $keyboard[] = [
-            ['text' => '🔄 Оновити', 'callback_data' => 'admin_repairs'],
-            ['text' => '◀️ Панель адміністратора', 'callback_data' => 'admin_menu'],
-        ];
-
-        return $this->createInlineKeyboard($keyboard);
-    }
-
-    public function getRepairDetailsKeyboard($repair): array
-    {
-        $keyboard = [];
-
-        // Кнопки зміни статусу
-        if ($repair->status === 'нова') {
-            $keyboard[] = [
-                ['text' => '▶️ Взяти в роботу', 'callback_data' => "status_update:{$repair->id}:в_роботі"],
-            ];
-        } elseif ($repair->status === 'в_роботі') {
-            $keyboard[] = [
-                ['text' => '✅ Виконано', 'callback_data' => "status_update:{$repair->id}:виконана"],
-            ];
-        }
-
-        $keyboard[] = [
-            ['text' => '◀️ До списку', 'callback_data' => 'admin_repairs'],
-            ['text' => '🏠 Головне меню', 'callback_data' => 'main_menu'],
-        ];
-
-        return $this->createInlineKeyboard($keyboard);
-    }
-
     // === ADMIN PANEL (role-based) KEYBOARDS ===
 
     public function getAdminPanelMenuKeyboard(): array
@@ -385,6 +320,9 @@ class KeyboardService
             ],
             [
                 ['text' => '🖨️ Історія картриджів', 'callback_data' => 'adminpanel_cartridges'],
+            ],
+            [
+                ['text' => '📈 Статистика', 'callback_data' => 'adminpanel_stats'],
             ],
             [
                 ['text' => '🏠 Головне меню', 'callback_data' => 'main_menu'],

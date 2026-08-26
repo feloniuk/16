@@ -2,7 +2,6 @@
 
 namespace App\Services\Telegram;
 
-use App\Services\Telegram\Handlers\AdminHandler;
 use App\Services\Telegram\Handlers\AdminPanelHandler;
 use App\Services\Telegram\Handlers\CartridgeHandler;
 use App\Services\Telegram\Handlers\InventoryHandler;
@@ -24,8 +23,6 @@ class CallbackHandler
 
     private InventoryHandler $inventoryHandler;
 
-    private AdminHandler $adminHandler;
-
     private OnboardingHandler $onboardingHandler;
 
     private AdminPanelHandler $adminPanelHandler;
@@ -37,7 +34,6 @@ class CallbackHandler
         RepairHandler $repairHandler,
         CartridgeHandler $cartridgeHandler,
         InventoryHandler $inventoryHandler,
-        AdminHandler $adminHandler,
         OnboardingHandler $onboardingHandler,
         AdminPanelHandler $adminPanelHandler
     ) {
@@ -47,7 +43,6 @@ class CallbackHandler
         $this->repairHandler = $repairHandler;
         $this->cartridgeHandler = $cartridgeHandler;
         $this->inventoryHandler = $inventoryHandler;
-        $this->adminHandler = $adminHandler;
         $this->onboardingHandler = $onboardingHandler;
         $this->adminPanelHandler = $adminPanelHandler;
     }
@@ -102,8 +97,7 @@ class CallbackHandler
                     $this->inventoryHandler->handleCallback($callbackQuery);
                 } elseif (str_starts_with($data, 'adminpanel_')) {
                     $this->adminPanelHandler->handleCallback($callbackQuery);
-                } elseif (str_starts_with($data, 'admin_')) {
-                    $this->adminHandler->handleCallback($callbackQuery);
+
                 } elseif (str_starts_with($data, 'onboarding_')) {
                     $this->onboardingHandler->handleCallback($callbackQuery);
                 } elseif (str_starts_with($data, 'branch_select:')) {
