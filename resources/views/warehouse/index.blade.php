@@ -392,61 +392,13 @@ document.querySelectorAll('.priority-star').forEach(function (btn) {
     });
 });
 
-// Зберігання фільтрів у localStorage
-function saveFiltersToLocalStorage() {
-    const filters = {
-        search: document.getElementById('search').value,
-        low_stock: document.getElementById('low_stock').checked ? '1' : '',
-        hide_zero_stock: document.getElementById('hide_zero_stock').checked ? '1' : '',
-        category: document.querySelector('input[name="category"]').value
-    };
-    localStorage.setItem('warehouse_filters', JSON.stringify(filters));
-}
-
-function restoreFiltersFromLocalStorage() {
-    const saved = localStorage.getItem('warehouse_filters');
-    if (saved) {
-        const filters = JSON.parse(saved);
-        document.getElementById('search').value = filters.search || '';
-        document.getElementById('low_stock').checked = filters.low_stock === '1';
-        document.getElementById('hide_zero_stock').checked = filters.hide_zero_stock === '1';
-        return true;
-    }
-    return false;
-}
-
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
-
-    const hasUrlFilters = window.location.search.includes('search=') ||
-                         window.location.search.includes('low_stock=') ||
-                         window.location.search.includes('hide_zero_stock=') ||
-                         window.location.search.includes('category=');
-
-    if (!hasUrlFilters) {
-        const saved = localStorage.getItem('warehouse_filters');
-        if (saved) {
-            const filters = JSON.parse(saved);
-            const hasAnyFilter = filters.search ||
-                                 filters.low_stock === '1' ||
-                                 filters.hide_zero_stock === '1' ||
-                                 (filters.category && filters.category !== 'all');
-            if (hasAnyFilter) {
-                const params = new URLSearchParams();
-                if (filters.search) params.set('search', filters.search);
-                if (filters.low_stock === '1') params.set('low_stock', '1');
-                if (filters.hide_zero_stock === '1') params.set('hide_zero_stock', '1');
-                if (filters.category) params.set('category', filters.category);
-                window.location.href = '{{ route("warehouse.index") }}?' + params.toString();
-                return;
-            }
-        }
-    }
-
-    document.getElementById('search').addEventListener('change', saveFiltersToLocalStorage);
-    document.getElementById('low_stock').addEventListener('change', saveFiltersToLocalStorage);
-    document.getElementById('hide_zero_stock').addEventListener('change', saveFiltersToLocalStorage);
-    form.addEventListener('submit', saveFiltersToLocalStorage);
+    document.getElementById('low_stock').addEventListener('change', function() {
+        this.form.submit();
+    });
+    document.getElementById('hide_zero_stock').addEventListener('change', function() {
+        this.form.submit();
+    });
 });
 </script>
 @include('warehouse.partials.batch-issue-script')

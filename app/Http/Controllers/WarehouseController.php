@@ -326,7 +326,7 @@ class WarehouseController extends Controller
             return back()->withErrors(['items' => $e->getMessage()])->withInput();
         }
 
-        return redirect()->route('warehouse.index')->with('success', 'Видачу зафіксовано');
+        return back()->with('success', 'Видачу зафіксовано');
     }
 
     public function roomEquipment(Request $request): JsonResponse
@@ -433,7 +433,7 @@ class WarehouseController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('warehouse.index')->with('success', "Видано {$quantityToIssue} од. товару \"{$equipmentType}\"");
+        return back()->with('success', "Видано {$quantityToIssue} од. товару \"{$equipmentType}\"");
     }
 
     /**
@@ -496,7 +496,7 @@ class WarehouseController extends Controller
             }
         });
 
-        return redirect()->route('warehouse.index')->with('success', "Надходження {$request->quantity} од. товару \"{$equipmentType}\" зафіксовано");
+        return back()->with('success', "Надходження {$request->quantity} од. товару \"{$equipmentType}\" зафіксовано");
     }
 
     /**
