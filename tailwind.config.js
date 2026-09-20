@@ -9,22 +9,23 @@ export default {
         './resources/views/**/*.blade.php',
     ],
 
-    // Preflight (Tailwind's base CSS reset) is disabled while Bootstrap CSS is
-    // still loaded as a temporary compatibility shim (see layouts/app.blade.php) —
-    // Preflight's global resets on *, ::before, ::after were overriding Bootstrap's
-    // own base styles (e.g. breaking .collapse height transitions on inventory/
-    // warehouse filter panels), since @vite loads after the Bootstrap CSS link.
-    // Re-enable once every view is migrated off Bootstrap.
-    corePlugins: {
-        preflight: false,
-    },
-
     theme: {
         extend: {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
         },
+    },
+
+    // Tailwind's `.collapse` utility (`visibility: collapse`) has the same class
+    // name as Bootstrap's `.collapse` component (used for the show/hide filter
+    // panels on inventory/warehouse etc., loaded as a temporary compatibility
+    // shim — see layouts/app.blade.php). Whichever stylesheet wins the cascade
+    // clobbers the other's meaning; disabling Tailwind's `collapse` core plugin
+    // removes the collision entirely without touching Bootstrap or Preflight.
+    // Safe to remove once Bootstrap CSS itself is removed from the layout.
+    corePlugins: {
+        collapse: false,
     },
 
     plugins: [forms],
