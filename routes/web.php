@@ -3,12 +3,15 @@
 // routes/web.php
 use App\Http\Controllers\BranchAnalyticsController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\CabinetController;
+use App\Http\Controllers\CabinetShiftController;
 use App\Http\Controllers\CartridgeReplacementController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DirectorExportController;
 use App\Http\Controllers\DirectorInventoryController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\InventoryExportController;
+use App\Http\Controllers\MedicalStaffController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\RepairMasterController;
@@ -79,6 +82,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Мастеры по ремонту
         Route::resource('repair-masters', RepairMasterController::class)->only(['index', 'store', 'update', 'destroy']);
+
+        // Медперсонал (лікарі, медсестри)
+        Route::resource('medical-staff', MedicalStaffController::class)->only(['index', 'update']);
+
+        // Кабінети та зміни
+        Route::resource('cabinets', CabinetController::class)->except(['show']);
+        Route::patch('cabinet-shifts/{cabinetShift}', [CabinetShiftController::class, 'update'])->name('cabinet-shifts.update');
 
         // Експорт інвентарю (ПЕРЕД resource route!)
         Route::get('inventory-export', [InventoryController::class, 'export'])

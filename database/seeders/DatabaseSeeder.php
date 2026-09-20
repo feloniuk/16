@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             // AdminUserSeeder::class,
             // WarehouseKeeperSeeder::class,
             InventoryExcelSeeder::class,
+            // MedicalStaffExcelSeeder::class,
         ]);
     }
 }

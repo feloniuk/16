@@ -1,4 +1,3 @@
-{{-- resources/views/layouts/app.blade.php - обновить меню --}}
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -12,530 +11,291 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons (kept temporarily — icons are pervasive, low risk to leave as-is) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <style>
-        .sidebar {
-            height: 100vh;
-            max-height: 100vh;
-            background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-
-        /* Firefox scrollbar styling */
-        .sidebar {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
-        }
-
-        /* Webkit (Chrome, Safari, Edge) scrollbar styling */
-        .sidebar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .sidebar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
-        }
-
-        .sidebar::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
-        }
-
-        .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.8);
-            padding: 0.75rem 1rem;
-            margin: 0.25rem 0;
-            border-radius: 0.5rem;
-            transition: all 0.3s ease;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            color: white;
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .sidebar hr {
-            margin: 0.75rem 0 0.5rem 0;
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .sidebar-footer .nav-link {
-            margin: 0.25rem 0;
-        }
-
-        .main-content {
-            margin-left: 250px;
-            padding: 2rem;
-        }
-
-        .stats-card {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .stats-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Backdrop для sidebar на мобильных */
-        .sidebar-backdrop {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 999;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .sidebar-backdrop.show {
-            display: block;
-            opacity: 1;
-        }
-
-        /* Убрать прокрутку body когда sidebar открыт */
-        body.sidebar-open {
-            overflow: hidden;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                margin-left: -250px;
-                position: fixed;
-                z-index: 1000;
-                transition: margin-left 0.3s ease;
-            }
-
-            .sidebar.show {
-                margin-left: 0;
-            }
-
-            .main-content {
-                margin-left: 0;
-                padding: 1rem;
-            }
-        }
-
-        /* Улучшение форм на мобильных */
-        @media (max-width: 576px) {
-            .form-label {
-                font-size: 0.875rem;
-                margin-bottom: 0.25rem;
-            }
-
-            .form-control, .form-select {
-                font-size: 0.875rem;
-                padding: 0.5rem;
-            }
-
-            .btn {
-                padding: 0.5rem 0.75rem;
-            }
-        }
-
-        /* Кнопка фильтров */
-        .collapse.show {
-            animation: slideDown 0.3s ease-out;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Оптимізація таблиць для мобільних */
-        @media (max-width: 576px) {
-            .table-responsive {
-                border: none;
-            }
-
-            .table {
-                font-size: 0.85rem;
-            }
-
-            .table th,
-            .table td {
-                padding: 0.4rem 0.25rem;
-            }
-
-            .table thead th {
-                font-size: 0.75rem;
-            }
-
-            .btn-group-sm > .btn,
-            .btn-sm {
-                padding: 0.25rem 0.4rem;
-                font-size: 0.65rem;
-            }
-
-            .badge {
-                font-size: 0.65rem;
-                padding: 0.35rem 0.4rem;
-            }
-
-            code {
-                font-size: 0.7rem;
-            }
-        }
-    </style>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-light">
-    <div class="d-flex">
+<body class="bg-gray-50 font-sans antialiased" x-data="{ sidebarOpen: false }">
+    <div class="flex min-h-screen">
+        <!-- Sidebar backdrop (mobile) -->
+        <div
+            x-show="sidebarOpen"
+            x-transition:enter="transition-opacity ease-linear duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition-opacity ease-linear duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @click="sidebarOpen = false"
+            class="fixed inset-0 z-30 bg-black/50 lg:hidden"
+            style="display: none;"
+        ></div>
+
         <!-- Sidebar -->
-        <nav class="sidebar position-fixed" style="width: 250px;">
-            <div class="p-3">
-                <h4 class="text-white mb-3">
+        <aside
+            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+            class="fixed inset-y-0 left-0 z-40 w-64 transform overflow-y-auto bg-gradient-to-b from-blue-900 to-blue-800 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0"
+        >
+            <div class="p-4">
+                <h4 class="mb-4 flex items-center text-lg font-semibold text-white">
                     <i class="bi bi-hospital me-2"></i>
-                    IT Support Panel
+                    <span class="ms-2">IT Support Panel</span>
                 </h4>
 
-                <ul class="nav flex-column nav-main">
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                            <i class="bi bi-speedometer2 me-2"></i>
-                            Головна
-                        </a>
-                    </li>
-                    
+                <nav class="flex flex-col gap-1">
+                    <a href="{{ route('dashboard') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('dashboard') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-speedometer2"></i>
+                        Головна
+                    </a>
+
                     @if(Auth::user()->role === 'admin')
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('repairs.*') ? 'active' : '' }}" href="{{ route('repairs.index') }}">
-                            <i class="bi bi-tools me-2"></i>
-                            Заявки на ремонт
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('cartridges.*') ? 'active' : '' }}" href="{{ route('cartridges.index') }}">
-                            <i class="bi bi-printer me-2"></i>
-                            Заміна картриджів
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('repair-orders.*') ? 'active' : '' }}" href="{{ route('repair-orders.index') }}">
-                            <i class="bi bi-tools me-2"></i>
-                            Облік ремонтів
-                        </a>
-                    </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}" href="{{ route('purchase-requests.index') }}">
-                            <i class="bi bi-cart-plus me-2"></i>
-                            Заявки на закупівлю
-                        </a>
-                    </li>
+                    <a href="{{ route('repairs.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('repairs.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-tools"></i>
+                        Заявки на ремонт
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('writeoff-requests.*') ? 'active' : '' }}" href="{{ route('writeoff-requests.index') }}">
-                            <i class="bi bi-file-earmark-minus me-2"></i>
-                            Заявки на списання
-                        </a>
-                    </li>
+                    <a href="{{ route('cartridges.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('cartridges.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-printer"></i>
+                        Заміна картриджів
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}" href="{{ route('branches.index') }}">
-                            <i class="bi bi-building me-2"></i>
-                            Філії
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}">
-                            <i class="bi bi-pc-display me-2"></i>
-                            Інвентар
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('warehouse.index', 'warehouse.show', 'warehouse.create', 'warehouse.edit', 'warehouse.show-by-name') ? 'active' : '' }}" href="{{ route('warehouse.index') }}">
-                            <i class="bi bi-box-seam me-2"></i>
-                            Склад
-                        </a>
-                    </li>
+                    <a href="{{ route('repair-orders.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('repair-orders.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-tools"></i>
+                        Облік ремонтів
+                    </a>
 
-                    <!-- <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('warehouse-inventory.*') ? 'active' : '' }}" href="{{ route('warehouse-inventory.index') }}">
-                            <i class="bi bi-clipboard-check me-2"></i>
-                            Інвентаризація складу
-                        </a>
-                    </li> -->
+                    <a href="{{ route('purchase-requests.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('purchase-requests.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-cart-plus"></i>
+                        Заявки на закупівлю
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('warehouse.movements') ? 'active' : '' }}" href="{{ route('warehouse.movements') }}">
-                            <i class="bi bi-arrow-left-right me-2"></i>
-                            Рух товарів
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('inventory.export.*') ? 'active' : '' }}" href="{{ route('inventory.export.form') }}">
-                            <i class="bi bi-file-earmark-excel me-2"></i>
-                            Експорт в Excel
-                        </a>
-                    </li>
+                    <a href="{{ route('writeoff-requests.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('writeoff-requests.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-file-earmark-minus"></i>
+                        Заявки на списання
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('work-logs.*') ? 'active' : '' }}" href="{{ route('work-logs.index') }}">
-                            <i class="bi bi-journal-text me-2"></i>
-                            Журнал робіт
-                        </a>
-                    </li>
+                    <a href="{{ route('branches.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('branches.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-building"></i>
+                        Філії
+                    </a>
+
+                    <a href="{{ route('medical-staff.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('medical-staff.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-person-badge"></i>
+                        Медперсонал
+                    </a>
+
+                    <a href="{{ route('cabinets.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('cabinets.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-door-open"></i>
+                        Кабінети
+                    </a>
+
+                    <a href="{{ route('inventory.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('inventory.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-pc-display"></i>
+                        Інвентар
+                    </a>
+
+                    <a href="{{ route('warehouse.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('warehouse.index', 'warehouse.show', 'warehouse.create', 'warehouse.edit', 'warehouse.show-by-name') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-box-seam"></i>
+                        Склад
+                    </a>
+
+                    <a href="{{ route('warehouse.movements') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('warehouse.movements') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-arrow-left-right"></i>
+                        Рух товарів
+                    </a>
+
+                    <a href="{{ route('inventory.export.form') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('inventory.export.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-file-earmark-excel"></i>
+                        Експорт в Excel
+                    </a>
+
+                    <a href="{{ route('work-logs.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('work-logs.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-journal-text"></i>
+                        Журнал робіт
+                    </a>
                     @endif
 
                     @if(Auth::user()->role === 'warehouse_keeper')
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('warehouse.index', 'warehouse.show', 'warehouse.create', 'warehouse.edit', 'warehouse.show-by-name') ? 'active' : '' }}" href="{{ route('warehouse.index') }}">
-                            <i class="bi bi-box-seam me-2"></i>
-                            Склад
-                        </a>
-                    </li>
+                    <a href="{{ route('warehouse.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('warehouse.index', 'warehouse.show', 'warehouse.create', 'warehouse.edit', 'warehouse.show-by-name') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-box-seam"></i>
+                        Склад
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}">
-                            <i class="bi bi-pc-display me-2"></i>
-                            Інвентар обладнання
-                        </a>
-                    </li>
+                    <a href="{{ route('inventory.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('inventory.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-pc-display"></i>
+                        Інвентар обладнання
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('repair-orders.*') ? 'active' : '' }}" href="{{ route('repair-orders.index') }}">
-                            <i class="bi bi-tools me-2"></i>
-                            Облік ремонтів
-                        </a>
-                    </li>
+                    <a href="{{ route('repair-orders.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('repair-orders.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-tools"></i>
+                        Облік ремонтів
+                    </a>
 
-                    <!-- <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('warehouse-inventory.*') ? 'active' : '' }}" href="{{ route('warehouse-inventory.index') }}">
-                            <i class="bi bi-clipboard-check me-2"></i>
-                            Інвентаризація складу
-                        </a>
-                    </li> -->
+                    <a href="{{ route('purchase-requests.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('purchase-requests.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-cart-plus"></i>
+                        Заявки на закупівлю
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}" href="{{ route('purchase-requests.index') }}">
-                            <i class="bi bi-cart-plus me-2"></i>
-                            Заявки на закупівлю
-                        </a>
-                    </li>
+                    <a href="{{ route('writeoff-requests.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('writeoff-requests.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-file-earmark-minus"></i>
+                        Заявки на списання
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('writeoff-requests.*') ? 'active' : '' }}" href="{{ route('writeoff-requests.index') }}">
-                            <i class="bi bi-file-earmark-minus me-2"></i>
-                            Заявки на списання
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('warehouse.movements') ? 'active' : '' }}" href="{{ route('warehouse.movements') }}">
-                            <i class="bi bi-arrow-left-right me-2"></i>
-                            Рух товарів
-                        </a>
-                    </li>
+                    <a href="{{ route('warehouse.movements') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('warehouse.movements') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-arrow-left-right"></i>
+                        Рух товарів
+                    </a>
                     @endif
 
                     @if(Auth::user()->role === 'director')
-                    <hr class="text-white-50">
+                    <hr class="my-2 border-white/20">
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('branch-analytics.*') ? 'active' : '' }}" href="{{ route('branch-analytics.index') }}">
-                            <i class="bi bi-graph-up me-2"></i>
-                            Аналітика філій
-                        </a>
-                    </li>
+                    <a href="{{ route('branch-analytics.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('branch-analytics.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-graph-up"></i>
+                        Аналітика філій
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('director-inventory.warehouse') ? 'active' : '' }}" href="{{ route('director-inventory.warehouse') }}">
-                            <i class="bi bi-box-seam me-2"></i>
-                            Інвентар складу
-                        </a>
-                    </li>
+                    <a href="{{ route('director-inventory.warehouse') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('director-inventory.warehouse') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-box-seam"></i>
+                        Інвентар складу
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('director-inventory.equipment') ? 'active' : '' }}" href="{{ route('director-inventory.equipment') }}">
-                            <i class="bi bi-pc-display me-2"></i>
-                            Інвентар кабінетів
-                        </a>
-                    </li>
+                    <a href="{{ route('director-inventory.equipment') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('director-inventory.equipment') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-pc-display"></i>
+                        Інвентар кабінетів
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('director-inventory.forecasting') ? 'active' : '' }}" href="{{ route('director-inventory.forecasting') }}">
-                            <i class="bi bi-crystal-ball me-2"></i>
-                            Прогнозування витрат
-                        </a>
-                    </li>
+                    <a href="{{ route('director-inventory.forecasting') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('director-inventory.forecasting') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-crystal-ball"></i>
+                        Прогнозування витрат
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('work-logs.*') ? 'active' : '' }}" href="{{ route('work-logs.index') }}">
-                            <i class="bi bi-journal-text me-2"></i>
-                            Журнал робіт
-                        </a>
-                    </li>
+                    <a href="{{ route('work-logs.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('work-logs.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-journal-text"></i>
+                        Журнал робіт
+                    </a>
                     @endif
-                </ul>
+                </nav>
 
-                <hr class="text-white-50">
+                <hr class="my-3 border-white/20">
 
-                <div class="sidebar-footer">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('profile.edit') }}">
-                                <i class="bi bi-person me-2"></i>
-                                Профіль
-                            </a>
-                        </li>
+                <nav class="flex flex-col gap-1">
+                    <a href="{{ route('profile.edit') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-blue-100 transition hover:bg-white/10 hover:text-white">
+                        <i class="bi bi-person"></i>
+                        Профіль
+                    </a>
 
-                        <li class="nav-item">
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start">
-                                    <i class="bi bi-box-arrow-right me-2"></i>
-                                    Вихід
-                                </button>
-                            </form>
-                        </li>
-                    </ul>
-                </div>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-start text-sm font-medium text-blue-100 transition hover:bg-white/10 hover:text-white">
+                            <i class="bi bi-box-arrow-right"></i>
+                            Вихід
+                        </button>
+                    </form>
+                </nav>
             </div>
-        </nav>
-
-        <!-- Sidebar Backdrop для мобильных -->
-        <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+        </aside>
 
         <!-- Main Content -->
-        <main class="main-content flex-grow-1">
-            <!-- Mobile Menu Button -->
-            <button class="btn btn-primary d-md-none mb-3" type="button" onclick="toggleSidebar()">
-                <i class="bi bi-list" id="menuIcon"></i>
-            </button>
-            
-            <!-- Page Header -->
-            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 mb-sm-4 gap-2">
-                <h1 class="h4 h-sm-3 mb-0">@yield('title', 'Головна')</h1>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="badge bg-primary">
-                        @switch(Auth::user()->role)
-                            @case('admin') Адмін @break
-                            @case('director') Директор @break
-                            @case('warehouse_keeper') Склад @break
-                            @default Користувач
-                        @endswitch
-                    </span>
-                    <span class="text-muted small d-none d-sm-inline">{{ Auth::user()->name }}</span>
-                    <span class="text-muted small d-sm-none">{{ Str::limit(Auth::user()->name, 20) }}</span>
-                </div>
+        <div class="flex min-w-0 flex-1 flex-col">
+            <!-- Mobile sticky header -->
+            <div class="sticky top-0 z-20 flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 lg:hidden">
+                <button type="button" @click="sidebarOpen = true" class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100">
+                    <i class="bi bi-list text-xl"></i>
+                </button>
+                <span class="font-semibold text-gray-800">IT Support Panel</span>
             </div>
 
-            <!-- Alerts -->
-            @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <main class="flex-1 p-4 lg:p-8">
+                <!-- Page Header -->
+                <div class="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-center lg:mb-6">
+                    <h1 class="text-xl font-semibold text-gray-900 lg:text-2xl">@yield('title', 'Головна')</h1>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                            @switch(Auth::user()->role)
+                                @case('admin') Адмін @break
+                                @case('director') Директор @break
+                                @case('warehouse_keeper') Склад @break
+                                @default Користувач
+                            @endswitch
+                        </span>
+                        <span class="hidden text-sm text-gray-500 sm:inline">{{ Auth::user()->name }}</span>
+                        <span class="text-sm text-gray-500 sm:hidden">{{ Str::limit(Auth::user()->name, 20) }}</span>
+                    </div>
                 </div>
-            @endif
 
-            @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    {{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
+                <!-- Alerts -->
+                @if (session('success'))
+                    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" x-transition
+                         class="mb-4 flex items-start justify-between gap-2 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                        <span>{{ session('success') }}</span>
+                        <button type="button" @click="show = false" class="text-green-600 hover:text-green-800">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                @endif
 
-            @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <ul class="mb-0">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
+                @if (session('error'))
+                    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" x-transition
+                         class="mb-4 flex items-start justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                        <span>{{ session('error') }}</span>
+                        <button type="button" @click="show = false" class="text-red-600 hover:text-red-800">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                @endif
 
-            <!-- Page Content -->
-            @yield('content')
-        </main>
+                @if ($errors->any())
+                    <div x-data="{ show: true }" x-show="show" x-transition
+                         class="mb-4 flex items-start justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                        <ul class="list-inside list-disc">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                        <button type="button" @click="show = false" class="text-red-600 hover:text-red-800">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                @endif
+
+                <!-- Page Content -->
+                @yield('content')
+            </main>
+        </div>
     </div>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const backdrop = document.getElementById('sidebarBackdrop');
-            const menuIcon = document.getElementById('menuIcon');
-            const body = document.body;
-
-            const isOpen = sidebar.classList.toggle('show');
-            backdrop.classList.toggle('show', isOpen);
-            body.classList.toggle('sidebar-open', isOpen);
-
-            // Изменить иконку кнопки
-            if (isOpen) {
-                menuIcon.classList.replace('bi-list', 'bi-x-lg');
-            } else {
-                menuIcon.classList.replace('bi-x-lg', 'bi-list');
-            }
-        }
-
-        // Закрыть sidebar при клике на пункт меню (только на мобильных)
-        (function() {
-            if (window.innerWidth < 768) {
-                document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        // Даем время на переход перед закрытием
-                        setTimeout(() => {
-                            const sidebar = document.querySelector('.sidebar');
-                            if (sidebar.classList.contains('show')) {
-                                toggleSidebar();
-                            }
-                        }, 100);
-                    });
-                });
-            }
-        })();
-
-        // Auto-hide alerts after 5 seconds
-        setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                if (alert.classList.contains('show')) {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }
-            });
-        }, 5000);
-    </script>
 
     @stack('scripts')
 </body>

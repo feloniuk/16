@@ -1,4 +1,5 @@
-<?php 
+<?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,13 +12,13 @@ class Branch extends Model
     public $timestamps = false;
 
     protected $fillable = ['name', 'is_active'];
-    
+
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
     ];
 
     protected $dates = [
-        'created_at'
+        'created_at',
     ];
 
     public function repairRequests()
@@ -35,6 +36,16 @@ class Branch extends Model
         return $this->hasMany(RoomInventory::class);
     }
 
+    public function ambulatorii()
+    {
+        return $this->hasMany(Ambulatoriya::class);
+    }
+
+    public function cabinets()
+    {
+        return $this->hasMany(Cabinet::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -43,7 +54,7 @@ class Branch extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($model) {
             $model->created_at = now();
         });
