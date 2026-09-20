@@ -14,10 +14,97 @@
     <!-- Bootstrap Icons (kept temporarily — icons are pervasive, low risk to leave as-is) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 
+    {{-- Bootstrap CSS/JS: TEMPORARY compatibility shim. Most admin views (~60) still use
+         Bootstrap markup (.btn/.card/.modal/data-bs-*) and were not converted to Tailwind
+         in this pass — only layouts/app.blade.php + the new cabinets/medical-staff views
+         were. Remove once every view extending this layout is migrated to Tailwind. --}}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- TEMPORARY: custom classes the old Bootstrap-era inline <style> block defined,
+         still referenced by every unconverted view (.stats-card is used on ~60 pages).
+         Remove once those views are migrated to Tailwind. --}}
+    <style>
+        .stats-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .collapse.show {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 576px) {
+            .form-label {
+                font-size: 0.875rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .form-control, .form-select {
+                font-size: 0.875rem;
+                padding: 0.5rem;
+            }
+
+            .btn {
+                padding: 0.5rem 0.75rem;
+            }
+
+            .table-responsive {
+                border: none;
+            }
+
+            .table {
+                font-size: 0.85rem;
+            }
+
+            .table th,
+            .table td {
+                padding: 0.4rem 0.25rem;
+            }
+
+            .table thead th {
+                font-size: 0.75rem;
+            }
+
+            .btn-group-sm > .btn,
+            .btn-sm {
+                padding: 0.25rem 0.4rem;
+                font-size: 0.65rem;
+            }
+
+            .badge {
+                font-size: 0.65rem;
+                padding: 0.35rem 0.4rem;
+            }
+
+            code {
+                font-size: 0.7rem;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-50 font-sans antialiased" x-data="{ sidebarOpen: false }">
     <div class="flex min-h-screen">
@@ -296,6 +383,11 @@
             </main>
         </div>
     </div>
+
+    {{-- Bootstrap JS: TEMPORARY compatibility shim, see head comment. Loaded after Alpine
+         so Alpine components (mobile sidebar) still work; Bootstrap only backs the
+         unconverted views' own modals/dropdowns/popovers. --}}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     @stack('scripts')
 </body>
