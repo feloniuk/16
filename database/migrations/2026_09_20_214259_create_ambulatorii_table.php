@@ -13,7 +13,11 @@ return new class extends Migration
     {
         Schema::create('ambulatorii', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();
+            // No FK constraint: branches.id is a legacy `int(11)` (signed) column;
+            // this matches the existing unconstrained-reference pattern used for
+            // branch_id elsewhere in the app (see work_logs.branch_id).
+            $table->unsignedInteger('branch_id')->nullable();
+            $table->index('branch_id');
             $table->string('name')->unique();
             $table->timestamps();
         });
