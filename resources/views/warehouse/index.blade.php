@@ -4,14 +4,15 @@
 @section('title', 'Склад')
 
 @section('content')
+<div x-data="{ filtersOpen: true }">
 <!-- Кнопка показать/скрыть фильтры на мобильных -->
 <button class="btn btn-outline-secondary d-md-none w-100 mb-3" type="button"
-        data-bs-toggle="collapse" data-bs-target="#filtersCollapse">
+        @click="filtersOpen = !filtersOpen">
     <i class="bi bi-funnel"></i> Фільтри
 </button>
 
 <!-- Фільтр категорій -->
-<div class="collapse show" id="filtersCollapse">
+<div x-show="filtersOpen" id="filtersCollapse">
     <div class="stats-card p-4 mb-4">
         <h5 class="card-title mb-3">Категорії</h5>
         <div class="d-flex flex-wrap gap-2 mb-4">
@@ -76,6 +77,7 @@
             @endif
         </form>
     </div>
+</div>
 </div>
 
 @if(session('success'))

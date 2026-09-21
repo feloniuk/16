@@ -3,14 +3,15 @@
 @section('title', 'Інвентар')
 
 @section('content')
+<div x-data="{ filtersOpen: true }">
 <!-- Кнопка показать/скрыть фильтры на мобильных -->
 <button class="btn btn-outline-secondary d-md-none w-100 mb-3" type="button"
-        data-bs-toggle="collapse" data-bs-target="#filtersCollapse">
+        @click="filtersOpen = !filtersOpen">
     <i class="bi bi-funnel"></i> Фільтри
 </button>
 
 <!-- Форма фильтров -->
-<div class="collapse show" id="filtersCollapse">
+<div x-show="filtersOpen" id="filtersCollapse">
     <div class="stats-card p-4 mb-4">
         <form method="GET" action="{{ route('inventory.index') }}" class="row g-3 align-items-end">
             <div class="col-12 col-md-6 col-lg-2">
@@ -107,6 +108,7 @@
             </div>
         </form>
     </div>
+</div>
 </div>
 
 <!-- Статистика фільтрації -->
