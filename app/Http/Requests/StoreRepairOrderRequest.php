@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreRepairOrderRequest extends FormRequest
@@ -17,7 +18,7 @@ class StoreRepairOrderRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,7 +28,7 @@ class StoreRepairOrderRequest extends FormRequest
             'notes' => 'nullable|string|max:2000',
             'status' => 'required|in:draft,pending_approval',
             'items' => 'required|array|min:1',
-            'items.*.equipment_id' => 'required|exists:room_inventory,id',
+            'items.*.equipment_id' => 'required|distinct|exists:room_inventory,id',
             'items.*.repair_description' => 'required|string|max:1000',
             'items.*.cost' => 'nullable|numeric|min:0|max:999999.99',
         ];
@@ -43,6 +44,7 @@ class StoreRepairOrderRequest extends FormRequest
             'items.min' => 'Необхідно додати принаймні один предмет на ремонт',
             'items.*.equipment_id.required' => 'Виберіть обладнання',
             'items.*.equipment_id.exists' => 'Обладнання не знайдено',
+            'items.*.equipment_id.distinct' => 'Одне й те саме обладнання додано в заявку кілька разів',
             'items.*.repair_description.required' => 'Опишіть проблему для кожного предмета',
             'items.*.repair_description.max' => 'Опис не може бути більше 1000 символів',
             'items.*.cost.numeric' => 'Вартість має бути числом',

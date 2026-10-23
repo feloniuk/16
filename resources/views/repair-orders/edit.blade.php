@@ -242,8 +242,15 @@ function filterEquipment() {
 }
 
 function selectEquipment(index, equipmentId, equipmentType, branchName) {
-    const rows = document.querySelectorAll('#itemsTableBody tr');
-    const row = rows[index];
+    const rowInput = document.querySelector(`input[name="items[${index}][equipment_id]"]`);
+    const row = rowInput ? rowInput.closest('tr') : null;
+    const alreadyAdded = Array.from(document.querySelectorAll('.equipment-id'))
+        .some(input => input !== rowInput && input.value === String(equipmentId));
+
+    if (alreadyAdded) {
+        alert('Це обладнання вже додано до заявки');
+        return;
+    }
 
     if (row) {
         row.querySelector('.equipment-name').textContent = equipmentType;

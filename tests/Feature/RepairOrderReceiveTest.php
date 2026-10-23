@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\RepairOrderController;
 use App\Http\Requests\ReceiveRepairOrderItemsRequest;
+use App\Http\Requests\StoreRepairOrderRequest;
+use App\Http\Requests\UpdateRepairOrderRequest;
 use App\Models\RepairOrder;
 use App\Models\RepairOrderItem;
 use Tests\TestCase;
@@ -122,5 +124,23 @@ class RepairOrderReceiveTest extends TestCase
     {
         $view = file_get_contents(resource_path('views/repair-orders/index.blade.php'));
         $this->assertStringContainsString('returnedCount', $view);
+    }
+
+    public function test_store_and_update_requests_reject_duplicate_equipment(): void
+    {
+        foreach ([StoreRepairOrderRequest::class, UpdateRepairOrderRequest::class] as $requestClass) {
+            $rules = (new $requestClass)->rules();
+
+            $validator = \Validator::make([
+                'status' => 'draft',
+                'items' => [
+                    ['equipment_id' => 1, 'repair_description' => 'a'],
+                    ['equipment_id' => 1, 'repair_description' => 'b'],
+                ],
+            ], $rules);
+
+            $this->assertTrue($validator->errors()->has('items.0.equipment_id'));
+            $this->assertTrue($validator->errors()->has('items.1.equipment_id'));
+        }
     }
 }
