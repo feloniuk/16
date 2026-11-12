@@ -127,13 +127,21 @@
                                         @endif
                                     </td>
                                     <td class="small">
+                                        @if(count($row['suggestions']) > 0)
+                                            <div class="text-muted">
+                                                <i class="bi bi-info-circle"></i> такий самий інв. № уже має {{ $row['suggestions'][0]->equipment_type }}
+                                                ({{ $row['suggestions'][0]->branch?->name }}, каб. {{ $row['suggestions'][0]->room_number ?? '—' }})@if(count($row['suggestions']) > 1) та ще {{ count($row['suggestions']) - 1 }}@endif
+                                            </div>
+                                        @endif
                                         @forelse($row['changes'] as $field => $change)
                                             <div>
                                                 {{ $fieldLabels[$field] }}:
                                                 <span class="text-muted">{{ $change['old'] ?? '—' }}</span> → <strong>{{ $change['new'] }}</strong>
                                             </div>
                                         @empty
-                                            <span class="text-muted">—</span>
+                                            @if(count($row['suggestions']) === 0)
+                                                <span class="text-muted">—</span>
+                                            @endif
                                         @endforelse
                                     </td>
                                     <td>
@@ -152,6 +160,17 @@
                                                                     :disabled="isTaken({{ $missing['record']->id }}, '{{ $row['key'] }}')">
                                                                 {{ $missing['record']->equipment_type }}
                                                                 {{ $describe($missing['record']) }}
+                                                            </option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endif
+                                                @if(count($row['suggestions']) > 0)
+                                                    <optgroup label="Той самий інв. № в іншому місці — перемістити сюди:">
+                                                        @foreach($row['suggestions'] as $suggestion)
+                                                            <option value="{{ Audit::ACTION_MATCH_PREFIX.$suggestion->id }}"
+                                                                    :disabled="isTaken({{ $suggestion->id }}, '{{ $row['key'] }}')">
+                                                                {{ $suggestion->equipment_type }} × {{ $suggestion->quantity }}
+                                                                ({{ $suggestion->branch?->name }}, каб. {{ $suggestion->room_number ?? '—' }})
                                                             </option>
                                                         @endforeach
                                                     </optgroup>

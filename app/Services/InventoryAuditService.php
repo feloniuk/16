@@ -48,6 +48,8 @@ class InventoryAuditService
 
     public const ACTION_MATCH_PREFIX = 'match:';
 
+    private const MAX_SUGGESTIONS = 10;
+
     private const COMPARED_FIELDS = ['brand', 'model', 'serial_number', 'inventory_number'];
 
     private const DEFAULT_POSITIONS = [
@@ -134,7 +136,8 @@ class InventoryAuditService
      *             record: RoomInventory|null,
      *             changes: array<string, array{old: mixed, new: mixed}>,
      *             actions: array<int, string>,
-     *             default: string
+     *             default: string,
+     *             suggestions: array<int, RoomInventory>
      *         }>,
      *         missing: array<int, array{key: string, record: RoomInventory}>,
      *         moved_away: array<int, array{record: RoomInventory, found_in: InventoryAuditRoom}>
@@ -159,7 +162,7 @@ class InventoryAuditService
         }
 
         $recordsByLocation = $this->loadRecordsByLocation($rooms);
-        $links = $this->linkItemsToRecords($items, $roomOfItem, $recordsByLocation);
+        ['links' => $links, 'suggestions' => $suggestions] = $this->linkItemsToRecords($items, $roomOfItem, $recordsByLocation);
 
         $claimedBy = [];
         foreach ($links as $itemId => $record) {
@@ -188,7 +191,17 @@ class InventoryAuditService
 
             $rows = [];
             foreach ($room->items as $item) {
-                $rows[] = $this->buildRow($item, $links[$item->id] ?? null, $room, $matchActions);
+                $missingIds = array_map(fn (array $row): int => $row['record']->id, $missing);
+                $rows[] = $this->buildRow(
+                    $item,
+                    $links[$item->id] ?? null,
+                    $room,
+                    $matchActions,
+                    array_values(array_filter(
+                        $suggestions[$item->id] ?? [],
+                        fn (RoomInventory $suggestion): bool => ! in_array($suggestion->id, $missingIds, true),
+                    )),
+                );
             }
 
             foreach ($rows as $row) {
@@ -213,12 +226,14 @@ class InventoryAuditService
         return DB::transaction(function () use ($audit, $decisions, $user): array {
             $summary = ['confirmed' => 0, 'updated' => 0, 'moved' => 0, 'created' => 0, 'removed' => 0, 'skipped' => 0];
             $comparison = $this->compare($audit);
+            $manuallyMatched = [];
+            $matchedElsewhere = $this->manuallyMatchedRecordIds($comparison, $decisions);
 
             foreach ($comparison['rooms'] as $roomComparison) {
                 $room = $roomComparison['room'];
-                $missingById = collect($roomComparison['missing'])
-                    ->keyBy(fn (array $row): int => $row['record']->id);
-                $manuallyMatched = [];
+                $matchable = collect($roomComparison['missing'])
+                    ->pluck('record')
+                    ->keyBy('id');
 
                 foreach ($roomComparison['rows'] as $row) {
                     $item = $row['item'];
@@ -236,8 +251,9 @@ class InventoryAuditService
                             $action = self::ACTION_SKIP;
                         } else {
                             $manuallyMatched[$recordId] = true;
-                            $record = $missingById[$recordId]['record'];
-                            $action = self::ACTION_UPDATE;
+                            $record = $matchable->get($recordId)
+                                ?? collect($row['suggestions'])->firstWhere('id', $recordId);
+                            $action = $this->isAt($record, $room) ? self::ACTION_UPDATE : self::ACTION_MOVE;
                         }
                     }
 
@@ -264,7 +280,7 @@ class InventoryAuditService
                 foreach ($roomComparison['missing'] as $row) {
                     $record = $row['record'];
 
-                    if (isset($manuallyMatched[$record->id])) {
+                    if (isset($manuallyMatched[$record->id]) || isset($matchedElsewhere[$record->id])) {
                         continue;
                     }
 
@@ -386,10 +402,15 @@ class InventoryAuditService
      * серійний номер → назва в межах того самого кабінету. Один запис системи
      * може бути зайнятий лише однією позицією обходу.
      *
+     * Інвентарний номер не вважається унікальним: бухгалтерія могла дати один номер
+     * кільком позиціям. Тому за номером запис прив'язується лише коли збігається і назва,
+     * а запис з іншого місця — лише коли цей номер у системі один. Решта збігів за номером
+     * повертаються як підказки для ручного зіставлення.
+     *
      * @param  Collection<int, InventoryAuditItem>  $items
      * @param  array<int, InventoryAuditRoom>  $roomOfItem
      * @param  array<string, array<int, RoomInventory>>  $recordsByLocation
-     * @return array<int, RoomInventory> item id => запис системи
+     * @return array{links: array<int, RoomInventory>, suggestions: array<int, array<int, RoomInventory>>}
      */
     private function linkItemsToRecords(Collection $items, array $roomOfItem, array $recordsByLocation): array
     {
@@ -411,33 +432,48 @@ class InventoryAuditService
             }
         }
 
-        foreach (['inventory_number', 'serial_number'] as $field) {
-            $pending = $items->filter(
-                fn (InventoryAuditItem $item): bool => ! isset($links[$item->id]) && $this->normalize($item->{$field}) !== ''
-            );
+        $sameNumber = $this->candidatesByField($items, $links, 'inventory_number');
 
-            if ($pending->isEmpty()) {
-                continue;
-            }
+        foreach ([true, false] as $sameRoomOnly) {
+            foreach ($items as $item) {
+                $number = $this->normalize($item->inventory_number);
 
-            $candidates = RoomInventory::query()
-                ->with('branch')
-                ->whereIn($field, $pending->pluck($field)->map(fn (string $value): string => trim($value))->unique())
-                ->orderBy('id')
-                ->get()
-                ->groupBy(fn (RoomInventory $record): string => $this->normalize($record->{$field}));
+                if (isset($links[$item->id]) || $number === '' || ! isset($sameNumber[$number])) {
+                    continue;
+                }
 
-            foreach ($pending as $item) {
                 $room = $roomOfItem[$item->id];
-                $free = ($candidates[$this->normalize($item->{$field})] ?? collect())
-                    ->reject(fn (RoomInventory $record): bool => isset($claimed[$record->id]));
+                $isUniqueNumber = $sameNumber[$number]->count() === 1;
 
-                $record = $free->first(fn (RoomInventory $record): bool => $this->isAt($record, $room)) ?? $free->first();
+                $record = $sameNumber[$number]->first(
+                    fn (RoomInventory $record): bool => ! isset($claimed[$record->id])
+                        && $this->normalize($record->equipment_type) === $this->normalize($item->equipment_type)
+                        && ($sameRoomOnly ? $this->isAt($record, $room) : $isUniqueNumber)
+                );
 
                 if ($record) {
                     $links[$item->id] = $record;
                     $claimed[$record->id] = true;
                 }
+            }
+        }
+
+        $sameSerial = $this->candidatesByField($items, $links, 'serial_number');
+
+        foreach ($items as $item) {
+            $serial = $this->normalize($item->serial_number);
+
+            if (isset($links[$item->id]) || $serial === '' || ! isset($sameSerial[$serial])) {
+                continue;
+            }
+
+            $room = $roomOfItem[$item->id];
+            $free = $sameSerial[$serial]->reject(fn (RoomInventory $record): bool => isset($claimed[$record->id]));
+            $record = $free->first(fn (RoomInventory $record): bool => $this->isAt($record, $room)) ?? $free->first();
+
+            if ($record) {
+                $links[$item->id] = $record;
+                $claimed[$record->id] = true;
             }
         }
 
@@ -462,21 +498,69 @@ class InventoryAuditService
             }
         }
 
-        return $links;
+        $suggestions = [];
+        foreach ($items as $item) {
+            $number = $this->normalize($item->inventory_number);
+
+            if (isset($links[$item->id]) || $number === '' || ! isset($sameNumber[$number])) {
+                continue;
+            }
+
+            $suggestions[$item->id] = $sameNumber[$number]
+                ->reject(fn (RoomInventory $record): bool => isset($claimed[$record->id]))
+                ->take(self::MAX_SUGGESTIONS)
+                ->values()
+                ->all();
+        }
+
+        return ['links' => $links, 'suggestions' => $suggestions];
+    }
+
+    /**
+     * @param  Collection<int, InventoryAuditItem>  $items
+     * @param  array<int, RoomInventory>  $links
+     * @return Collection<string, Collection<int, RoomInventory>> нормалізоване значення => записи системи
+     */
+    private function candidatesByField(Collection $items, array $links, string $field): Collection
+    {
+        $values = $items
+            ->filter(fn (InventoryAuditItem $item): bool => ! isset($links[$item->id]) && $this->normalize($item->{$field}) !== '')
+            ->pluck($field)
+            ->map(fn (string $value): string => trim($value))
+            ->unique();
+
+        if ($values->isEmpty()) {
+            return collect();
+        }
+
+        return RoomInventory::query()
+            ->with('branch')
+            ->whereIn($field, $values)
+            ->orderBy('id')
+            ->get()
+            ->groupBy(fn (RoomInventory $record): string => $this->normalize($record->{$field}));
     }
 
     /**
      * @param  array<int, string>  $matchActions
-     * @return array{key: string, type: string, item: InventoryAuditItem, record: RoomInventory|null, changes: array<string, array{old: mixed, new: mixed}>, actions: array<int, string>, default: string}
+     * @param  array<int, RoomInventory>  $suggestions
+     * @return array{key: string, type: string, item: InventoryAuditItem, record: RoomInventory|null, changes: array<string, array{old: mixed, new: mixed}>, actions: array<int, string>, default: string, suggestions: array<int, RoomInventory>}
      */
-    private function buildRow(InventoryAuditItem $item, ?RoomInventory $record, InventoryAuditRoom $room, array $matchActions): array
+    private function buildRow(InventoryAuditItem $item, ?RoomInventory $record, InventoryAuditRoom $room, array $matchActions, array $suggestions): array
     {
-        $row = ['key' => "item:{$item->id}", 'item' => $item, 'record' => $record, 'changes' => []];
+        $row = ['key' => "item:{$item->id}", 'item' => $item, 'record' => $record, 'changes' => [], 'suggestions' => []];
 
         if (! $record) {
+            $row['suggestions'] = $suggestions;
+
             return $row + [
                 'type' => self::TYPE_NEW,
-                'actions' => [self::ACTION_CREATE, self::ACTION_SKIP, ...$matchActions],
+                'actions' => array_values(array_unique([
+                    self::ACTION_CREATE,
+                    self::ACTION_SKIP,
+                    ...$matchActions,
+                    ...array_map(fn (RoomInventory $suggestion): string => self::ACTION_MATCH_PREFIX.$suggestion->id, $suggestions),
+                ])),
                 'default' => self::ACTION_CREATE,
             ];
         }
@@ -486,7 +570,7 @@ class InventoryAuditService
         if (! $this->isAt($record, $room)) {
             return $row + [
                 'type' => self::TYPE_MOVED,
-                'actions' => [self::ACTION_MOVE, self::ACTION_SKIP],
+                'actions' => [self::ACTION_MOVE, self::ACTION_CREATE, self::ACTION_SKIP],
                 'default' => self::ACTION_MOVE,
             ];
         }
@@ -643,6 +727,30 @@ class InventoryAuditService
             'note' => $this->auditLabel($audit).($detail ? " — {$detail}" : ''),
             'operation_date' => now()->toDateString(),
         ]);
+    }
+
+    /**
+     * Записи, які користувач вручну зіставив із позицією обходу: їх не можна обнулити як «не знайдені».
+     *
+     * @param  array{rooms: array<int, array{rows: array<int, array{key: string, actions: array<int, string>}>}>}  $comparison
+     * @param  array<string, string>  $decisions
+     * @return array<int, true>
+     */
+    private function manuallyMatchedRecordIds(array $comparison, array $decisions): array
+    {
+        $recordIds = [];
+
+        foreach ($comparison['rooms'] as $roomComparison) {
+            foreach ($roomComparison['rows'] as $row) {
+                $action = $decisions[$row['key']] ?? '';
+
+                if (str_starts_with($action, self::ACTION_MATCH_PREFIX) && in_array($action, $row['actions'], true)) {
+                    $recordIds[(int) substr($action, strlen(self::ACTION_MATCH_PREFIX))] = true;
+                }
+            }
+        }
+
+        return $recordIds;
     }
 
     private function auditLabel(InventoryAudit $audit): string

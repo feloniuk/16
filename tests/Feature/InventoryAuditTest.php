@@ -290,6 +290,129 @@ class InventoryAuditTest extends TestCase
         $this->assertSame(InventoryAuditService::TYPE_MOVED, $comparison['2']['rows'][0]['type']);
     }
 
+    public function test_shared_inventory_number_with_another_name_is_not_treated_as_the_same_record(): void
+    {
+        $admin = $this->admin();
+        $branch = Branch::factory()->create();
+        $shelf = $this->equipment($branch, '7a', 'Стилаж книжний відкритий', ['inventory_number' => '11200235']);
+
+        $audit = InventoryAudit::factory()->create();
+        $cabinet = $this->found($this->auditRoom($audit, $branch, '3'), 'Тумба до столу', ['inventory_number' => '11200235', 'quantity' => 2]);
+
+        $row = $this->rowsByType($audit)['Тумба до столу'];
+
+        $this->assertSame(InventoryAuditService::TYPE_NEW, $row['type']);
+        $this->assertNull($row['record']);
+        $this->assertSame(InventoryAuditService::ACTION_CREATE, $row['default']);
+        $this->assertSame([$shelf->id], array_map(fn (RoomInventory $record): int => $record->id, $row['suggestions']));
+        $this->assertContains('match:'.$shelf->id, $row['actions']);
+
+        $this->actingAs($admin)->get(route('inventory-audits.review', $audit))
+            ->assertOk()
+            ->assertSee('такий самий інв. № уже має Стилаж книжний відкритий');
+
+        $this->actingAs($admin)->post(route('inventory-audits.apply', $audit), ['decisions' => '{}'])
+            ->assertSessionHasNoErrors();
+
+        $shelf->refresh();
+        $this->assertSame('7a', $shelf->room_number);
+        $this->assertSame(1, $shelf->quantity);
+        $this->assertDatabaseHas('room_inventory', [
+            'branch_id' => $branch->id,
+            'room_number' => '3',
+            'equipment_type' => 'Тумба до столу',
+            'inventory_number' => '11200235',
+            'quantity' => 2,
+        ]);
+        $this->assertSame(InventoryAuditItem::RESOLUTION_CREATED, $cabinet->fresh()->resolution);
+        $this->assertSame(0, InventoryTransfer::count());
+    }
+
+    public function test_inventory_number_shared_by_several_records_never_moves_one_of_them_automatically(): void
+    {
+        $branch = Branch::factory()->create();
+        $own = $this->equipment($branch, '1', 'Колонки', ['inventory_number' => 'SP-1']);
+        $this->equipment($branch, '2', 'Колонки', ['inventory_number' => 'SP-1']);
+        $this->equipment($branch, '3', 'Колонки', ['inventory_number' => 'SP-1']);
+
+        $audit = InventoryAudit::factory()->create();
+        $this->found($this->auditRoom($audit, $branch, '1'), 'Колонки', ['inventory_number' => 'SP-1']);
+        $this->found($this->auditRoom($audit, $branch, '5'), 'Колонки', ['inventory_number' => 'SP-1']);
+
+        $comparison = collect(app(InventoryAuditService::class)->compare($audit)['rooms'])
+            ->keyBy(fn (array $row): string => $row['room']->room_number);
+
+        $this->assertSame(InventoryAuditService::TYPE_OK, $comparison['1']['rows'][0]['type']);
+        $this->assertSame($own->id, $comparison['1']['rows'][0]['record']->id);
+        $this->assertSame(InventoryAuditService::TYPE_NEW, $comparison['5']['rows'][0]['type']);
+        $this->assertCount(2, $comparison['5']['rows'][0]['suggestions']);
+    }
+
+    public function test_same_room_record_wins_over_an_earlier_room_with_the_same_number(): void
+    {
+        $branch = Branch::factory()->create();
+        $second = $this->equipment($branch, '2', 'Монітор', ['inventory_number' => 'M-1']);
+
+        $audit = InventoryAudit::factory()->create();
+        $this->found($this->auditRoom($audit, $branch, '1'), 'Монітор', ['inventory_number' => 'M-1']);
+        $this->found($this->auditRoom($audit, $branch, '2'), 'Монітор', ['inventory_number' => 'M-1']);
+
+        $comparison = collect(app(InventoryAuditService::class)->compare($audit)['rooms'])
+            ->keyBy(fn (array $row): string => $row['room']->room_number);
+
+        $this->assertSame(InventoryAuditService::TYPE_OK, $comparison['2']['rows'][0]['type']);
+        $this->assertSame($second->id, $comparison['2']['rows'][0]['record']->id);
+        $this->assertSame(InventoryAuditService::TYPE_NEW, $comparison['1']['rows'][0]['type']);
+    }
+
+    public function test_moved_row_can_be_created_as_a_new_record_instead(): void
+    {
+        $admin = $this->admin();
+        $branch = Branch::factory()->create();
+        $laptop = $this->equipment($branch, '1', 'Ноутбук', ['inventory_number' => 'NB-1']);
+
+        $audit = InventoryAudit::factory()->create();
+        $item = $this->found($this->auditRoom($audit, $branch, '2'), 'Ноутбук', ['inventory_number' => 'NB-1']);
+
+        $row = $this->rowsByType($audit)['Ноутбук'];
+        $this->assertSame(InventoryAuditService::TYPE_MOVED, $row['type']);
+        $this->assertContains(InventoryAuditService::ACTION_CREATE, $row['actions']);
+
+        $this->actingAs($admin)->post(route('inventory-audits.apply', $audit), [
+            'decisions' => json_encode(["item:{$item->id}" => 'create']),
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('1', $laptop->fresh()->room_number);
+        $this->assertSame(2, RoomInventory::where('inventory_number', 'NB-1')->count());
+        $this->assertNotSame($laptop->id, $item->fresh()->room_inventory_id);
+        $this->assertSame(0, InventoryTransfer::count());
+    }
+
+    public function test_suggested_record_from_another_room_can_be_moved_manually_and_is_not_zeroed_there(): void
+    {
+        $admin = $this->admin();
+        $branch = Branch::factory()->create();
+        $shelf = $this->equipment($branch, '7a', 'Стелаж', ['inventory_number' => 'F-9']);
+
+        $audit = InventoryAudit::factory()->create();
+        $this->auditRoom($audit, $branch, '7a');
+        $item = $this->found($this->auditRoom($audit, $branch, '8'), 'Стилаж книжний', ['inventory_number' => 'F-9', 'quantity' => 1]);
+
+        $this->actingAs($admin)->post(route('inventory-audits.apply', $audit), [
+            'decisions' => json_encode([
+                "item:{$item->id}" => "match:{$shelf->id}",
+                "record:{$shelf->id}" => 'remove',
+            ]),
+        ])->assertSessionHasNoErrors();
+
+        $shelf->refresh();
+        $this->assertSame('8', $shelf->room_number);
+        $this->assertSame(1, $shelf->quantity);
+        $this->assertSame(InventoryAuditItem::RESOLUTION_MOVED, $item->fresh()->resolution);
+        $this->assertSame(1, InventoryTransfer::count());
+        $this->assertSame(1, $this->equipmentCount());
+    }
+
     public function test_review_page_renders_without_changing_inventory(): void
     {
         $admin = $this->admin();
