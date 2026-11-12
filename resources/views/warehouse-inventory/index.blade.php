@@ -41,6 +41,9 @@
         <div class="d-flex justify-content-between align-items-center">
             <h2>Інвентаризації ({{ $inventories->total() }})</h2>
             <div>
+                <a href="{{ route('inventory-audits.index') }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-door-open"></i> Обхід кабінетів
+                </a>
                 <a href="{{ route('warehouse-inventory.quick') }}" class="btn btn-warning me-2">
                     <i class="bi bi-lightning"></i> Швидка інвентаризація
                 </a>

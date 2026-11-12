@@ -9,6 +9,7 @@ use App\Http\Controllers\CartridgeReplacementController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DirectorExportController;
 use App\Http\Controllers\DirectorInventoryController;
+use App\Http\Controllers\InventoryAuditController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\InventoryExportController;
 use App\Http\Controllers\MedicalStaffController;
@@ -215,6 +216,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // Додаткові дії
             Route::patch('{inventory}/complete', [WarehouseInventoryController::class, 'complete'])->name('complete');
             Route::patch('{inventory}/items/{item}', [WarehouseInventoryController::class, 'updateItem'])->name('update-item');
+        });
+
+        // Обхід кабінетів: чернетка інвентаризації → звірка → застосування
+        Route::prefix('inventory-audits')->name('inventory-audits.')->group(function () {
+            Route::get('/', [InventoryAuditController::class, 'index'])->name('index');
+            Route::post('/', [InventoryAuditController::class, 'store'])->name('store');
+            Route::get('{inventoryAudit}', [InventoryAuditController::class, 'show'])->name('show');
+            Route::delete('{inventoryAudit}', [InventoryAuditController::class, 'destroy'])->name('destroy');
+            Route::get('{inventoryAudit}/room-data', [InventoryAuditController::class, 'roomData'])->name('room-data');
+            Route::post('{inventoryAudit}/rooms', [InventoryAuditController::class, 'saveRoom'])->name('rooms.save');
+            Route::delete('{inventoryAudit}/rooms/{room}', [InventoryAuditController::class, 'destroyRoom'])->name('rooms.destroy');
+            Route::get('{inventoryAudit}/review', [InventoryAuditController::class, 'review'])->name('review');
+            Route::post('{inventoryAudit}/apply', [InventoryAuditController::class, 'apply'])->name('apply');
         });
 
         // Заявки на закупку

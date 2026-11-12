@@ -91,8 +91,10 @@
                             <td>{{ $movement->operation_date->format('d.m.Y') }}</td>
                             <td>{!! $movement->type_badge !!}</td>
                             <td>
-                                @if($movement->type === 'receipt')
+                                @if($movement->type === 'receipt' || ($movement->type === 'inventory' && $movement->quantity > 0))
                                     <span class="text-success">+{{ abs($movement->quantity) }}</span>
+                                @elseif($movement->type === 'transfer')
+                                    <span>{{ abs($movement->quantity) }}</span>
                                 @else
                                     <span class="text-danger">-{{ abs($movement->quantity) }}</span>
                                 @endif

@@ -145,6 +145,11 @@
                 class="btn btn-outline-success me-2">
                     <i class="bi bi-file-earmark-excel"></i> Експорт
                 </a>
+                @if(in_array(Auth::user()->role, ['admin', 'warehouse_keeper']))
+                <a href="{{ route('inventory-audits.index') }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-clipboard-check"></i> Обхід кабінетів
+                </a>
+                @endif
                 <a href="{{ route('inventory.create') }}" class="btn btn-primary">
                     <i class="bi bi-plus"></i> Додати обладнання
                 </a>

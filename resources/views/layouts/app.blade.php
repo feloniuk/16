@@ -29,6 +29,10 @@
          still referenced by every unconverted view (.stats-card is used on ~60 pages).
          Remove once those views are migrated to Tailwind. --}}
     <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
         .stats-card {
             background: white;
             border-radius: 1rem;
@@ -196,6 +200,12 @@
                         Інвентар
                     </a>
 
+                    <a href="{{ route('inventory-audits.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('inventory-audits.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-clipboard-check"></i>
+                        Обхід кабінетів
+                    </a>
+
                     <a href="{{ route('warehouse.index') }}"
                        class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('warehouse.index', 'warehouse.show', 'warehouse.create', 'warehouse.edit', 'warehouse.show-by-name') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
                         <i class="bi bi-box-seam"></i>
@@ -233,6 +243,12 @@
                        class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('inventory.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
                         <i class="bi bi-pc-display"></i>
                         Інвентар обладнання
+                    </a>
+
+                    <a href="{{ route('inventory-audits.index') }}"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition {{ request()->routeIs('inventory-audits.*') ? 'bg-white/10 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white' }}">
+                        <i class="bi bi-clipboard-check"></i>
+                        Обхід кабінетів
                     </a>
 
                     <a href="{{ route('repair-orders.index') }}"

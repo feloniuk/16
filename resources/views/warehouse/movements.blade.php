@@ -96,15 +96,17 @@
                             </td>
                             <td>{!! $movement->type_badge !!}</td>
                             <td>
-                                @if($movement->type === 'receipt')
+                                @if($movement->type === 'receipt' || ($movement->type === 'inventory' && $movement->quantity > 0))
                                     <span class="text-success fw-bold">+{{ abs($movement->quantity) }}</span>
+                                @elseif($movement->type === 'transfer')
+                                    <span class="fw-bold">{{ abs($movement->quantity) }}</span>
                                 @else
                                     <span class="text-danger fw-bold">-{{ abs($movement->quantity) }}</span>
                                 @endif
                                 <small class="text-muted d-block">{{ $movement->inventoryItem->unit }}</small>
                             </td>
                             <td>
-                                <span class="badge bg-info">{{ $movement->grouped_balance_after }} {{ $movement->inventoryItem->unit }}</span>
+                                <span class="badge bg-info">{{ $movement->balance_after }} {{ $movement->inventoryItem->unit }}</span>
                             </td>
                             <td>
                                 <div>{{ $movement->user->name }}</div>
